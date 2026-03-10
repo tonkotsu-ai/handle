@@ -52,40 +52,42 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           if (!target) return
           target.removeAttribute("data-handle-target")
 
-          function getNearestComponent(el: Element): string | null {
+          // For a given DOM element, find the component whose outermost
+          // DOM node is this element.  Walk up the fiber's return chain:
+          // if we hit a component fiber before another host (DOM) fiber,
+          // this element is that component's root element.
+          function getComponentRootedAt(el: Element): string | null {
             const fiberKey = Object.keys(el).find(
               (k) =>
                 k.startsWith("__reactFiber$") ||
                 k.startsWith("__reactInternalInstance$")
             )
             if (!fiberKey) return null
-            let fiber = (el as any)[fiberKey]
+            let fiber = (el as any)[fiberKey]?.return
             while (fiber) {
+              // Hit another DOM element fiber — this element is not
+              // the outermost element of any component above it
+              if (typeof fiber.type === "string") break
               if (
                 typeof fiber.type === "function" ||
                 typeof fiber.type === "object"
               ) {
-                return fiber.type.displayName || fiber.type.name || null
+                const name =
+                  fiber.type.displayName || fiber.type.name || null
+                if (name) return name
               }
               fiber = fiber.return
             }
             return null
           }
 
-          const entries: { el: Element; component: string | null }[] = []
           let current: Element | null = target
           while (current && current !== document.documentElement) {
-            entries.push({ el: current, component: getNearestComponent(current) })
-            current = current.parentElement
-          }
-
-          const seen = new Set<string>()
-          for (let i = entries.length - 1; i >= 0; i--) {
-            const { el, component } = entries[i]
-            if (component && !seen.has(component)) {
-              seen.add(component)
-              el.setAttribute("data-handle-component", component)
+            const component = getComponentRootedAt(current)
+            if (component) {
+              current.setAttribute("data-handle-component", component)
             }
+            current = current.parentElement
           }
         }
       })
