@@ -598,7 +598,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
 
   return (
     <div
-      className={`flex flex-col h-full ${demo ? "w-96 mx-auto mt-8 border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden" : ""}`}>
+      className={`flex flex-col h-full ${demo ? "w-96 mx-auto mt-8 border border-slate-300 dark:border-slate-700 rounded-3xl overflow-hidden max-h-[calc(100vh-64px)]" : ""}`}>
       {/* Tab bar */}
       <div className="shrink-0 bg-softgray border-b border-slate-200 dark:border-slate-700" style={{ padding: "8px 32px" }}>
         <div className="flex border border-slate-300 dark:border-slate-600 overflow-hidden" style={{ borderRadius: "6px" }}>
