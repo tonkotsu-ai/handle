@@ -64,7 +64,7 @@ export default function ElementRow({
           className="shrink-0 text-electricblue-600 dark:text-electricblue-400"
         />
       )}
-      <div className="flex items-center gap-0.5 font-mono text-xs truncate min-w-0">
+      <div className="flex items-center gap-0.5 font-sans text-xs truncate min-w-0">
         {item.component ? (
           <span className="font-bold text-electricblue-600 dark:text-electricblue-400 truncate">
             {item.component}
