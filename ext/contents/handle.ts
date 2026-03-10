@@ -171,5 +171,66 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       const hierarchy = buildHierarchy(el)
       chrome.runtime.sendMessage({ type: "element-hierarchy", hierarchy })
     }
+  } else if (message.type === "get-page-colors") {
+    const colors = new Set<string>()
+    const elements = document.querySelectorAll("*")
+    const arr = Array.from(elements)
+    const step = arr.length > 2000 ? Math.ceil(arr.length / 2000) : 1
+    for (let i = 0; i < arr.length; i += step) {
+      const cs = getComputedStyle(arr[i] as HTMLElement)
+      const bg = cs.backgroundColor
+      const border = cs.borderColor
+      const color = cs.color
+      if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent")
+        colors.add(bg)
+      if (
+        border &&
+        border !== "rgba(0, 0, 0, 0)" &&
+        border !== "transparent" &&
+        border !== bg
+      )
+        colors.add(border)
+      if (color && color !== "rgba(0, 0, 0, 0)") colors.add(color)
+    }
+    sendResponse(Array.from(colors).slice(0, 30))
+    return true
+  } else if (message.type === "get-page-tokens") {
+    const tokens: Array<{ name: string; value: string }> = []
+    const seen = new Set<string>()
+    try {
+      for (const sheet of document.styleSheets) {
+        try {
+          for (const rule of sheet.cssRules) {
+            if (
+              rule instanceof CSSStyleRule &&
+              rule.selectorText === ":root"
+            ) {
+              for (let i = 0; i < rule.style.length; i++) {
+                const prop = rule.style[i]
+                if (prop.startsWith("--") && !seen.has(prop)) {
+                  seen.add(prop)
+                  const raw = rule.style.getPropertyValue(prop).trim()
+                  tokens.push({ name: prop, value: raw })
+                }
+              }
+            }
+          }
+        } catch {
+          // Cross-origin stylesheet — skip
+        }
+      }
+    } catch {
+      // styleSheets access failed
+    }
+    const colorTokens = tokens.filter(({ value }) => {
+      return (
+        value.startsWith("#") ||
+        value.startsWith("rgb") ||
+        value.startsWith("hsl") ||
+        /^[a-z]{3,}$/i.test(value)
+      )
+    })
+    sendResponse(colorTokens.slice(0, 100))
+    return true
   }
 })

@@ -16,6 +16,7 @@ import { useState } from "react"
 
 import type { StyleData } from "~types"
 
+import ColorPicker from "./ColorPicker"
 import IconPicker from "./IconPicker"
 
 interface StyleEditorProps {
@@ -23,6 +24,7 @@ interface StyleEditorProps {
   index: number
   editedProps: Map<string, { original: string; current: string }>
   lucideIconName?: string | null
+  tabId: number | null
   onStyleEdit: (index: number, prop: string, original: string, value: string) => void
   onTextEdit: (index: number, original: string, value: string) => void
   onUndo: (index: number, props: string[]) => void
@@ -111,41 +113,6 @@ function NumericInput({
   }
 
   return input
-}
-
-function ColorField({
-  label,
-  value,
-  edited,
-  onChange,
-  onUndo
-}: {
-  label: string
-  value: string
-  edited: boolean
-  onChange: (val: string) => void
-  onUndo?: () => void
-}) {
-  const [current, setCurrent] = useState(value)
-
-  return (
-    <div className="flex flex-col gap-1">
-      <FieldLabel edited={edited} onUndo={onUndo}>{label}</FieldLabel>
-      <div className="flex items-center gap-2">
-        <div
-          className="h-5 w-5 shrink-0 rounded border border-slate-300 dark:border-slate-600"
-          style={{ background: current }}
-        />
-        <FieldInput
-          value={value}
-          onChange={(val) => {
-            setCurrent(val)
-            onChange(val)
-          }}
-        />
-      </div>
-    </div>
-  )
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -363,6 +330,7 @@ export default function StyleEditor({
   index,
   editedProps,
   lucideIconName,
+  tabId,
   onStyleEdit,
   onTextEdit,
   onUndo
@@ -485,36 +453,38 @@ export default function StyleEditor({
           </div>
         </div>
         <div className="grid grid-cols-2 gap-x-4">
-          <ColorField
-            key={effective(editedProps, "backgroundColor", styles.backgroundColor || "transparent")}
-            label="Fill"
-            value={effective(editedProps, "backgroundColor", styles.backgroundColor || "transparent")}
-            edited={editedProps.has("backgroundColor")}
-            onChange={(val) =>
-              onStyleEdit(
-                index,
-                "backgroundColor",
-                styles.backgroundColor || "transparent",
-                val
-              )
-            }
-            onUndo={() => onUndo(index, ["backgroundColor"])}
-          />
-          <ColorField
-            key={effective(editedProps, "borderColor", styles.borderColor || "none")}
-            label="Stroke"
-            value={effective(editedProps, "borderColor", styles.borderColor || "none")}
-            edited={editedProps.has("borderColor")}
-            onChange={(val) =>
-              onStyleEdit(
-                index,
-                "borderColor",
-                styles.borderColor || "none",
-                val
-              )
-            }
-            onUndo={() => onUndo(index, ["borderColor"])}
-          />
+          <div className="flex flex-col gap-1">
+            <FieldLabel edited={editedProps.has("backgroundColor")} onUndo={() => onUndo(index, ["backgroundColor"])}>Fill</FieldLabel>
+            <ColorPicker
+              key={effective(editedProps, "backgroundColor", styles.backgroundColor || "transparent")}
+              value={effective(editedProps, "backgroundColor", styles.backgroundColor || "transparent")}
+              tabId={tabId}
+              onChange={(val) =>
+                onStyleEdit(
+                  index,
+                  "backgroundColor",
+                  styles.backgroundColor || "transparent",
+                  val
+                )
+              }
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <FieldLabel edited={editedProps.has("borderColor")} onUndo={() => onUndo(index, ["borderColor"])}>Stroke</FieldLabel>
+            <ColorPicker
+              key={effective(editedProps, "borderColor", styles.borderColor || "none")}
+              value={effective(editedProps, "borderColor", styles.borderColor || "none")}
+              tabId={tabId}
+              onChange={(val) =>
+                onStyleEdit(
+                  index,
+                  "borderColor",
+                  styles.borderColor || "none",
+                  val
+                )
+              }
+            />
+          </div>
         </div>
       </div>
 

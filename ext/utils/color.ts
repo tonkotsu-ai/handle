@@ -1,0 +1,152 @@
+export interface RGBA {
+  r: number // 0-255
+  g: number // 0-255
+  b: number // 0-255
+  a: number // 0-1
+}
+
+let ctx: CanvasRenderingContext2D | null = null
+
+function getCtx() {
+  if (!ctx) {
+    const canvas = document.createElement("canvas")
+    canvas.width = 1
+    canvas.height = 1
+    ctx = canvas.getContext("2d")!
+  }
+  return ctx
+}
+
+export function parseColor(css: string): RGBA | null {
+  if (!css || css === "none" || css === "initial" || css === "inherit")
+    return null
+
+  // Try regex first for common formats
+  const rgbaMatch = css.match(
+    /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)/
+  )
+  if (rgbaMatch) {
+    return {
+      r: parseInt(rgbaMatch[1]),
+      g: parseInt(rgbaMatch[2]),
+      b: parseInt(rgbaMatch[3]),
+      a: rgbaMatch[4] != null ? parseFloat(rgbaMatch[4]) : 1,
+    }
+  }
+
+  // Modern rgb(r g b / a) syntax
+  const modernMatch = css.match(
+    /rgba?\(\s*(\d+)\s+(\d+)\s+(\d+)\s*(?:\/\s*([\d.]+%?))?\s*\)/
+  )
+  if (modernMatch) {
+    let a = 1
+    if (modernMatch[4] != null) {
+      a = modernMatch[4].endsWith("%")
+        ? parseFloat(modernMatch[4]) / 100
+        : parseFloat(modernMatch[4])
+    }
+    return {
+      r: parseInt(modernMatch[1]),
+      g: parseInt(modernMatch[2]),
+      b: parseInt(modernMatch[3]),
+      a,
+    }
+  }
+
+  // Hex
+  const hex = hexToRgba(css)
+  if (hex) return hex
+
+  // Fallback: use canvas to parse named colors, hsl, etc.
+  try {
+    const c = getCtx()
+    c.fillStyle = "#000000"
+    c.fillStyle = css
+    const parsed1 = c.fillStyle
+
+    // If it stayed #000000, try with white to distinguish actual black
+    if (parsed1 === "#000000") {
+      c.fillStyle = "#ffffff"
+      c.fillStyle = css
+      if (c.fillStyle === "#ffffff") return null // invalid color
+    }
+
+    return parseColor(c.fillStyle)
+  } catch {
+    return null
+  }
+}
+
+export function hexToRgba(hex: string): RGBA | null {
+  const h = hex.replace(/^#/, "")
+  if (h.length === 3) {
+    return {
+      r: parseInt(h[0] + h[0], 16),
+      g: parseInt(h[1] + h[1], 16),
+      b: parseInt(h[2] + h[2], 16),
+      a: 1,
+    }
+  }
+  if (h.length === 4) {
+    return {
+      r: parseInt(h[0] + h[0], 16),
+      g: parseInt(h[1] + h[1], 16),
+      b: parseInt(h[2] + h[2], 16),
+      a: parseInt(h[3] + h[3], 16) / 255,
+    }
+  }
+  if (h.length === 6) {
+    return {
+      r: parseInt(h.slice(0, 2), 16),
+      g: parseInt(h.slice(2, 4), 16),
+      b: parseInt(h.slice(4, 6), 16),
+      a: 1,
+    }
+  }
+  if (h.length === 8) {
+    return {
+      r: parseInt(h.slice(0, 2), 16),
+      g: parseInt(h.slice(2, 4), 16),
+      b: parseInt(h.slice(4, 6), 16),
+      a: parseInt(h.slice(6, 8), 16) / 255,
+    }
+  }
+  return null
+}
+
+function toHex2(n: number): string {
+  return Math.max(0, Math.min(255, Math.round(n)))
+    .toString(16)
+    .padStart(2, "0")
+}
+
+export function rgbaToHex(c: RGBA): string {
+  const hex = `#${toHex2(c.r)}${toHex2(c.g)}${toHex2(c.b)}`
+  if (c.a < 1) return `${hex}${toHex2(c.a * 255)}`
+  return hex
+}
+
+export function rgbaToString(c: RGBA): string {
+  if (c.a < 1) return `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a})`
+  return `rgb(${c.r}, ${c.g}, ${c.b})`
+}
+
+export function formatColor(
+  c: RGBA,
+  format: "hex" | "rgba"
+): string {
+  return format === "hex" ? rgbaToHex(c) : rgbaToString(c)
+}
+
+export function normalizeToHex(css: string): string {
+  const c = parseColor(css)
+  return c ? rgbaToHex(c) : css
+}
+
+export function getOpacity(c: RGBA): number {
+  return Math.round(c.a * 100)
+}
+
+export function withOpacity(c: RGBA, percent: number): RGBA {
+  return { ...c, a: Math.max(0, Math.min(100, percent)) / 100 }
+}

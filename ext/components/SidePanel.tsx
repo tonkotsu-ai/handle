@@ -634,6 +634,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
                     )?.[1] ?? null)
                   : null
               }
+              tabId={tabId}
               onStyleEdit={handleStyleEdit}
               onTextEdit={handleTextEdit}
               onUndo={handleUndo}
