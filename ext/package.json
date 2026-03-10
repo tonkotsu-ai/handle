@@ -1,0 +1,51 @@
+{
+  "name": "palette-ext",
+  "displayName": "Palette ext",
+  "version": "0.0.1",
+  "description": "Palette extension",
+  "author": "Tonkotsu AI Inc.",
+  "scripts": {
+    "dev": "plasmo dev",
+    "dev:demo": "vite",
+    "build": "plasmo build",
+    "package": "plasmo package"
+  },
+  "dependencies": {
+    "lucide-react": "^0.577.0",
+    "plasmo": "0.90.5",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "4.1.1",
+    "@types/chrome": "0.0.258",
+    "@types/node": "^20.19.37",
+    "@types/react": "18.2.48",
+    "@types/react-dom": "18.2.18",
+    "@vitejs/plugin-react": "^5.1.4",
+    "autoprefixer": "^10.4.27",
+    "postcss": "^8.5.8",
+    "prettier": "3.2.4",
+    "tailwindcss": "^3.4.19",
+    "typescript": "5.3.3",
+    "vite": "^7.3.1"
+  },
+  "manifest": {
+    "host_permissions": [
+      "https://*/*",
+      "http://localhost/*"
+    ],
+    "permissions": [
+      "sidePanel",
+      "activeTab",
+      "scripting"
+    ],
+    "action": {
+      "default_title": "Open Side Panel"
+    },
+    "side_panel": {
+      "default_path": "sidepanel.html"
+    }
+  }
+}
