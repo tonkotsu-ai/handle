@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Palette is a design feedback tool that bridges a Chrome extension with AI coding agents via MCP (Model Context Protocol). Users visually select and edit elements on a webpage, then send structured feedback to a coding agent.
+Handle is a design feedback tool that bridges a Chrome extension with AI coding agents via MCP (Model Context Protocol). Users visually select and edit elements on a webpage, then send structured feedback to a coding agent.
 
 ## Monorepo Structure
 
@@ -32,14 +32,14 @@ node test-e2e.mjs    # End-to-end test (spawns server, validates Socket.IO + MCP
 ## Architecture
 
 ### Data Flow
-1. Extension content script (`contents/palette.ts`) intercepts DOM clicks, extracts element hierarchy and computed styles
+1. Extension content script (`contents/handle.ts`) intercepts DOM clicks, extracts element hierarchy and computed styles
 2. Background script (`background.ts`) enriches elements with React component names via Fiber inspection (`__reactFiber$`)
 3. Sidepanel UI (`components/SidePanel.tsx`) displays hierarchy, allows style/text/icon editing, tracks changes
 4. On "Send to Coding Agent", sidepanel sends feedback via Socket.IO to the MCP server
 5. MCP server (`mcp/src/index.ts`) returns feedback to the agent through the `get_design_feedback` tool
 
 ### Extension ↔ MCP Connection
-- MCP server binds Socket.IO to an OS-assigned port and registers session info in `~/.palette/sessions/`
+- MCP server binds Socket.IO to an OS-assigned port and registers session info in `~/.handle/sessions/`
 - A discovery HTTP server runs on well-known port **58932** (`GET /api/sessions`)
 - Extension polls discovery endpoint every 3s to find active sessions, then connects with session ID auth
 

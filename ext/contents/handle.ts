@@ -46,7 +46,7 @@ function buildHierarchy(el: HTMLElement) {
     const classes = current.classList.length
       ? `.${[...current.classList].join(".")}`
       : ""
-    const component = current.getAttribute("data-palette-component") || null
+    const component = current.getAttribute("data-handle-component") || null
     hierarchy.push({ tag, id, classes, component })
     current = current.parentElement
   }
@@ -105,7 +105,7 @@ function onClick(e: MouseEvent) {
   if (hoveredEl) hoveredEl.style.outline = ""
   hoveredEl = null
   const target = e.target as HTMLElement
-  target.setAttribute("data-palette-target", "")
+  target.setAttribute("data-handle-target", "")
   chrome.runtime.sendMessage({ type: "annotate-react" })
   pendingTarget = target
 }
@@ -128,8 +128,8 @@ function disable() {
   hideOverlay()
   if (overlay) overlay.remove()
   overlay = null
-  document.querySelectorAll("[data-palette-component]").forEach((n) => {
-    n.removeAttribute("data-palette-component")
+  document.querySelectorAll("[data-handle-component]").forEach((n) => {
+    n.removeAttribute("data-handle-component")
   })
   pendingTarget = null
   ancestors = []
