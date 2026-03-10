@@ -195,26 +195,34 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     sendResponse(Array.from(colors).slice(0, 30))
     return true
   } else if (message.type === "get-page-tokens") {
-    const tokens: Array<{ name: string; value: string }> = []
     const seen = new Set<string>()
+    const names: string[] = []
+
+    // Collect custom property names from all CSS rules in all stylesheets
+    function scanRules(rules: CSSRuleList) {
+      for (const rule of rules) {
+        if (rule instanceof CSSStyleRule) {
+          for (let i = 0; i < rule.style.length; i++) {
+            const prop = rule.style[i]
+            if (prop.startsWith("--") && !seen.has(prop)) {
+              seen.add(prop)
+              names.push(prop)
+            }
+          }
+        } else if (
+          rule instanceof CSSMediaRule ||
+          rule instanceof CSSSupportsRule ||
+          rule instanceof CSSLayerBlockRule
+        ) {
+          scanRules(rule.cssRules)
+        }
+      }
+    }
+
     try {
       for (const sheet of document.styleSheets) {
         try {
-          for (const rule of sheet.cssRules) {
-            if (
-              rule instanceof CSSStyleRule &&
-              rule.selectorText === ":root"
-            ) {
-              for (let i = 0; i < rule.style.length; i++) {
-                const prop = rule.style[i]
-                if (prop.startsWith("--") && !seen.has(prop)) {
-                  seen.add(prop)
-                  const raw = rule.style.getPropertyValue(prop).trim()
-                  tokens.push({ name: prop, value: raw })
-                }
-              }
-            }
-          }
+          scanRules(sheet.cssRules)
         } catch {
           // Cross-origin stylesheet — skip
         }
@@ -222,15 +230,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     } catch {
       // styleSheets access failed
     }
-    const colorTokens = tokens.filter(({ value }) => {
-      return (
-        value.startsWith("#") ||
-        value.startsWith("rgb") ||
-        value.startsWith("hsl") ||
-        /^[a-z]{3,}$/i.test(value)
-      )
-    })
-    sendResponse(colorTokens.slice(0, 100))
+
+    // Resolve each variable to its computed value on :root
+    const rootCs = getComputedStyle(document.documentElement)
+    const isColor = /^#|^rgba?\(|^hsla?\(|^oklch\(|^oklab\(|^lch\(|^lab\(|^color\(/
+    const tokens: Array<{ name: string; value: string }> = []
+    for (const name of names) {
+      const resolved = rootCs.getPropertyValue(name).trim()
+      if (resolved && isColor.test(resolved)) {
+        tokens.push({ name, value: resolved })
+      }
+    }
+
+    sendResponse(tokens.slice(0, 100))
     return true
   }
 })

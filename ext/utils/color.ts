@@ -57,21 +57,28 @@ export function parseColor(css: string): RGBA | null {
   const hex = hexToRgba(css)
   if (hex) return hex
 
-  // Fallback: use canvas to parse named colors, hsl, etc.
+  // Fallback: draw a pixel and read it back via getImageData.
+  // This handles oklch, oklab, hsl, named colors, etc.
   try {
     const c = getCtx()
+
+    // Test if the color is valid by checking if fillStyle accepts it
     c.fillStyle = "#000000"
     c.fillStyle = css
-    const parsed1 = c.fillStyle
-
-    // If it stayed #000000, try with white to distinguish actual black
-    if (parsed1 === "#000000") {
+    const accepted1 = c.fillStyle
+    if (accepted1 === "#000000") {
+      // Might be actual black or invalid — try with white baseline
       c.fillStyle = "#ffffff"
       c.fillStyle = css
       if (c.fillStyle === "#ffffff") return null // invalid color
     }
 
-    return parseColor(c.fillStyle)
+    // Draw the color and read back the pixel
+    c.clearRect(0, 0, 1, 1)
+    c.fillStyle = css
+    c.fillRect(0, 0, 1, 1)
+    const [r, g, b, a] = c.getImageData(0, 0, 1, 1).data
+    return { r, g, b, a: Math.round((a / 255) * 100) / 100 }
   } catch {
     return null
   }
