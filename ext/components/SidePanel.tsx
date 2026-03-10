@@ -414,6 +414,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
     async (index: number) => {
       if (selectedIndex === index) return
       setSelectedIndex(index)
+      setSelectedStyles(null)
       const result = demo
         ? DEMO_STYLES[index] ?? null
         : await chrome.tabs.sendMessage(tabId!, {
