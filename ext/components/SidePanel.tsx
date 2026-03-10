@@ -197,6 +197,13 @@ function SidePanel({ demo = false }: SidePanelProps) {
     return () => setDesignMode(false)
   }, [demo, tabId, setDesignMode])
 
+  // Connect a port so background can detect panel closure
+  useEffect(() => {
+    if (demo || tabId == null) return
+    const port = chrome.runtime.connect({ name: `sidepanel:${tabId}` })
+    return () => port.disconnect()
+  }, [demo, tabId])
+
   // Compute change count from edits — also bumps a revision to ensure re-render
   const [editRevision, setEditRevision] = useState(0)
   function recomputeChangeCount() {

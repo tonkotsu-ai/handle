@@ -19,6 +19,16 @@ chrome.action.onClicked.addListener((tab) => {
   })
 })
 
+// Track sidepanel connections — disable design mode when panel closes
+chrome.runtime.onConnect.addListener((port) => {
+  if (!port.name.startsWith("sidepanel:")) return
+  const tabId = parseInt(port.name.split(":")[1])
+  if (isNaN(tabId)) return
+  port.onDisconnect.addListener(() => {
+    chrome.tabs.sendMessage(tabId, { type: "disable-design-mode" }).catch(() => {})
+  })
+})
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "toggle-design-mode") {
     const tabId = message.tabId
