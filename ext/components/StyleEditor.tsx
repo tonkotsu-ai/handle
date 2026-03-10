@@ -117,7 +117,7 @@ function NumericInput({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-xs font-bold dark:text-white tracking-wide">
+    <div className="font-bold dark:text-white tracking-wide" style={{ fontSize: "15px" }}>
       {children}
     </div>
   )
@@ -149,15 +149,15 @@ function FlowControls({
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>Flow</FieldLabel>
-      <div className="flex gap-1">
+      <div className="flex w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700" style={{ padding: "2px" }}>
         {flows.map((f) => (
           <button
             key={f.mode}
             title={f.title}
-            className={`rounded border border-slate-300 dark:border-slate-600 px-2.5 py-1 text-xs font-medium ${
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
               flowMode === f.mode
-                ? "bg-electricblue-100 text-electricblue-700 dark:bg-electricblue-900 dark:text-electricblue-300"
-                : "bg-white text-slate-600 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
             }`}
             onClick={() => {
               const display = styles.display || "block"
@@ -175,6 +175,7 @@ function FlowControls({
               }
             }}>
             {f.icon}
+            {f.title}
           </button>
         ))}
       </div>
