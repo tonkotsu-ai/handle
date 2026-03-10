@@ -8,24 +8,125 @@ import type { EditEntry, HierarchyItem, SessionInfo, StyleData } from "~types"
 import ElementRow from "./ElementRow"
 import { getIconSvgChildren } from "./IconPicker"
 import SendBar from "./SendBar"
+import StyleEditor from "./StyleEditor"
 
 const DISCOVERY_URL = "http://localhost:58932/api/sessions"
 const POLL_INTERVAL = 3000
 
+// Demo hierarchy is stored innermost-first (same order as content script),
+// but rendered root-first via reversal in the tree panel.
 const DEMO_HIERARCHY: HierarchyItem[] = [
-  { tag: "div", id: "", classes: ".card.p-6.rounded-xl.shadow-md", component: "ProfileCard" },
-  { tag: "img", id: "", classes: ".avatar.w-16.h-16.rounded-full", component: null },
+  {
+    tag: "h3",
+    id: "",
+    classes: ".text-lg.font-semibold",
+    component: null
+  },
   { tag: "div", id: "", classes: ".flex.flex-col.gap-2", component: null },
-  { tag: "h3", id: "", classes: ".text-lg.font-semibold", component: null },
-  { tag: "p", id: "", classes: ".text-sm.text-gray-500", component: null }
+  {
+    tag: "div",
+    id: "",
+    classes: ".card.p-6.rounded-xl.shadow-md",
+    component: "ProfileCard"
+  },
+  {
+    tag: "main",
+    id: "",
+    classes: ".flex.flex-col.items-center.gap-8",
+    component: null
+  },
+  {
+    tag: "div",
+    id: "app",
+    classes: ".min-h-screen.bg-gray-50",
+    component: "App"
+  },
+  { tag: "body", id: "", classes: "", component: null }
 ]
 
 const DEMO_STYLES: StyleData[] = [
-  { display: "flex", flexDirection: "column", gap: "16px", padding: "24px", fontFamily: "Inter", fontWeight: "400", fontSize: "16px", borderRadius: "12px", backgroundColor: "#ffffff", borderColor: "#e2e8f0", borderWidth: "1px", borderStyle: "solid", alignItems: "center" },
-  { display: "block", padding: "0px", fontFamily: "Inter", fontWeight: "400", fontSize: "16px", borderRadius: "9999px", backgroundColor: "#e2e8f0", borderColor: "transparent", borderWidth: "0px", borderStyle: "none" },
-  { display: "flex", flexDirection: "column", gap: "4px", padding: "0px", fontFamily: "Inter", fontWeight: "400", fontSize: "16px", borderRadius: "0px", backgroundColor: "transparent", borderColor: "transparent", borderWidth: "0px", borderStyle: "none", alignItems: "center" },
-  { display: "block", padding: "0px", fontFamily: "Inter", fontWeight: "600", fontSize: "18px", borderRadius: "0px", backgroundColor: "transparent", borderColor: "transparent", borderWidth: "0px", borderStyle: "none", textContent: "Jane Cooper" },
-  { display: "block", padding: "0px", fontFamily: "Inter", fontWeight: "400", fontSize: "14px", borderRadius: "0px", backgroundColor: "transparent", borderColor: "transparent", borderWidth: "0px", borderStyle: "none", textContent: "Product Designer at Acme Co." }
+  {
+    display: "block",
+    padding: "0px",
+    fontFamily: "Inter",
+    fontWeight: "600",
+    fontSize: "18px",
+    borderRadius: "0px",
+    backgroundColor: "transparent",
+    borderColor: "transparent",
+    borderWidth: "0px",
+    borderStyle: "none",
+    textContent: "Jane Cooper"
+  },
+  {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+    padding: "0px",
+    fontFamily: "Inter",
+    fontWeight: "400",
+    fontSize: "16px",
+    borderRadius: "0px",
+    backgroundColor: "transparent",
+    borderColor: "transparent",
+    borderWidth: "0px",
+    borderStyle: "none",
+    alignItems: "center"
+  },
+  {
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
+    padding: "24px",
+    fontFamily: "Inter",
+    fontWeight: "400",
+    fontSize: "16px",
+    borderRadius: "12px",
+    backgroundColor: "#ffffff",
+    borderColor: "#e2e8f0",
+    borderWidth: "1px",
+    borderStyle: "solid",
+    alignItems: "center"
+  },
+  {
+    display: "flex",
+    flexDirection: "column",
+    gap: "32px",
+    padding: "48px 16px",
+    fontFamily: "Inter",
+    fontWeight: "400",
+    fontSize: "16px",
+    borderRadius: "0px",
+    backgroundColor: "transparent",
+    borderColor: "transparent",
+    borderWidth: "0px",
+    borderStyle: "none",
+    alignItems: "center"
+  },
+  {
+    display: "block",
+    padding: "0px",
+    fontFamily: "Inter",
+    fontWeight: "400",
+    fontSize: "16px",
+    borderRadius: "0px",
+    backgroundColor: "#f9fafb",
+    borderColor: "transparent",
+    borderWidth: "0px",
+    borderStyle: "none"
+  },
+  {
+    display: "block",
+    padding: "0px",
+    fontFamily: "Inter",
+    fontWeight: "400",
+    fontSize: "16px",
+    borderRadius: "0px",
+    backgroundColor: "#ffffff",
+    borderColor: "transparent",
+    borderWidth: "0px",
+    borderStyle: "none"
+  }
 ]
 
 export interface SidePanelProps {
@@ -41,19 +142,31 @@ function getTabIdFromLocation() {
 }
 
 function SidePanel({ demo = false }: SidePanelProps) {
-  const [hierarchy, setHierarchy] = useState<HierarchyItem[]>(demo ? DEMO_HIERARCHY : [])
+  const [hierarchy, setHierarchy] = useState<HierarchyItem[]>(
+    demo ? DEMO_HIERARCHY : []
+  )
   const [tabId, setTabId] = useState<number | null>(() =>
     demo ? null : getTabIdFromLocation()
   )
   const [changeCount, setChangeCount] = useState(0)
   const [selectionKey, setSelectionKey] = useState(0)
   const [availableSessions, setAvailableSessions] = useState<SessionInfo[]>([])
-  const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(null)
+  const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(
+    null
+  )
+  const demoDefault = demo ? DEMO_HIERARCHY.length - 1 : null
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(demoDefault)
+  const [selectedStyles, setSelectedStyles] = useState<StyleData | null>(
+    demo ? DEMO_STYLES[DEMO_HIERARCHY.length - 1] : null
+  )
+  const [collapsedNodes, setCollapsedNodes] = useState<Set<number>>(new Set())
 
   const editsRef = useRef<Map<number, EditEntry>>(new Map())
   const hierarchyRef = useRef<HierarchyItem[]>(demo ? DEMO_HIERARCHY : [])
   const socketRef = useRef<Socket | null>(null)
-  const callbackRef = useRef<((response: { content: string }) => void) | null>(null)
+  const callbackRef = useRef<((response: { content: string }) => void) | null>(
+    null
+  )
 
   // Resolve tab id: prefer sidepanel URL query, fallback to current active tab
   useEffect(() => {
@@ -106,7 +219,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
     return false
   }
 
-  function getEditedPropsForElement(index: number): Map<string, { original: string; current: string }> {
+  function getEditedPropsForElement(
+    index: number
+  ): Map<string, { original: string; current: string }> {
     const entry = editsRef.current.get(index)
     if (!entry) return new Map()
     const result = new Map<string, { original: string; current: string }>()
@@ -116,7 +231,12 @@ function SidePanel({ demo = false }: SidePanelProps) {
     return result
   }
 
-  function recordEdit(index: number, prop: string, originalValue: string, newValue: string) {
+  function recordEdit(
+    index: number,
+    prop: string,
+    originalValue: string,
+    newValue: string
+  ) {
     if (!editsRef.current.has(index)) {
       const item = hierarchyRef.current[index]
       const selector = item
@@ -133,7 +253,11 @@ function SidePanel({ demo = false }: SidePanelProps) {
           }
         }
       }
-      editsRef.current.set(index, { selector, component, props: new Map() })
+      editsRef.current.set(index, {
+        selector,
+        component,
+        props: new Map()
+      })
     }
     const entry = editsRef.current.get(index)!
     if (!entry.props.has(prop)) {
@@ -144,7 +268,13 @@ function SidePanel({ demo = false }: SidePanelProps) {
   }
 
   function generateFeedbackDescription() {
-    const byComponent = new Map<string, { selector: string; changes: { prop: string; from: string; to: string }[] }[]>()
+    const byComponent = new Map<
+      string,
+      {
+        selector: string
+        changes: { prop: string; from: string; to: string }[]
+      }[]
+    >()
     for (const [, entry] of editsRef.current) {
       const changedProps: { prop: string; from: string; to: string }[] = []
       for (const [prop, { original, current }] of entry.props) {
@@ -155,7 +285,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
       if (changedProps.length === 0) continue
       const key = entry.component || "(no component)"
       if (!byComponent.has(key)) byComponent.set(key, [])
-      byComponent.get(key)!.push({ selector: entry.selector, changes: changedProps })
+      byComponent
+        .get(key)!
+        .push({ selector: entry.selector, changes: changedProps })
     }
 
     if (byComponent.size === 0) return "No feedback given"
@@ -167,7 +299,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
       )
       for (const { selector, changes } of elements) {
         for (const { prop, from, to } of changes) {
-          lines.push(`  - On ${selector}: change ${prop} from "${from}" to "${to}"`)
+          lines.push(
+            `  - On ${selector}: change ${prop} from "${from}" to "${to}"`
+          )
         }
       }
     }
@@ -203,9 +337,19 @@ function SidePanel({ demo = false }: SidePanelProps) {
       if (!demo && tabId) {
         if (prop === "lucideIcon") {
           const svgChildren = getIconSvgChildren(value)
-          chrome.tabs.sendMessage(tabId, { type: "set-icon", index, name: value, svgChildren })
+          chrome.tabs.sendMessage(tabId, {
+            type: "set-icon",
+            index,
+            name: value,
+            svgChildren
+          })
         } else {
-          chrome.tabs.sendMessage(tabId, { type: "set-style", index, prop, value })
+          chrome.tabs.sendMessage(tabId, {
+            type: "set-style",
+            index,
+            prop,
+            value
+          })
         }
       }
       recomputeChangeCount()
@@ -233,12 +377,26 @@ function SidePanel({ demo = false }: SidePanelProps) {
         if (!edit) continue
         if (!demo && tabId) {
           if (prop === "textContent") {
-            chrome.tabs.sendMessage(tabId, { type: "set-text", index, value: edit.original })
+            chrome.tabs.sendMessage(tabId, {
+              type: "set-text",
+              index,
+              value: edit.original
+            })
           } else if (prop === "lucideIcon") {
             const svgChildren = getIconSvgChildren(edit.original)
-            chrome.tabs.sendMessage(tabId, { type: "set-icon", index, name: edit.original, svgChildren })
+            chrome.tabs.sendMessage(tabId, {
+              type: "set-icon",
+              index,
+              name: edit.original,
+              svgChildren
+            })
           } else {
-            chrome.tabs.sendMessage(tabId, { type: "set-style", index, prop, value: edit.original })
+            chrome.tabs.sendMessage(tabId, {
+              type: "set-style",
+              index,
+              prop,
+              value: edit.original
+            })
           }
         }
         entry.props.delete(prop)
@@ -250,6 +408,54 @@ function SidePanel({ demo = false }: SidePanelProps) {
     },
     [demo, tabId]
   )
+
+  // Select an element and fetch its styles
+  const handleSelect = useCallback(
+    async (index: number) => {
+      if (selectedIndex === index) return
+      setSelectedIndex(index)
+      const result = demo
+        ? DEMO_STYLES[index] ?? null
+        : await chrome.tabs.sendMessage(tabId!, {
+            type: "get-styles",
+            index
+          })
+      if (result) {
+        setSelectedStyles(result as StyleData)
+      }
+    },
+    [demo, tabId, selectedIndex]
+  )
+
+  const handleToggleExpand = useCallback((index: number) => {
+    setCollapsedNodes((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) {
+        next.delete(index)
+      } else {
+        next.add(index)
+      }
+      return next
+    })
+  }, [])
+
+  const handleMouseEnter = useCallback(
+    (index: number) => {
+      if (!demo && tabId) {
+        chrome.tabs.sendMessage(tabId, {
+          type: "highlight-element",
+          index
+        })
+      }
+    },
+    [demo, tabId]
+  )
+
+  const handleMouseLeave = useCallback(() => {
+    if (!demo && tabId) {
+      chrome.tabs.sendMessage(tabId, { type: "clear-highlight" })
+    }
+  }, [demo, tabId])
 
   // Poll discovery endpoint for available sessions (continuous)
   useEffect(() => {
@@ -330,9 +536,23 @@ function SidePanel({ demo = false }: SidePanelProps) {
     function onMessage(message: any) {
       if (message.type === "element-hierarchy") {
         if (tabId != null && message.tabId !== tabId) return
-        hierarchyRef.current = message.hierarchy
-        setHierarchy(message.hierarchy)
+        const h: HierarchyItem[] = message.hierarchy
+        hierarchyRef.current = h
+        setHierarchy(h)
         setSelectionKey((k) => k + 1)
+        setCollapsedNodes(new Set())
+        // Auto-select the clicked element (index 0 = innermost) and fetch styles
+        if (h.length > 0) {
+          setSelectedIndex(0)
+          chrome.tabs
+            .sendMessage(tabId!, { type: "get-styles", index: 0 })
+            .then((result) => {
+              if (result) setSelectedStyles(result as StyleData)
+            })
+        } else {
+          setSelectedIndex(null)
+          setSelectedStyles(null)
+        }
       }
     }
     chrome.runtime.onMessage.addListener(onMessage)
@@ -341,39 +561,93 @@ function SidePanel({ demo = false }: SidePanelProps) {
     }
   }, [demo, tabId])
 
-  const demoGetStyles = useCallback(
-    async (i: number) => DEMO_STYLES[i] ?? null,
-    []
-  )
+  const selectedItem =
+    selectedIndex != null ? hierarchy[selectedIndex] : null
 
   return (
     <div
-      className={`flex flex-col h-full ${demo ? "w-96 mx-auto mt-8 p-2 border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden" : ""}`}>
-      <div className="flex-1 min-h-0 overflow-y-auto p-2">
-        <div className="flex flex-col gap-2">
+      className={`flex flex-col h-full ${demo ? "w-96 mx-auto mt-8 border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden" : ""}`}>
+      {/* Tree panel */}
+      <div
+        className="shrink-0 overflow-y-auto border-b border-slate-200 dark:border-slate-700"
+        style={{ height: 276 }}>
+        <div className="flex flex-col p-2">
           {hierarchy.length === 0 && (
             <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
               Select an element on the page
             </div>
           )}
-          {hierarchy.map((item, index) => (
-            <ElementRow
-              key={`${selectionKey}-${index}`}
-              item={item}
-              index={index}
-              isEdited={hasEditsForElement(index)}
-              editedProps={getEditedPropsForElement(index)}
-              tabId={tabId!}
-              onStyleEdit={handleStyleEdit}
-              onTextEdit={handleTextEdit}
-              onUndo={handleUndo}
-              getStyles={demo ? demoGetStyles : undefined}
-              defaultExpanded={demo && index === 0}
-            />
-          ))}
+          {/* Hierarchy is innermost-first; render reversed so root is at top */}
+          {(() => {
+            const reversed = [...hierarchy].reverse()
+            const rows: React.ReactNode[] = []
+            let hiddenBelowDepth: number | null = null
+            for (let displayIdx = 0; displayIdx < reversed.length; displayIdx++) {
+              const item = reversed[displayIdx]
+              const index = hierarchy.length - 1 - displayIdx
+              const depth = displayIdx
+              const isLeaf = displayIdx === reversed.length - 1
+
+              // Skip nodes hidden by a collapsed ancestor
+              if (hiddenBelowDepth != null && depth > hiddenBelowDepth) continue
+              hiddenBelowDepth = null
+
+              const isExpanded = !collapsedNodes.has(index)
+              if (!isExpanded) hiddenBelowDepth = depth
+
+              rows.push(
+                <ElementRow
+                  key={`${selectionKey}-${index}`}
+                  item={item}
+                  index={index}
+                  depth={depth}
+                  isLeaf={isLeaf}
+                  isExpanded={isExpanded}
+                  isEdited={hasEditsForElement(index)}
+                  isSelected={selectedIndex === index}
+                  onSelect={handleSelect}
+                  onToggleExpand={handleToggleExpand}
+                  onMouseEnter={() => handleMouseEnter(index)}
+                  onMouseLeave={handleMouseLeave}
+                />
+              )
+            }
+            return rows
+          })()}
         </div>
       </div>
 
+      {/* Style editor panel */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {selectedIndex != null && selectedStyles ? (
+          <div className="px-3">
+            <StyleEditor
+              key={`${selectionKey}-${selectedIndex}`}
+              styles={selectedStyles}
+              index={selectedIndex}
+              editedProps={getEditedPropsForElement(selectedIndex)}
+              lucideIconName={
+                selectedItem?.classes.includes(".lucide")
+                  ? (selectedItem.classes.match(
+                      /\.lucide-([a-z0-9-]+)/
+                    )?.[1] ?? null)
+                  : null
+              }
+              onStyleEdit={handleStyleEdit}
+              onTextEdit={handleTextEdit}
+              onUndo={handleUndo}
+            />
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full text-sm text-slate-400 dark:text-slate-500">
+            {hierarchy.length > 0
+              ? "Select an element to edit styles"
+              : ""}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
       {!demo && (
         <SendBar
           sessions={availableSessions}
