@@ -1,3 +1,4 @@
+import { Diff, Palette } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { io, type Socket } from "socket.io-client"
 
@@ -572,89 +573,192 @@ function SidePanel({ demo = false }: SidePanelProps) {
   const selectedItem =
     selectedIndex != null ? hierarchy[selectedIndex] : null
 
+  const [activeTab, setActiveTab] = useState<"design" | "changes">("design")
+
+  // Build changes grouped by component for the Changes tab
+  function getChangesByComponent() {
+    const groups = new Map<
+      string,
+      { selector: string; changes: { prop: string; from: string; to: string }[] }[]
+    >()
+    for (const [, entry] of editsRef.current) {
+      const changedProps: { prop: string; from: string; to: string }[] = []
+      for (const [prop, { original, current }] of entry.props) {
+        if (original !== current) {
+          changedProps.push({ prop, from: original, to: current })
+        }
+      }
+      if (changedProps.length === 0) continue
+      const key = entry.component || "(no component)"
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push({ selector: entry.selector, changes: changedProps })
+    }
+    return groups
+  }
+
   return (
     <div
       className={`flex flex-col h-full ${demo ? "w-96 mx-auto mt-8 border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden" : ""}`}>
-      {/* Tree panel */}
-      <div
-        className="shrink-0 overflow-y-auto border-b border-slate-200 dark:border-slate-700"
-        style={{ height: 276 }}>
-        <div className="flex flex-col p-2">
-          {hierarchy.length === 0 && (
-            <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
-              Select an element on the page
-            </div>
-          )}
-          {/* Hierarchy is innermost-first; render reversed so root is at top */}
-          {(() => {
-            const reversed = [...hierarchy].reverse()
-            const rows: React.ReactNode[] = []
-            let hiddenBelowDepth: number | null = null
-            for (let displayIdx = 0; displayIdx < reversed.length; displayIdx++) {
-              const item = reversed[displayIdx]
-              const index = hierarchy.length - 1 - displayIdx
-              const depth = displayIdx
-              const isLeaf = displayIdx === reversed.length - 1
-
-              // Skip nodes hidden by a collapsed ancestor
-              if (hiddenBelowDepth != null && depth > hiddenBelowDepth) continue
-              hiddenBelowDepth = null
-
-              const isExpanded = !collapsedNodes.has(index)
-              if (!isExpanded) hiddenBelowDepth = depth
-
-              rows.push(
-                <ElementRow
-                  key={`${selectionKey}-${index}`}
-                  item={item}
-                  index={index}
-                  depth={depth}
-                  isLeaf={isLeaf}
-                  isExpanded={isExpanded}
-                  isEdited={hasEditsForElement(index)}
-                  isSelected={selectedIndex === index}
-                  onSelect={handleSelect}
-                  onToggleExpand={handleToggleExpand}
-                  onMouseEnter={() => handleMouseEnter(index)}
-                  onMouseLeave={handleMouseLeave}
-                />
-              )
-            }
-            return rows
-          })()}
+      {/* Tab bar */}
+      <div className="shrink-0 bg-softgray border-b border-slate-200 dark:border-slate-700" style={{ padding: "8px 32px" }}>
+        <div className="flex border border-slate-300 dark:border-slate-600 overflow-hidden" style={{ borderRadius: "6px" }}>
+          <button
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium transition-colors ${
+              activeTab === "design"
+                ? "bg-white text-electricblue-700 dark:bg-slate-700 dark:text-electricblue-300"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+            }`}
+            onClick={() => setActiveTab("design")}>
+            <Palette size={14} />
+            Design
+          </button>
+          <button
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium transition-colors border-l border-slate-300 dark:border-slate-600 ${
+              activeTab === "changes"
+                ? "bg-white text-electricblue-700 dark:bg-slate-700 dark:text-electricblue-300"
+                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+            }`}
+            onClick={() => setActiveTab("changes")}>
+            <Diff size={14} />
+            Changes
+            {changeCount > 0 && (
+              <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-juicyorange-500 text-white text-[10px] font-bold leading-none min-w-[18px] h-[18px] px-1">
+                {changeCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* Style editor panel */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        {selectedIndex != null && selectedStyles ? (
-          <div className="px-3">
-            <StyleEditor
-              key={`${selectionKey}-${selectedIndex}`}
-              styles={selectedStyles}
-              index={selectedIndex}
-              editedProps={getEditedPropsForElement(selectedIndex)}
-              lucideIconName={
-                selectedItem?.classes.includes(".lucide")
-                  ? (selectedItem.classes.match(
-                      /\.lucide-([a-z0-9-]+)/
-                    )?.[1] ?? null)
-                  : null
-              }
-              tabId={tabId}
-              onStyleEdit={handleStyleEdit}
-              onTextEdit={handleTextEdit}
-              onUndo={handleUndo}
-            />
+      {activeTab === "design" ? (
+        <>
+          {/* Tree panel */}
+          <div
+            className="shrink-0 overflow-y-auto border-b border-slate-200 dark:border-slate-700"
+            style={{ height: 276 }}>
+            <div className="flex flex-col p-2">
+              {hierarchy.length === 0 && (
+                <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
+                  Select an element on the page
+                </div>
+              )}
+              {/* Hierarchy is innermost-first; render reversed so root is at top */}
+              {(() => {
+                const reversed = [...hierarchy].reverse()
+                const rows: React.ReactNode[] = []
+                let hiddenBelowDepth: number | null = null
+                for (let displayIdx = 0; displayIdx < reversed.length; displayIdx++) {
+                  const item = reversed[displayIdx]
+                  const index = hierarchy.length - 1 - displayIdx
+                  const depth = displayIdx
+                  const isLeaf = displayIdx === reversed.length - 1
+
+                  // Skip nodes hidden by a collapsed ancestor
+                  if (hiddenBelowDepth != null && depth > hiddenBelowDepth) continue
+                  hiddenBelowDepth = null
+
+                  const isExpanded = !collapsedNodes.has(index)
+                  if (!isExpanded) hiddenBelowDepth = depth
+
+                  rows.push(
+                    <ElementRow
+                      key={`${selectionKey}-${index}`}
+                      item={item}
+                      index={index}
+                      depth={depth}
+                      isLeaf={isLeaf}
+                      isExpanded={isExpanded}
+                      isEdited={hasEditsForElement(index)}
+                      isSelected={selectedIndex === index}
+                      onSelect={handleSelect}
+                      onToggleExpand={handleToggleExpand}
+                      onMouseEnter={() => handleMouseEnter(index)}
+                      onMouseLeave={handleMouseLeave}
+                    />
+                  )
+                }
+                return rows
+              })()}
+            </div>
           </div>
-        ) : (
-          <div className="flex items-center justify-center h-full text-sm text-slate-400 dark:text-slate-500">
-            {hierarchy.length > 0
-              ? "Select an element to edit styles"
-              : ""}
+
+          {/* Style editor panel */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {selectedIndex != null && selectedStyles ? (
+              <div className="px-3">
+                <StyleEditor
+                  key={`${selectionKey}-${selectedIndex}`}
+                  styles={selectedStyles}
+                  index={selectedIndex}
+                  editedProps={getEditedPropsForElement(selectedIndex)}
+                  lucideIconName={
+                    selectedItem?.classes.includes(".lucide")
+                      ? (selectedItem.classes.match(
+                          /\.lucide-([a-z0-9-]+)/
+                        )?.[1] ?? null)
+                      : null
+                  }
+                  tabId={tabId}
+                  onStyleEdit={handleStyleEdit}
+                  onTextEdit={handleTextEdit}
+                  onUndo={handleUndo}
+                />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-sm text-slate-400 dark:text-slate-500">
+                {hierarchy.length > 0
+                  ? "Select an element to edit styles"
+                  : ""}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      ) : (
+        /* Changes tab */
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {(() => {
+            const groups = getChangesByComponent()
+            if (groups.size === 0) {
+              return (
+                <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
+                  No changes yet
+                </div>
+              )
+            }
+            return (
+              <div className="flex flex-col gap-4 p-3">
+                {Array.from(groups).map(([component, elements]) => (
+                  <div key={component} className="flex flex-col gap-2">
+                    <div className="text-xs font-bold dark:text-white">
+                      {component === "(no component)" ? "Unowned Elements" : component}
+                    </div>
+                    {elements.map((el, elIdx) => (
+                      <div
+                        key={elIdx}
+                        className="flex flex-col gap-1 rounded-md border border-slate-200 dark:border-slate-700 p-2">
+                        <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                          {el.selector}
+                        </div>
+                        {el.changes.map((ch) => (
+                          <div
+                            key={ch.prop}
+                            className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            <span className="inline-block h-2 w-2 rounded-full bg-juicyorange-500 shrink-0" />
+                            <span className="font-medium text-slate-700 dark:text-slate-200">{ch.prop}</span>
+                            <span className="text-slate-400 dark:text-slate-500 line-through">{ch.from}</span>
+                            <span>&rarr;</span>
+                            <span className="text-slate-700 dark:text-slate-200">{ch.to}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
+        </div>
+      )}
 
       {/* Footer */}
       {!demo && (
