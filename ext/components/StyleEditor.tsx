@@ -439,51 +439,119 @@ export default function StyleEditor({
       {/* Appearance */}
       <div className="flex flex-col gap-2">
         <SectionLabel>Appearance</SectionLabel>
-        <div className="flex flex-col gap-1">
-          <FieldLabel edited={editedProps.has("borderRadius")} onUndo={() => onUndo(index, ["borderRadius"])}>Corner Radius</FieldLabel>
-          <div>
-            <NumericInput
-              key={effective(editedProps, "borderRadius", styles.borderRadius || "0px")}
-              icon={<SquareRoundCorner size={14} />}
-              value={parseInt(effective(editedProps, "borderRadius", styles.borderRadius || "0px")) || 0}
-              onChange={(val) => {
-                const v = val.match(/[a-z%]/) ? val : val + "px"
-                onStyleEdit(index, "borderRadius", styles.borderRadius || "0px", v)
-              }}
+        <div className="grid grid-cols-2 gap-x-4">
+          <div className="flex flex-col gap-1">
+            <FieldLabel edited={editedProps.has("opacity")} onUndo={() => onUndo(index, ["opacity"])}>Opacity</FieldLabel>
+            <FieldInput
+              key={effective(editedProps, "opacity", styles.opacity || "1")}
+              value={effective(editedProps, "opacity", styles.opacity || "1")}
+              onChange={(val) =>
+                onStyleEdit(index, "opacity", styles.opacity || "1", val)
+              }
             />
           </div>
+          <div className="flex flex-col gap-1">
+            <FieldLabel edited={editedProps.has("borderRadius")} onUndo={() => onUndo(index, ["borderRadius"])}>Corner Radius</FieldLabel>
+            <div>
+              <NumericInput
+                key={effective(editedProps, "borderRadius", styles.borderRadius || "0px")}
+                icon={<SquareRoundCorner size={14} />}
+                value={parseInt(effective(editedProps, "borderRadius", styles.borderRadius || "0px")) || 0}
+                onChange={(val) => {
+                  const v = val.match(/[a-z%]/) ? val : val + "px"
+                  onStyleEdit(index, "borderRadius", styles.borderRadius || "0px", v)
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr className="border-slate-200 dark:border-slate-700 -mx-3" />
+
+      {/* Fill */}
+      <div className="flex flex-col gap-2">
+        <SectionLabel>Fill</SectionLabel>
+        <div className="flex flex-col gap-1">
+          <FieldLabel edited={editedProps.has("backgroundColor")} onUndo={() => onUndo(index, ["backgroundColor"])}>Color</FieldLabel>
+          <ColorPicker
+            key={effective(editedProps, "backgroundColor", styles.backgroundColor || "transparent")}
+            value={effective(editedProps, "backgroundColor", styles.backgroundColor || "transparent")}
+            tabId={tabId}
+            onChange={(val) =>
+              onStyleEdit(
+                index,
+                "backgroundColor",
+                styles.backgroundColor || "transparent",
+                val
+              )
+            }
+          />
+        </div>
+      </div>
+
+      <hr className="border-slate-200 dark:border-slate-700 -mx-3" />
+
+      {/* Stroke */}
+      <div className="flex flex-col gap-2">
+        <SectionLabel>Stroke</SectionLabel>
+        <div className="flex flex-col gap-1">
+          <FieldLabel edited={editedProps.has("borderColor")} onUndo={() => onUndo(index, ["borderColor"])}>Color</FieldLabel>
+          <ColorPicker
+            key={effective(editedProps, "borderColor", styles.borderColor || "none")}
+            value={effective(editedProps, "borderColor", styles.borderColor || "none")}
+            tabId={tabId}
+            onChange={(val) =>
+              onStyleEdit(
+                index,
+                "borderColor",
+                styles.borderColor || "none",
+                val
+              )
+            }
+          />
         </div>
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
-            <FieldLabel edited={editedProps.has("backgroundColor")} onUndo={() => onUndo(index, ["backgroundColor"])}>Fill</FieldLabel>
-            <ColorPicker
-              key={effective(editedProps, "backgroundColor", styles.backgroundColor || "transparent")}
-              value={effective(editedProps, "backgroundColor", styles.backgroundColor || "transparent")}
-              tabId={tabId}
-              onChange={(val) =>
-                onStyleEdit(
-                  index,
-                  "backgroundColor",
-                  styles.backgroundColor || "transparent",
-                  val
+            <FieldLabel edited={editedProps.has("borderStyle")} onUndo={() => onUndo(index, ["borderStyle"])}>Position</FieldLabel>
+            <div className="flex w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700" style={{ padding: "2px" }}>
+              {[
+                { value: "inside", label: "Inside" },
+                { value: "outside", label: "Outside" }
+              ].map((opt) => {
+                const currentOutline = effective(editedProps, "borderStyle", styles.borderStyle || "none")
+                const isOutside = currentOutline === "outline"
+                const isActive = opt.value === "outside" ? isOutside : !isOutside && currentOutline !== "none"
+                return (
+                  <button
+                    key={opt.value}
+                    className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${
+                      isActive
+                        ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                        : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                    }`}
+                    onClick={() => {
+                      if (opt.value === "outside") {
+                        onStyleEdit(index, "borderStyle", styles.borderStyle || "none", "outline")
+                      } else {
+                        onStyleEdit(index, "borderStyle", styles.borderStyle || "none", "solid")
+                      }
+                    }}>
+                    {opt.label}
+                  </button>
                 )
-              }
-            />
+              })}
+            </div>
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel edited={editedProps.has("borderColor")} onUndo={() => onUndo(index, ["borderColor"])}>Stroke</FieldLabel>
-            <ColorPicker
-              key={effective(editedProps, "borderColor", styles.borderColor || "none")}
-              value={effective(editedProps, "borderColor", styles.borderColor || "none")}
-              tabId={tabId}
-              onChange={(val) =>
-                onStyleEdit(
-                  index,
-                  "borderColor",
-                  styles.borderColor || "none",
-                  val
-                )
-              }
+            <FieldLabel edited={editedProps.has("borderWidth")} onUndo={() => onUndo(index, ["borderWidth"])}>Weight</FieldLabel>
+            <NumericInput
+              key={effective(editedProps, "borderWidth", styles.borderWidth || "0px")}
+              value={parseInt(effective(editedProps, "borderWidth", styles.borderWidth || "0px")) || 0}
+              onChange={(val) => {
+                const v = val.match(/[a-z%]/) ? val : val + "px"
+                onStyleEdit(index, "borderWidth", styles.borderWidth || "0px", v)
+              }}
             />
           </div>
         </div>

@@ -76,6 +76,7 @@ function getStyles(index: number) {
     styles.gap = cs.gap
   }
   styles.borderRadius = cs.borderRadius
+  styles.opacity = cs.opacity
   styles.backgroundColor = cs.backgroundColor
   styles.borderColor = cs.borderColor
   styles.borderWidth = cs.borderWidth
