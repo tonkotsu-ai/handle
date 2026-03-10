@@ -11,8 +11,8 @@ import { unlinkSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 
-const LOG_DIR = join(homedir(), ".palette");
-const LOG_FILE = join(LOG_DIR, "palette.log");
+const LOG_DIR = join(homedir(), ".handle");
+const LOG_FILE = join(LOG_DIR, "handle.log");
 const SESSIONS_DIR = join(LOG_DIR, "sessions");
 
 await mkdir(SESSIONS_DIR, { recursive: true });
@@ -134,7 +134,7 @@ discoveryServer.listen(DISCOVERY_PORT, () => {
 
 // MCP server setup
 const mcp = new McpServer({
-  name: "palette-mcp",
+  name: "handle-mcp",
   version: "0.1.0",
 });
 

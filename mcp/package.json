@@ -1,5 +1,5 @@
 {
-  "name": "palette-mcp",
+  "name": "handle-mcp",
   "version": "0.1.0",
   "type": "module",
   "bin": "dist/index.js",
