@@ -290,6 +290,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
         ? `${item.tag}${item.id}${item.classes}`
         : `element[${index}]`
       let component: string | null = null
+      let componentPath: string | null = null
       if (item?.component) {
         component = item.component
       } else {
@@ -300,9 +301,32 @@ function SidePanel({ demo = false }: SidePanelProps) {
           }
         }
       }
+      // Build path from body to the owning component, using component
+      // names where available and tag+id+classes for plain DOM elements
+      {
+        const parts: string[] = []
+        const hier = hierarchyRef.current
+        // hierarchy is innermost-first; walk from outermost (end) down
+        // stop at the component owner (or the element itself if it is one)
+        const stopIdx = item?.component
+          ? index
+          : (() => {
+              for (let i = index + 1; i < hier.length; i++) {
+                if (hier[i]?.component) return i
+              }
+              return hier.length - 1
+            })()
+        for (let i = hier.length - 1; i >= stopIdx; i--) {
+          const h = hier[i]
+          if (!h) continue
+          parts.push(h.component || `${h.tag}${h.id}${h.classes}`)
+        }
+        componentPath = parts.join(" > ")
+      }
       editsRef.current.set(path, {
         selector,
         component,
+        componentPath,
         props: new Map()
       })
     }
@@ -659,7 +683,14 @@ function SidePanel({ demo = false }: SidePanelProps) {
   function getChangesByComponent() {
     const groups = new Map<
       string,
-      { selector: string; changes: { prop: string; from: string; to: string }[] }[]
+      {
+        componentPath: string | null
+        elements: {
+          selector: string
+          selectorPath: string
+          changes: { prop: string; from: string; to: string }[]
+        }[]
+      }
     >()
     for (const [selectorPath, entry] of editsRef.current) {
       const changedProps: { prop: string; from: string; to: string }[] = []
@@ -670,9 +701,15 @@ function SidePanel({ demo = false }: SidePanelProps) {
       }
       if (changedProps.length === 0) continue
       const key = entry.component || "(no component)"
-      if (!groups.has(key)) groups.set(key, [])
+      if (!groups.has(key))
+        groups.set(key, {
+          componentPath: entry.componentPath,
+          elements: []
+        })
       const lastSegment = selectorPath.split(" > ").pop() || entry.selector
-      groups.get(key)!.push({ selector: lastSegment, changes: changedProps })
+      groups
+        .get(key)!
+        .elements.push({ selector: lastSegment, selectorPath, changes: changedProps })
     }
     return groups
   }
@@ -824,16 +861,20 @@ function SidePanel({ demo = false }: SidePanelProps) {
             }
             return (
               <div className="flex flex-col gap-4 p-3">
-                {Array.from(groups).map(([component, elements]) => (
+                {Array.from(groups).map(([component, group]) => (
                   <div key={component} className="flex flex-col gap-2">
-                    <div className="text-xs font-bold dark:text-white">
+                    <div
+                      className="text-xs font-bold dark:text-white"
+                      title={group.componentPath || undefined}>
                       {component === "(no component)" ? "Unowned Elements" : component}
                     </div>
-                    {elements.map((el, elIdx) => (
+                    {group.elements.map((el, elIdx) => (
                       <div
                         key={elIdx}
                         className="flex flex-col gap-1 rounded-md border border-slate-200 dark:border-slate-700 p-2">
-                        <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                        <div
+                          className="text-xs font-medium text-slate-600 dark:text-slate-300"
+                          title={el.selectorPath}>
                           {el.selector}
                         </div>
                         {el.changes.map((ch) => (

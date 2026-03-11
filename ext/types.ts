@@ -30,6 +30,7 @@ export interface StyleData {
 export interface EditEntry {
   selector: string
   component: string | null
+  componentPath: string | null
   props: Map<string, { original: string; current: string }>
 }
 
