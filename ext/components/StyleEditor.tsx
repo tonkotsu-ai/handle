@@ -13,7 +13,7 @@ import {
   SquareRoundCorner,
   Undo2
 } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 import type { StyleData } from "~types"
 
@@ -189,6 +189,7 @@ function AlignmentGrid({
   styles,
   index,
   flowMode,
+  editedProps,
   edited,
   onFlowChange,
   onStyleEdit,
@@ -197,6 +198,7 @@ function AlignmentGrid({
   styles: StyleData
   index: number
   flowMode: string | null
+  editedProps: Map<string, { original: string; current: string }>
   edited: boolean
   onFlowChange: (mode: string) => void
   onStyleEdit: StyleEditorProps["onStyleEdit"]
@@ -217,14 +219,17 @@ function AlignmentGrid({
     return 0
   }
 
-  function getActivePos() {
+  const eff = (prop: string, fallback: string) =>
+    effective(editedProps, prop, fallback)
+
+  const activePos = useMemo(() => {
     if (!flowMode) return { col: -1, row: -1 }
-    const ai = styles.alignItems || "stretch"
-    const isFlex =
-      styles.display === "flex" || styles.display === "inline-flex"
+    const ai = eff("alignItems", styles.alignItems || "stretch")
+    const display = eff("display", styles.display || "block")
+    const isFlex = display === "flex" || display === "inline-flex"
     const jc = isFlex
-      ? styles.justifyContent || "flex-start"
-      : styles.justifyItems || "start"
+      ? eff("justifyContent", styles.justifyContent || "flex-start")
+      : eff("justifyItems", styles.justifyItems || "start")
     let hVal: string, vVal: string
     if (flowMode === "row") {
       hVal = jc
@@ -233,13 +238,12 @@ function AlignmentGrid({
       hVal = ai
       vVal = jc
     } else {
-      hVal = styles.justifyItems || "start"
+      hVal = eff("justifyItems", styles.justifyItems || "start")
       vVal = ai
     }
     return { col: normalize(hVal), row: normalize(vVal) }
-  }
+  }, [flowMode, styles, editedProps])
 
-  const [activePos, setActivePos] = useState(getActivePos)
   const [hoveredCell, setHoveredCell] = useState<{
     row: number
     col: number
@@ -309,7 +313,6 @@ function AlignmentGrid({
                   styles[vProp] || "",
                   alignValues[r]
                 )
-                setActivePos({ col: c, row: r })
               }}>
               {isActive || isHovered ? colIcons[c] : <Dot size={12} />}
             </button>
@@ -378,10 +381,10 @@ export default function StyleEditor({
         />
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
           <AlignmentGrid
-            key={`${effective(editedProps, "justifyContent", "")}-${effective(editedProps, "alignItems", "")}-${effective(editedProps, "justifyItems", "")}`}
             styles={styles}
             index={index}
             flowMode={flowMode}
+            editedProps={editedProps}
             edited={hasAny(editedProps, "justifyContent", "alignItems", "justifyItems")}
             onFlowChange={setFlowMode}
             onStyleEdit={onStyleEdit}
