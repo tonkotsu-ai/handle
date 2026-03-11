@@ -1,14 +1,6 @@
 void chrome.sidePanel.setOptions({ enabled: false })
 
-chrome.action.onClicked.addListener((tab) => {
-  const tabId = tab.id
-  if (!tabId) return
-
-  // setOptions + open must both be called synchronously inside the user
-  // gesture handler — awaiting setOptions first loses the gesture context
-  // and causes "sidePanel.open() may only be called in response to a user
-  // gesture". Chrome processes these sequentially, so the options are
-  // applied before the panel actually renders.
+function openSidePanel(tabId: number) {
   chrome.sidePanel.setOptions({
     tabId,
     enabled: true,
@@ -17,6 +9,25 @@ chrome.action.onClicked.addListener((tab) => {
   chrome.sidePanel.open({ tabId }).catch(() => {
     // Ignore failures on unsupported tabs (e.g. chrome:// pages)
   })
+}
+
+chrome.action.onClicked.addListener((tab) => {
+  if (!tab.id) return
+  openSidePanel(tab.id)
+})
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: "open-handle",
+    title: "Design with Handle",
+    contexts: ["all"]
+  })
+})
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "open-handle" && tab?.id) {
+    openSidePanel(tab.id)
+  }
 })
 
 // Track sidepanel connections — disable design mode when panel closes

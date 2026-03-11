@@ -39,7 +39,8 @@
     "permissions": [
       "sidePanel",
       "activeTab",
-      "scripting"
+      "scripting",
+      "contextMenus"
     ],
     "action": {
       "default_title": "Open Side Panel"
