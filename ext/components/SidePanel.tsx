@@ -631,26 +631,26 @@ function SidePanel({ demo = false }: SidePanelProps) {
       <div className="shrink-0 bg-softgray dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700" style={{ padding: "8px 32px" }}>
         <div className="flex border border-slate-300 dark:border-slate-600 overflow-hidden" style={{ borderRadius: "6px" }}>
           <button
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[10px] transition-colors ${
               activeTab === "design"
-                ? "bg-white text-electricblue-700 dark:bg-slate-700 dark:text-electricblue-300"
+                ? "font-bold bg-white text-electricblue-700 dark:bg-slate-700 dark:text-electricblue-300"
                 : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
             }`}
             onClick={() => setActiveTab("design")}>
-            <Palette size={14} />
+            <Palette size={10} />
             Design
           </button>
           <button
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium transition-colors border-l border-slate-300 dark:border-slate-600 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[10px] transition-colors border-l border-slate-300 dark:border-slate-600 ${
               activeTab === "changes"
-                ? "bg-white text-electricblue-700 dark:bg-slate-700 dark:text-electricblue-300"
+                ? "font-bold bg-white text-electricblue-700 dark:bg-slate-700 dark:text-electricblue-300"
                 : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
             }`}
             onClick={() => setActiveTab("changes")}>
-            <Diff size={14} />
+            <Diff size={10} />
             Changes
             {changeCount > 0 && (
-              <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-juicyorange-500 text-white text-[10px] font-bold leading-none min-w-[18px] h-[18px] px-1">
+              <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-juicyorange-500 text-white text-[10px] font-bold leading-none min-w-[14px] xh-[14px] px-1">
                 {changeCount}
               </span>
             )}
