@@ -1,4 +1,4 @@
-import { Diff, GripHorizontal, PencilLine } from "lucide-react"
+import { Diff, GripHorizontal, MousePointer2, PencilLine } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { io, type Socket } from "socket.io-client"
 
@@ -172,6 +172,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
     demo ? null : getTabIdFromLocation()
   )
   const [changeCount, setChangeCount] = useState(0)
+  const [selectionMode, setSelectionMode] = useState(true)
   const [selectionKey, setSelectionKey] = useState(0)
   const [availableSessions, setAvailableSessions] = useState<SessionInfo[]>([])
   const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(
@@ -223,16 +224,19 @@ function SidePanel({ demo = false }: SidePanelProps) {
     [demo, tabId]
   )
 
-  // Enable design mode immediately when panel opens
+  // Enable/disable design mode based on selectionMode and panel lifecycle
   useEffect(() => {
     if (demo || tabId == null) return
-    setDesignMode(true)
+    setDesignMode(selectionMode)
+    return () => setDesignMode(false)
+  }, [demo, tabId, setDesignMode, selectionMode])
+
+  // Log panel open/close analytics
+  useEffect(() => {
+    if (demo || tabId == null) return
     logEvent(AnalyticEvent.SidepanelOpened)
-    return () => {
-      setDesignMode(false)
-      logEvent(AnalyticEvent.SidepanelClosed)
-    }
-  }, [demo, tabId, setDesignMode])
+    return () => logEvent(AnalyticEvent.SidepanelClosed)
+  }, [demo, tabId])
 
   // Fetch page tokens once for color picker display
   useEffect(() => {
@@ -784,38 +788,50 @@ function SidePanel({ demo = false }: SidePanelProps) {
       className={`relative flex flex-col h-full ${demo ? "w-96 mx-auto mt-8 border border-slate-300 dark:border-slate-700 rounded-3xl overflow-hidden max-h-[calc(100vh-64px)]" : ""}`}>
       {/* Tab bar */}
       <div className="shrink-0 bg-softgray dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700" style={{ padding: "8px 32px" }}>
-        <div className="flex w-full rounded-lg bg-slate-200 dark:bg-slate-700" style={{ padding: "2px" }}>
+        <div className="flex items-center gap-2 w-full">
           <button
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 transition-colors ${
-              activeTab === "design"
-                ? "text-xs font-bold bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
-                : "text-xs text-slate-600 dark:text-slate-300 dark:hover:text-white"
-            }`}
-            onClick={() => {
-              setActiveTab("design")
-              logEvent(AnalyticEvent.TabSwitched, "design")
-            }}>
-            <PencilLine size={12} />
-            Design
+            onClick={() => setSelectionMode((m) => !m)}
+            title={selectionMode ? "Turn off selection mode" : "Turn on selection mode to select an element from the page"}
+            className={`shrink-0 flex items-center justify-center rounded-md p-1.5 transition-colors ${
+              selectionMode
+                ? "bg-electricblue-600 text-white"
+                : "bg-slate-200 dark:bg-slate-700 text-black dark:text-white"
+            }`}>
+            <MousePointer2 size={14} />
           </button>
-          <button
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 transition-colors ${
-              activeTab === "changes"
-                ? "text-xs font-bold bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
-                : "text-xs text-slate-600 dark:text-slate-300 dark:hover:text-white"
-            }`}
-            onClick={() => {
-              setActiveTab("changes")
-              logEvent(AnalyticEvent.TabSwitched, "changes")
-            }}>
-            <Diff size={12} />
-            Changes
-            {changeCount > 0 && (
-              <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-juicyorange-500 text-white text-[9px] font-bold leading-none min-w-[14px] h-[14px] px-0.5">
-                {changeCount}
-              </span>
-            )}
-          </button>
+          <div className="flex flex-1 rounded-lg bg-slate-200 dark:bg-slate-700" style={{ padding: "2px" }}>
+            <button
+              className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 transition-colors ${
+                activeTab === "design"
+                  ? "text-xs font-bold bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                  : "text-xs text-slate-600 dark:text-slate-300 dark:hover:text-white"
+              }`}
+              onClick={() => {
+                setActiveTab("design")
+                logEvent(AnalyticEvent.TabSwitched, "design")
+              }}>
+              <PencilLine size={12} />
+              Design
+            </button>
+            <button
+              className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 transition-colors ${
+                activeTab === "changes"
+                  ? "text-xs font-bold bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                  : "text-xs text-slate-600 dark:text-slate-300 dark:hover:text-white"
+              }`}
+              onClick={() => {
+                setActiveTab("changes")
+                logEvent(AnalyticEvent.TabSwitched, "changes")
+              }}>
+              <Diff size={12} />
+              Changes
+              {changeCount > 0 && (
+                <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-juicyorange-500 text-white text-[9px] font-bold leading-none min-w-[14px] h-[14px] px-0.5">
+                  {changeCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
