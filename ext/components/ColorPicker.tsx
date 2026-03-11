@@ -423,23 +423,25 @@ export default function ColorPicker({
             className="z-50 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg flex flex-col overflow-hidden"
             style={popupStyle}>
             {/* Tab bar */}
-            <div className="flex">
-              {(["custom", "tokens"] as const).map(
-                (tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`flex-1 px-3 py-2 text-xs font-medium ${
-                      activeTab === tab
-                        ? "bg-electricblue-500 text-white"
-                        : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
-                    }`}>
-                    {tab === "custom"
-                      ? "Custom"
-                      : "Tokens"}
-                  </button>
-                )
-              )}
+            <div className="p-1.5">
+              <div className="flex w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700" style={{ padding: "2px" }}>
+                {(["custom", "tokens"] as const).map(
+                  (tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${
+                        activeTab === tab
+                          ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                          : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                      }`}>
+                      {tab === "custom"
+                        ? "Custom"
+                        : "Tokens"}
+                    </button>
+                  )
+                )}
+              </div>
             </div>
             {/* Tab content */}
             {activeTab === "custom" ? (
