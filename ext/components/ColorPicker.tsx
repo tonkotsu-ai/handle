@@ -335,6 +335,17 @@ export default function ColorPicker({
 
   const displayHex = normalizeToHex(value)
 
+  // Exclude colors that already appear in tokens
+  const filteredPageColors = useMemo(() => {
+    if (pageTokens.length === 0) return pageColors
+    const tokenHexes = new Set(
+      pageTokens.map((t) => normalizeToHex(t.value).toLowerCase())
+    )
+    return pageColors.filter(
+      (c) => !tokenHexes.has(normalizeToHex(c).toLowerCase())
+    )
+  }, [pageColors, pageTokens])
+
   // Fetch page colors and tokens when popup opens
   useEffect(() => {
     if (!open || tabId == null) return
@@ -447,7 +458,7 @@ export default function ColorPicker({
             {activeTab === "custom" ? (
               <CustomTab
                 value={value}
-                pageColors={pageColors}
+                pageColors={filteredPageColors}
                 onChange={(val) => {
                   onChange(val)
                 }}
