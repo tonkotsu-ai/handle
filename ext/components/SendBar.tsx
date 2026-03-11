@@ -9,6 +9,7 @@ interface SendBarProps {
   onSelectSession: (session: SessionInfo | null) => void
   changeCount: number
   onSend: () => void
+  onCancel: () => void
   onCopy: () => void
   agentName: string | null
 }
@@ -19,6 +20,7 @@ export default function SendBar({
   onSelectSession,
   changeCount,
   onSend,
+  onCancel,
   onCopy,
   agentName
 }: SendBarProps) {
@@ -32,7 +34,7 @@ export default function SendBar({
   }
 
   return (
-    <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 p-2 flex flex-col gap-2">
+    <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 p-2 flex flex-col gap-2 bg-softgray dark:bg-softgray-dark">
       {sessions.length === 0 && (
         <div className="px-2 py-1 text-xs text-slate-400 dark:text-slate-500 text-center">
           No active MCP connections found. Use the <span className="font-mono font-medium text-slate-500 dark:text-slate-400">/handle</span> command in your coding agent to connect.
@@ -42,8 +44,8 @@ export default function SendBar({
       {sessions.length === 1 && selectedSession && (
         <div className="flex flex-col gap-0.5 px-2">
           <div className="flex items-center gap-1.5 text-xs">
-            <GitBranch size={12} className="shrink-0 text-electricblue-500" />
-            <span className="font-medium text-slate-500 dark:text-slate-400">
+            <GitBranch size={12} className="shrink-0 text-black dark:text-slate-100" />
+            <span className="font-bold text-black dark:text-slate-100" style={{ fontSize: "12px" }}>
               {selectedSession.repo}
             </span>
           </div>
@@ -102,6 +104,13 @@ export default function SendBar({
             </span>
           )}
         </button>
+        {selectedSession && (
+          <button
+            onClick={onCancel}
+            className="flex shrink-0 items-center justify-center rounded-full px-3 py-1.5 text-sm font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600">
+            Cancel
+          </button>
+        )}
         <button
           onClick={handleCopy}
           disabled={changeCount === 0}

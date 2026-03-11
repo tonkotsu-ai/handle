@@ -403,6 +403,17 @@ function SidePanel({ demo = false }: SidePanelProps) {
     })
   }, [changeCount])
 
+  const handleCancel = useCallback(() => {
+    const content = "No design feedback was given."
+
+    if (callbackRef.current) {
+      callbackRef.current({ content })
+      callbackRef.current = null
+    } else if (socketRef.current?.connected) {
+      socketRef.current.emit("design_feedback", { content })
+    }
+  }, [])
+
   const handleSend = useCallback(() => {
     if (changeCount === 0 || !selectedSession) return
 
@@ -1028,6 +1039,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
           onSelectSession={setSelectedSession}
           changeCount={changeCount}
           onSend={handleSend}
+          onCancel={handleCancel}
           onCopy={handleCopy}
           agentName={agentName}
         />
