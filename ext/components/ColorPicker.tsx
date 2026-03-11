@@ -204,7 +204,7 @@ function CustomTab({
       </div>
 
       {/* Divider */}
-      <hr className="border-slate-200 dark:border-slate-700" />
+      <hr className="-mx-3 border-slate-200 dark:border-slate-700" />
 
       {/* Other colors on this page */}
       {normalizedPageColors.length > 0 && (
@@ -268,7 +268,7 @@ function TokensTab({
   return (
     <div className="flex flex-col">
       <div className="p-2 border-b border-slate-200 dark:border-slate-700">
-        <div className="flex items-center gap-1.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 focus-within:border-electricblue-500">
+        <div className="flex items-center gap-1.5 px-2 py-1">
           <Search
             size={12}
             className="shrink-0 text-slate-400"
