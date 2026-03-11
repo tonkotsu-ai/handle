@@ -10,6 +10,9 @@ let hoveredEl: HTMLElement | null = null
 let ancestors: HTMLElement[] = []
 let overlay: HTMLDivElement | null = null
 let pendingTarget: HTMLElement | null = null
+// Cache every element we've seen, keyed by selectorPath, so we can
+// re-select elements from the Changes tab even after the hierarchy changes.
+const elementCache = new Map<string, HTMLElement>()
 
 function getOverlay() {
   if (!overlay) {
@@ -74,6 +77,7 @@ function buildHierarchy(el: HTMLElement) {
     const component = current.getAttribute("data-handle-component") || null
     segments.push(buildSelectorSegment(current))
     const selectorPath = [...segments].reverse().join(" > ")
+    elementCache.set(selectorPath, current)
     hierarchy.push({ tag, id, classes, component, selectorPath })
     current = current.parentElement
   }
@@ -162,6 +166,7 @@ function disable() {
   })
   pendingTarget = null
   ancestors = []
+  elementCache.clear()
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -193,6 +198,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   } else if (message.type === "set-text") {
     const el = ancestors[message.index]
     if (el) el.textContent = message.value
+  } else if (message.type === "select-by-selector") {
+    const el = elementCache.get(message.selectorPath)
+    if (el && document.contains(el)) {
+      el.setAttribute("data-handle-target", "")
+      chrome.runtime.sendMessage({ type: "annotate-react" })
+      pendingTarget = el
+    }
   } else if (message.type === "react-annotated") {
     if (pendingTarget) {
       const el = pendingTarget

@@ -630,6 +630,10 @@ function SidePanel({ demo = false }: SidePanelProps) {
         // Auto-select the clicked element (index 0 = innermost) and fetch styles
         if (h.length > 0) {
           setSelectedIndex(0)
+          chrome.tabs.sendMessage(tabId!, {
+            type: "highlight-element",
+            index: 0
+          })
           chrome.tabs
             .sendMessage(tabId!, { type: "get-styles", index: 0 })
             .then((result) => {
@@ -721,6 +725,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
         componentPath: string | null
         elements: {
           selector: string
+          selectorPath: string
           changes: { prop: string; from: string; to: string }[]
         }[]
       }
@@ -742,7 +747,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
       const lastSegment = selectorPath.split(" > ").pop() || entry.selector
       groups
         .get(key)!
-        .elements.push({ selector: lastSegment, changes: changedProps })
+        .elements.push({ selector: lastSegment, selectorPath, changes: changedProps })
     }
     return groups
   }
@@ -904,7 +909,40 @@ function SidePanel({ demo = false }: SidePanelProps) {
                     {group.elements.map((el, elIdx) => (
                       <div
                         key={elIdx}
-                        className="flex flex-col gap-1 rounded-md border border-slate-200 dark:border-slate-700 p-2">
+                        className="flex flex-col gap-1 rounded-md border border-slate-200 dark:border-slate-700 p-2 cursor-pointer hover:border-electricblue-400 dark:hover:border-electricblue-500 transition-colors"
+                        onClick={() => {
+                          setActiveTab("design")
+                          if (!tabId) return
+                          const idx = hierarchyRef.current.findIndex(
+                            (h) => h.selectorPath === el.selectorPath
+                          )
+                          if (idx !== -1) {
+                            // Element is in the current hierarchy — select directly
+                            // Inline instead of handleSelect to avoid stale selectedIndex closure
+                            setSelectedIndex(idx)
+                            setSelectedStyles(null)
+                            chrome.tabs.sendMessage(tabId, {
+                              type: "highlight-element",
+                              index: idx
+                            })
+                            chrome.tabs
+                              .sendMessage(tabId, {
+                                type: "get-styles",
+                                index: idx
+                              })
+                              .then((result) => {
+                                if (result)
+                                  setSelectedStyles(result as StyleData)
+                              })
+                          } else {
+                            // Element not in current hierarchy — re-select on the page
+                            // (triggers element-hierarchy which auto-selects index 0)
+                            chrome.tabs.sendMessage(tabId, {
+                              type: "select-by-selector",
+                              selectorPath: el.selectorPath
+                            })
+                          }
+                        }}>
                         <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
                           {el.selector}
                         </div>
