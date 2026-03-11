@@ -423,6 +423,12 @@ function SidePanel({ demo = false }: SidePanelProps) {
       if (selectedIndex === index) return
       setSelectedIndex(index)
       setSelectedStyles(null)
+      if (!demo && tabId) {
+        chrome.tabs.sendMessage(tabId, {
+          type: "highlight-element",
+          index
+        })
+      }
       const result = demo
         ? DEMO_STYLES[index] ?? null
         : await chrome.tabs.sendMessage(tabId!, {
@@ -462,9 +468,16 @@ function SidePanel({ demo = false }: SidePanelProps) {
 
   const handleMouseLeave = useCallback(() => {
     if (!demo && tabId) {
-      chrome.tabs.sendMessage(tabId, { type: "clear-highlight" })
+      if (selectedIndex != null) {
+        chrome.tabs.sendMessage(tabId, {
+          type: "highlight-element",
+          index: selectedIndex
+        })
+      } else {
+        chrome.tabs.sendMessage(tabId, { type: "clear-highlight" })
+      }
     }
-  }, [demo, tabId])
+  }, [demo, tabId, selectedIndex])
 
   // Poll discovery endpoint for available sessions (continuous)
   useEffect(() => {
