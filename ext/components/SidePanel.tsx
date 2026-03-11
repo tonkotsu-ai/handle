@@ -574,6 +574,34 @@ function SidePanel({ demo = false }: SidePanelProps) {
     selectedIndex != null ? hierarchy[selectedIndex] : null
 
   const [activeTab, setActiveTab] = useState<"design" | "changes">("design")
+  const [treeHeight, setTreeHeight] = useState(276)
+  const dragRef = useRef<{
+    startY: number
+    startHeight: number
+  } | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragRef.current) return
+      const delta = e.clientY - dragRef.current.startY
+      const newH = Math.max(80, Math.min(dragRef.current.startHeight + delta, 600))
+      setTreeHeight(newH)
+    }
+    const onMouseUp = () => {
+      if (dragRef.current) {
+        dragRef.current = null
+        document.body.style.cursor = ""
+        document.body.style.userSelect = ""
+      }
+    }
+    window.addEventListener("mousemove", onMouseMove)
+    window.addEventListener("mouseup", onMouseUp)
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove)
+      window.removeEventListener("mouseup", onMouseUp)
+    }
+  }, [])
 
   // Build changes grouped by component for the Changes tab
   function getChangesByComponent() {
@@ -634,8 +662,8 @@ function SidePanel({ demo = false }: SidePanelProps) {
         <>
           {/* Tree panel */}
           <div
-            className="shrink-0 overflow-y-auto border-b border-slate-200 dark:border-slate-700"
-            style={{ height: 276 }}>
+            className="shrink-0 overflow-y-auto"
+            style={{ height: treeHeight }}>
             <div className="flex flex-col p-2">
               {hierarchy.length === 0 && (
                 <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
@@ -681,6 +709,20 @@ function SidePanel({ demo = false }: SidePanelProps) {
               })()}
             </div>
           </div>
+
+          {/* Resize handle */}
+          <div
+            className="shrink-0 h-1.5 cursor-row-resize border-y border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 active:bg-blue-200 dark:active:bg-blue-800/40 transition-colors"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              dragRef.current = {
+                startY: e.clientY,
+                startHeight: treeHeight
+              }
+              document.body.style.cursor = "row-resize"
+              document.body.style.userSelect = "none"
+            }}
+          />
 
           {/* Style editor panel */}
           <div className="flex-1 min-h-0 overflow-y-auto">
