@@ -1,16 +1,16 @@
 import {
   AlignCenter,
+  AlignHorizontalSpaceBetween,
   AlignHorizontalSpaceAround,
   AlignLeft,
   AlignRight,
   AlignVerticalSpaceAround,
+  Blend,
   Dot,
-  GripHorizontal,
-  GripVertical,
   LayoutGrid,
+  Scan,
   StretchHorizontal,
   StretchVertical,
-  SquareRoundCorner,
   Undo2
 } from "lucide-react"
 import { useMemo, useState } from "react"
@@ -108,7 +108,7 @@ function NumericInput({
   if (icon) {
     return (
       <div className="flex items-center gap-1 w-full rounded border-0 bg-slate-100 dark:bg-slate-800 px-2 py-1 focus-within:border-electricblue-500">
-        <span className="shrink-0 text-slate-400">{icon}</span>
+        <span className="shrink-0 text-black dark:text-white">{icon}</span>
         {input}
       </div>
     )
@@ -394,7 +394,7 @@ export default function StyleEditor({
             <FieldLabel edited={editedProps.has("gap")} onUndo={() => onUndo(index, ["gap"])}>Gap</FieldLabel>
             <NumericInput
               key={effective(editedProps, "gap", styles.gap || "")}
-              icon={flowMode === "column" ? <GripHorizontal size={14} /> : <GripVertical size={14} />}
+              icon={<AlignHorizontalSpaceBetween size={14} />}
               value={(isFlex || isGrid) ? (parseInt(effective(editedProps, "gap", styles.gap || "")) || 0) : ""}
               onChange={(val) => {
                 const v = val.match(/\d/) ? val : "0"
@@ -442,8 +442,9 @@ export default function StyleEditor({
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
             <FieldLabel edited={editedProps.has("opacity")} onUndo={() => onUndo(index, ["opacity"])}>Opacity</FieldLabel>
-            <FieldInput
+            <NumericInput
               key={effective(editedProps, "opacity", styles.opacity || "1")}
+              icon={<Blend size={14} />}
               value={effective(editedProps, "opacity", styles.opacity || "1")}
               onChange={(val) =>
                 onStyleEdit(index, "opacity", styles.opacity || "1", val)
@@ -454,7 +455,7 @@ export default function StyleEditor({
             <FieldLabel edited={editedProps.has("borderRadius")} onUndo={() => onUndo(index, ["borderRadius"])}>Corner Radius</FieldLabel>
             <NumericInput
               key={effective(editedProps, "borderRadius", styles.borderRadius || "0px")}
-              icon={<SquareRoundCorner size={14} />}
+              icon={<Scan size={14} />}
               value={parseInt(effective(editedProps, "borderRadius", styles.borderRadius || "0px")) || 0}
               onChange={(val) => {
                 const v = val.match(/[a-z%]/) ? val : val + "px"
