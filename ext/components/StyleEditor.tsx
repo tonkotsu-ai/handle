@@ -150,7 +150,7 @@ function FlowControls({
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>Flow</FieldLabel>
-      <div className="flex w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700" style={{ padding: "2px" }}>
+      <div className="flex w-full rounded-lg bg-slate-200 dark:bg-slate-700" style={{ padding: "2px" }}>
         {flows.map((f) => (
           <button
             key={f.mode}
@@ -158,7 +158,7 @@ function FlowControls({
             className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
               flowMode === f.mode
                 ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
-                : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                : "text-slate-600 dark:text-slate-300 dark:hover:text-white"
             }`}
             onClick={() => {
               const display = styles.display || "block"
@@ -516,7 +516,7 @@ export default function StyleEditor({
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
             <FieldLabel edited={editedProps.has("borderStyle")} onUndo={() => onUndo(index, ["borderStyle"])}>Position</FieldLabel>
-            <div className="flex w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700" style={{ padding: "2px" }}>
+            <div className="flex w-full rounded-lg bg-slate-200 dark:bg-slate-700" style={{ padding: "2px" }}>
               {[
                 { value: "inside", label: "Inside" },
                 { value: "outside", label: "Outside" }
@@ -530,7 +530,7 @@ export default function StyleEditor({
                     className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${
                       isActive
                         ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
-                        : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                        : "text-slate-600 dark:text-slate-300 dark:hover:text-white"
                     }`}
                     onClick={() => {
                       if (opt.value === "outside") {

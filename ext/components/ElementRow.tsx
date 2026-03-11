@@ -61,12 +61,12 @@ export default function ElementRow({
       {item.component && (
         <Puzzle
           size={13}
-          className="shrink-0 text-electricblue-600 dark:text-electricblue-400"
+          className="shrink-0 dark:text-electricblue-400"
         />
       )}
       <div className="flex items-center gap-0.5 font-sans text-xs truncate min-w-0">
         {item.component ? (
-          <span className="font-bold text-electricblue-600 dark:text-electricblue-400 truncate">
+          <span className="font-bold dark:text-electricblue-400 truncate">
             {item.component}
           </span>
         ) : (
