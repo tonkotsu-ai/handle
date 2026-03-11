@@ -462,15 +462,15 @@ export default function ColorPicker({
             style={popupStyle}>
             {/* Tab bar */}
             <div className="p-1.5">
-              <div className="flex w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700" style={{ padding: "2px" }}>
+              <div className="flex w-full rounded-lg bg-slate-100 dark:bg-slate-700" style={{ padding: "2px" }}>
                 {(["custom", "tokens"] as const).map(
                   (tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${
+                      className={`flex-1 rounded-md py-1 text-xs transition-colors ${
                         activeTab === tab
-                          ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                          ? "bg-white font-bold text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
                           : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                       }`}>
                       {tab === "custom"

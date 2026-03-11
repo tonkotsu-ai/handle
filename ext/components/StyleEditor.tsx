@@ -536,9 +536,9 @@ export default function StyleEditor({
                 return (
                   <button
                     key={opt.value}
-                    className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${
+                    className={`flex-1 rounded-md py-1 text-xs transition-colors ${
                       isActive
-                        ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                        ? "bg-white font-bold text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
                         : "text-slate-600 dark:text-slate-300 dark:hover:text-white"
                     }`}
                     onClick={() => {
