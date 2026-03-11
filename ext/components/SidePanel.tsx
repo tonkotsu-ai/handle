@@ -629,28 +629,28 @@ function SidePanel({ demo = false }: SidePanelProps) {
       className={`flex flex-col h-full ${demo ? "w-96 mx-auto mt-8 border border-slate-300 dark:border-slate-700 rounded-3xl overflow-hidden max-h-[calc(100vh-64px)]" : ""}`}>
       {/* Tab bar */}
       <div className="shrink-0 bg-softgray dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700" style={{ padding: "8px 32px" }}>
-        <div className="flex border border-slate-300 dark:border-slate-600 overflow-hidden" style={{ borderRadius: "6px" }}>
+        <div className="flex w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700" style={{ padding: "2px" }}>
           <button
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[10px] transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
               activeTab === "design"
-                ? "font-bold bg-white text-electricblue-700 dark:bg-slate-700 dark:text-electricblue-300"
-                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
             }`}
             onClick={() => setActiveTab("design")}>
-            <Palette size={10} />
+            <Palette size={12} />
             Design
           </button>
           <button
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[10px] transition-colors border-l border-slate-300 dark:border-slate-600 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
               activeTab === "changes"
-                ? "font-bold bg-white text-electricblue-700 dark:bg-slate-700 dark:text-electricblue-300"
-                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
             }`}
             onClick={() => setActiveTab("changes")}>
-            <Diff size={10} />
+            <Diff size={12} />
             Changes
             {changeCount > 0 && (
-              <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-juicyorange-500 text-white text-[10px] font-bold leading-none min-w-[14px] xh-[14px] px-1">
+              <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-juicyorange-500 text-white text-[9px] font-bold leading-none min-w-[14px] h-[14px] px-0.5">
                 {changeCount}
               </span>
             )}
