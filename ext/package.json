@@ -11,6 +11,7 @@
     "package": "plasmo package"
   },
   "dependencies": {
+    "@statsig/js-client": "^3.32.0",
     "lucide-react": "^0.577.0",
     "plasmo": "0.90.5",
     "react": "18.2.0",

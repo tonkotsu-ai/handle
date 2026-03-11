@@ -6,6 +6,8 @@ import "~style.css"
 
 import type { EditEntry, HierarchyItem, SessionInfo, StyleData } from "~types"
 
+import { AnalyticEvent, initStatsig, logEvent } from "~lib/statsig"
+
 import ElementRow from "./ElementRow"
 import { getIconSvgChildren } from "./IconPicker"
 import SendBar from "./SendBar"
@@ -193,6 +195,12 @@ function SidePanel({ demo = false }: SidePanelProps) {
     null
   )
 
+  // Initialize Statsig analytics
+  useEffect(() => {
+    if (demo) return
+    initStatsig()
+  }, [demo])
+
   // Resolve tab id: prefer sidepanel URL query, fallback to current active tab
   useEffect(() => {
     if (demo || tabId != null) return
@@ -219,7 +227,11 @@ function SidePanel({ demo = false }: SidePanelProps) {
   useEffect(() => {
     if (demo || tabId == null) return
     setDesignMode(true)
-    return () => setDesignMode(false)
+    logEvent(AnalyticEvent.SidepanelOpened)
+    return () => {
+      setDesignMode(false)
+      logEvent(AnalyticEvent.SidepanelClosed)
+    }
   }, [demo, tabId, setDesignMode])
 
   // Fetch page tokens once for color picker display
@@ -381,7 +393,10 @@ function SidePanel({ demo = false }: SidePanelProps) {
   const handleCopy = useCallback(() => {
     const content = generateFeedbackDescription()
     navigator.clipboard.writeText(content)
-  }, [])
+    logEvent(AnalyticEvent.ChangesCopied, undefined, {
+      changeCount: String(changeCount)
+    })
+  }, [changeCount])
 
   const handleSend = useCallback(() => {
     if (changeCount === 0 || !selectedSession) return
@@ -394,6 +409,10 @@ function SidePanel({ demo = false }: SidePanelProps) {
     } else if (socketRef.current?.connected) {
       socketRef.current.emit("design_feedback", { content })
     }
+
+    logEvent(AnalyticEvent.ChangesSent, undefined, {
+      changeCount: String(changeCount)
+    })
 
     // Reset edits but keep design mode on and preserve hierarchy
     editsRef.current = new Map()
@@ -601,6 +620,11 @@ function SidePanel({ demo = false }: SidePanelProps) {
     })
     socketRef.current = socket
 
+    logEvent(AnalyticEvent.SessionActive, undefined, {
+      repo: selectedSession.repo,
+      sessionCount: String(availableSessions.length)
+    })
+
     socket.on("collect_feedback", (_data, callback) => {
       callbackRef.current = callback
     })
@@ -655,6 +679,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
               if (original !== current) count++
             }
           }
+          logEvent(AnalyticEvent.PageRefreshed, undefined, {
+            unsavedChangeCount: String(count)
+          })
           setToast(
             `Page refreshed — ${count} unsaved change${count === 1 ? "" : "s"} copied to clipboard`
           )
@@ -764,7 +791,10 @@ function SidePanel({ demo = false }: SidePanelProps) {
                 ? "text-xs font-bold bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
                 : "text-xs text-slate-600 dark:text-slate-300 dark:hover:text-white"
             }`}
-            onClick={() => setActiveTab("design")}>
+            onClick={() => {
+              setActiveTab("design")
+              logEvent(AnalyticEvent.TabSwitched, "design")
+            }}>
             <PencilLine size={12} />
             Design
           </button>
@@ -774,7 +804,10 @@ function SidePanel({ demo = false }: SidePanelProps) {
                 ? "text-xs font-bold bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
                 : "text-xs text-slate-600 dark:text-slate-300 dark:hover:text-white"
             }`}
-            onClick={() => setActiveTab("changes")}>
+            onClick={() => {
+              setActiveTab("changes")
+              logEvent(AnalyticEvent.TabSwitched, "changes")
+            }}>
             <Diff size={12} />
             Changes
             {changeCount > 0 && (
