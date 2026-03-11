@@ -1,5 +1,7 @@
 void chrome.sidePanel.setOptions({ enabled: false })
 
+const activePanelTabs = new Set<number>()
+
 function openSidePanel(tabId: number) {
   chrome.sidePanel.setOptions({
     tabId,
@@ -35,9 +37,23 @@ chrome.runtime.onConnect.addListener((port) => {
   if (!port.name.startsWith("sidepanel:")) return
   const tabId = parseInt(port.name.split(":")[1])
   if (isNaN(tabId)) return
+  activePanelTabs.add(tabId)
   port.onDisconnect.addListener(() => {
+    activePanelTabs.delete(tabId)
     chrome.tabs.sendMessage(tabId, { type: "disable-design-mode" }).catch(() => {})
   })
+})
+
+// Re-enable design mode after page refresh when sidepanel is open
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === "complete" && activePanelTabs.has(tabId)) {
+    chrome.tabs
+      .sendMessage(tabId, { type: "enable-design-mode" })
+      .catch(() => {})
+    chrome.runtime
+      .sendMessage({ type: "tab-refreshed", tabId })
+      .catch(() => {})
+  }
 })
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

@@ -638,6 +638,24 @@ function SidePanel({ demo = false }: SidePanelProps) {
           setSelectedIndex(null)
           setSelectedStyles(null)
         }
+      } else if (message.type === "tab-refreshed") {
+        if (tabId != null && message.tabId !== tabId) return
+        // Clear all queued changes and reset UI state
+        editsRef.current = new Map()
+        setChangeCount(0)
+        setEditRevision((r) => r + 1)
+        hierarchyRef.current = []
+        setHierarchy([])
+        setSelectedIndex(null)
+        setSelectedStyles(null)
+        setCollapsedNodes(new Set())
+        // Re-fetch page tokens from the refreshed page
+        chrome.tabs
+          .sendMessage(tabId!, { type: "get-page-tokens" })
+          .then((tokens) => {
+            if (Array.isArray(tokens)) setPageTokens(tokens)
+          })
+          .catch(() => {})
       }
     }
     chrome.runtime.onMessage.addListener(onMessage)
