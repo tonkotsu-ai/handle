@@ -61,6 +61,7 @@ function getStyles(index: number) {
     fontFamily: cs.fontFamily,
     fontWeight: cs.fontWeight,
     fontSize: cs.fontSize,
+    color: cs.color,
     padding: cs.padding,
     display: cs.display
   }

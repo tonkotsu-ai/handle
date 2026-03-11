@@ -574,6 +574,22 @@ export default function StyleEditor({
             }
           />
         </div>
+        <div className="flex flex-col gap-1">
+          <FieldLabel
+            edited={editedProps.has("color")}
+            onUndo={() => onUndo(index, ["color"])}
+          >
+            Color
+          </FieldLabel>
+          <ColorPicker
+            value={effective(editedProps, "color", styles.color || "transparent")}
+            tabId={tabId}
+            tokens={pageTokens}
+            onChange={(val) =>
+              onStyleEdit(index, "color", styles.color || "transparent", val)
+            }
+          />
+        </div>
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
             <FieldLabel edited={editedProps.has("fontWeight")} onUndo={() => onUndo(index, ["fontWeight"])}>Weight</FieldLabel>
