@@ -909,7 +909,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
                     {group.elements.map((el, elIdx) => (
                       <div
                         key={elIdx}
-                        className="flex flex-col gap-1 rounded-md border border-slate-200 dark:border-slate-700 p-2 cursor-pointer hover:border-electricblue-400 dark:hover:border-electricblue-500 transition-colors"
+                        className="flex flex-col gap-1 rounded-md bg-slate-100 dark:bg-slate-700 p-2 cursor-pointer hover:bg-electricblue-100 dark:hover:bg-electricblue-900/40 transition-colors"
                         onClick={() => {
                           setActiveTab("design")
                           if (!tabId) return
