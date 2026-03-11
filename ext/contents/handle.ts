@@ -35,9 +35,34 @@ function hideOverlay() {
   if (overlay) overlay.style.display = "none"
 }
 
+function buildSelectorSegment(el: HTMLElement): string {
+  const tag = el.tagName.toLowerCase()
+  const id = el.id ? `#${el.id}` : ""
+  const classes = el.classList.length
+    ? `.${[...el.classList].join(".")}`
+    : ""
+  const base = `${tag}${id}${classes}`
+  if (el.id) return base
+  const parent = el.parentElement
+  if (!parent) return base
+  const siblings = Array.from(parent.children) as HTMLElement[]
+  const matching = siblings.filter((sib) => {
+    const sTag = sib.tagName.toLowerCase()
+    const sId = sib.id ? `#${sib.id}` : ""
+    const sClasses = sib.classList.length
+      ? `.${[...sib.classList].join(".")}`
+      : ""
+    return `${sTag}${sId}${sClasses}` === base
+  })
+  if (matching.length <= 1) return base
+  const childIndex = siblings.indexOf(el) + 1
+  return `${base}:nth-child(${childIndex})`
+}
+
 function buildHierarchy(el: HTMLElement) {
   ancestors = []
   const hierarchy = []
+  const segments: string[] = []
   let current: HTMLElement | null = el
   while (current && current !== document.documentElement) {
     ancestors.push(current)
@@ -47,7 +72,9 @@ function buildHierarchy(el: HTMLElement) {
       ? `.${[...current.classList].join(".")}`
       : ""
     const component = current.getAttribute("data-handle-component") || null
-    hierarchy.push({ tag, id, classes, component })
+    segments.push(buildSelectorSegment(current))
+    const selectorPath = [...segments].reverse().join(" > ")
+    hierarchy.push({ tag, id, classes, component, selectorPath })
     current = current.parentElement
   }
   return hierarchy

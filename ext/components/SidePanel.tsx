@@ -21,28 +21,48 @@ const DEMO_HIERARCHY: HierarchyItem[] = [
     tag: "h3",
     id: "",
     classes: ".text-lg.font-semibold",
-    component: null
+    component: null,
+    selectorPath:
+      "body > div#app > main.flex.flex-col.items-center.gap-8 > div.card.p-6.rounded-xl.shadow-md > div.flex.flex-col.gap-2 > h3.text-lg.font-semibold"
   },
-  { tag: "div", id: "", classes: ".flex.flex-col.gap-2", component: null },
+  {
+    tag: "div",
+    id: "",
+    classes: ".flex.flex-col.gap-2",
+    component: null,
+    selectorPath:
+      "body > div#app > main.flex.flex-col.items-center.gap-8 > div.card.p-6.rounded-xl.shadow-md > div.flex.flex-col.gap-2"
+  },
   {
     tag: "div",
     id: "",
     classes: ".card.p-6.rounded-xl.shadow-md",
-    component: "ProfileCard"
+    component: "ProfileCard",
+    selectorPath:
+      "body > div#app > main.flex.flex-col.items-center.gap-8 > div.card.p-6.rounded-xl.shadow-md"
   },
   {
     tag: "main",
     id: "",
     classes: ".flex.flex-col.items-center.gap-8",
-    component: null
+    component: null,
+    selectorPath:
+      "body > div#app > main.flex.flex-col.items-center.gap-8"
   },
   {
     tag: "div",
     id: "app",
     classes: ".min-h-screen.bg-gray-50",
-    component: "App"
+    component: "App",
+    selectorPath: "body > div#app"
   },
-  { tag: "body", id: "", classes: "", component: null }
+  {
+    tag: "body",
+    id: "",
+    classes: "",
+    component: null,
+    selectorPath: "body"
+  }
 ]
 
 const DEMO_STYLES: StyleData[] = [
@@ -165,7 +185,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
     Array<{ name: string; value: string }>
   >([])
 
-  const editsRef = useRef<Map<number, EditEntry>>(new Map())
+  const editsRef = useRef<Map<string, EditEntry>>(new Map())
   const hierarchyRef = useRef<HierarchyItem[]>(demo ? DEMO_HIERARCHY : [])
   const socketRef = useRef<Socket | null>(null)
   const callbackRef = useRef<((response: { content: string }) => void) | null>(
@@ -233,7 +253,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
   }
 
   function hasEditsForElement(index: number) {
-    const entry = editsRef.current.get(index)
+    const path = hierarchyRef.current[index]?.selectorPath
+    if (!path) return false
+    const entry = editsRef.current.get(path)
     if (!entry) return false
     for (const [, { original, current }] of entry.props) {
       if (original !== current) return true
@@ -244,7 +266,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
   function getEditedPropsForElement(
     index: number
   ): Map<string, { original: string; current: string }> {
-    const entry = editsRef.current.get(index)
+    const path = hierarchyRef.current[index]?.selectorPath
+    if (!path) return new Map()
+    const entry = editsRef.current.get(path)
     if (!entry) return new Map()
     const result = new Map<string, { original: string; current: string }>()
     for (const [prop, { original, current }] of entry.props) {
@@ -259,8 +283,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
     originalValue: string,
     newValue: string
   ) {
-    if (!editsRef.current.has(index)) {
-      const item = hierarchyRef.current[index]
+    const item = hierarchyRef.current[index]
+    const path = item?.selectorPath || `element[${index}]`
+    if (!editsRef.current.has(path)) {
       const selector = item
         ? `${item.tag}${item.id}${item.classes}`
         : `element[${index}]`
@@ -275,13 +300,13 @@ function SidePanel({ demo = false }: SidePanelProps) {
           }
         }
       }
-      editsRef.current.set(index, {
+      editsRef.current.set(path, {
         selector,
         component,
         props: new Map()
       })
     }
-    const entry = editsRef.current.get(index)!
+    const entry = editsRef.current.get(path)!
     if (!entry.props.has(prop)) {
       entry.props.set(prop, { original: originalValue, current: newValue })
     } else {
@@ -293,11 +318,11 @@ function SidePanel({ demo = false }: SidePanelProps) {
     const byComponent = new Map<
       string,
       {
-        selector: string
+        selectorPath: string
         changes: { prop: string; from: string; to: string }[]
       }[]
     >()
-    for (const [, entry] of editsRef.current) {
+    for (const [selectorPath, entry] of editsRef.current) {
       const changedProps: { prop: string; from: string; to: string }[] = []
       for (const [prop, { original, current }] of entry.props) {
         if (original !== current) {
@@ -307,9 +332,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
       if (changedProps.length === 0) continue
       const key = entry.component || "(no component)"
       if (!byComponent.has(key)) byComponent.set(key, [])
-      byComponent
-        .get(key)!
-        .push({ selector: entry.selector, changes: changedProps })
+      byComponent.get(key)!.push({ selectorPath, changes: changedProps })
     }
 
     if (byComponent.size === 0) return "No feedback given"
@@ -319,10 +342,10 @@ function SidePanel({ demo = false }: SidePanelProps) {
       lines.push(
         `In ${component === "(no component)" ? "unowned elements" : component}:`
       )
-      for (const { selector, changes } of elements) {
+      for (const { selectorPath, changes } of elements) {
         for (const { prop, from, to } of changes) {
           lines.push(
-            `  - On ${selector}: change ${prop} from "${from}" to "${to}"`
+            `  - On ${selectorPath}: change ${prop} from "${from}" to "${to}"`
           )
         }
       }
@@ -392,7 +415,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
 
   const handleUndo = useCallback(
     (index: number, props: string[]) => {
-      const entry = editsRef.current.get(index)
+      const path = hierarchyRef.current[index]?.selectorPath
+      if (!path) return
+      const entry = editsRef.current.get(path)
       if (!entry) return
       for (const prop of props) {
         const edit = entry.props.get(prop)
@@ -424,7 +449,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
         entry.props.delete(prop)
       }
       if (entry.props.size === 0) {
-        editsRef.current.delete(index)
+        editsRef.current.delete(path)
       }
       recomputeChangeCount()
     },
@@ -636,7 +661,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
       string,
       { selector: string; changes: { prop: string; from: string; to: string }[] }[]
     >()
-    for (const [, entry] of editsRef.current) {
+    for (const [selectorPath, entry] of editsRef.current) {
       const changedProps: { prop: string; from: string; to: string }[] = []
       for (const [prop, { original, current }] of entry.props) {
         if (original !== current) {
@@ -646,7 +671,8 @@ function SidePanel({ demo = false }: SidePanelProps) {
       if (changedProps.length === 0) continue
       const key = entry.component || "(no component)"
       if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push({ selector: entry.selector, changes: changedProps })
+      const lastSegment = selectorPath.split(" > ").pop() || entry.selector
+      groups.get(key)!.push({ selector: lastSegment, changes: changedProps })
     }
     return groups
   }
