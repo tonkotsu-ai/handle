@@ -195,6 +195,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
   const callbackRef = useRef<((response: { content: string }) => void) | null>(
     null
   )
+  const [agentName, setAgentName] = useState<string | null>(null)
 
   // Initialize Statsig analytics
   useEffect(() => {
@@ -629,18 +630,21 @@ function SidePanel({ demo = false }: SidePanelProps) {
       sessionCount: String(availableSessions.length)
     })
 
-    socket.on("collect_feedback", (_data, callback) => {
+    socket.on("collect_feedback", (data, callback) => {
       callbackRef.current = callback
+      if (data?.agentName) setAgentName(data.agentName)
     })
 
     socket.on("disconnect", () => {
       callbackRef.current = null
+      setAgentName(null)
     })
 
     return () => {
       socket.disconnect()
       socketRef.current = null
       callbackRef.current = null
+      setAgentName(null)
     }
   }, [demo, selectedSession?.id, selectedSession?.port])
 
@@ -1025,6 +1029,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
           changeCount={changeCount}
           onSend={handleSend}
           onCopy={handleCopy}
+          agentName={agentName}
         />
       )}
 

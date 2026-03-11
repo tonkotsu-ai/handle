@@ -38,6 +38,7 @@ export interface SessionInfo {
   id: string
   port: number
   pid: number
+  agentName?: string
   repo: string
   startedAt: string
   context?: string

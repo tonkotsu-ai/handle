@@ -142,12 +142,13 @@ mcp.tool(
   "get_design_feedback",
   "Broadcast a feedback request to connected clients and wait for a response",
   {
+    agent_name: z.string().describe("Short identifier for the calling agent, e.g. \"Claude Code\""),
     repo: z.string().describe("The name of the repo being worked on"),
     context: z.string().optional().describe("Description of the work done in the coding agent session so far, or omitted if the session has just started"),
   },
-  async ({ repo: toolRepo, context }, extra) => {
+  async ({ agent_name: agentName, repo: toolRepo, context }, extra) => {
     const id = nanoid();
-    log({ event: "tool_call", tool: "get_design_feedback", sessionId, requestId: id, repo: toolRepo, context });
+    log({ event: "tool_call", tool: "get_design_feedback", sessionId, requestId: id, agentName, repo: toolRepo, context });
     console.error(`[mcp] emitting collect_feedback sessionId=${sessionId} requestId=${id}`);
 
     // Register session for discovery while the call is in flight
@@ -155,6 +156,7 @@ mcp.tool(
       id: sessionId,
       port: actualPort,
       pid: process.pid,
+      agentName,
       repo: toolRepo,
       context,
       startedAt: new Date().toISOString(),
@@ -182,7 +184,7 @@ mcp.tool(
         let resolved = false;
 
         const emit = (socket: import("socket.io").Socket) => {
-          (socket.emitWithAck("collect_feedback", { sessionName: toolRepo, requestId: id, context }) as Promise<{ content: string }>)
+          (socket.emitWithAck("collect_feedback", { sessionName: toolRepo, requestId: id, context, agentName }) as Promise<{ content: string }>)
             .then((res) => {
               if (!resolved) {
                 resolved = true;

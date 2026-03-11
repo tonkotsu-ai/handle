@@ -10,6 +10,7 @@ interface SendBarProps {
   changeCount: number
   onSend: () => void
   onCopy: () => void
+  agentName: string | null
 }
 
 export default function SendBar({
@@ -18,7 +19,8 @@ export default function SendBar({
   onSelectSession,
   changeCount,
   onSend,
-  onCopy
+  onCopy,
+  agentName
 }: SendBarProps) {
   const canSend = changeCount > 0 && selectedSession != null
   const [copied, setCopied] = useState(false)
@@ -93,7 +95,7 @@ export default function SendBar({
               : "bg-slate-300 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
           }`}>
           <ArrowUp size={14} />
-          Send to Coding Agent
+          {selectedSession && agentName ? `Send to ${agentName}` : "Send to Coding Agent"}
           {changeCount > 0 && (
             <span className="ml-1 inline-flex items-center justify-center rounded-full bg-juicyorange-500 px-1.5 text-xs text-white">
               {changeCount}
