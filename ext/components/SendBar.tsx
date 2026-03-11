@@ -83,7 +83,7 @@ export default function SendBar({
         </div>
       )}
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-stretch gap-1.5">
         <button
           onClick={onSend}
           disabled={!canSend}
@@ -104,10 +104,12 @@ export default function SendBar({
           onClick={handleCopy}
           disabled={changeCount === 0}
           title="Copy changes to clipboard"
-          className={`shrink-0 rounded-full p-1.5 ${
-            changeCount > 0
-              ? "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-              : "text-slate-300 dark:text-slate-600 cursor-not-allowed"
+          className={`flex shrink-0 items-center justify-center rounded-full px-3 py-1.5 text-sm font-bold ${
+            changeCount === 0
+              ? "bg-slate-300 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+              : canSend
+                ? "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                : "bg-electricblue-700 hover:bg-electricblue-800 text-white"
           }`}>
           {copied ? <Check size={14} /> : <Clipboard size={14} />}
         </button>
