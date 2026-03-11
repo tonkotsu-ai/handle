@@ -32,7 +32,7 @@ export default function SendBar({
   }
 
   return (
-    <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 p-2 flex flex-col gap-2">
+    <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 p-2 flex flex-col gap-2 bg-softgray">
       {sessions.length === 0 && (
         <div className="px-2 py-1 text-xs text-slate-400 dark:text-slate-500 text-center">
           No active MCP connections found. Use the <span className="font-mono font-medium text-slate-500 dark:text-slate-400">/handle</span> command in your coding agent to connect.
@@ -42,8 +42,8 @@ export default function SendBar({
       {sessions.length === 1 && selectedSession && (
         <div className="flex flex-col gap-0.5 px-2">
           <div className="flex items-center gap-1.5 text-xs">
-            <GitBranch size={12} className="shrink-0 text-electricblue-500" />
-            <span className="font-medium text-slate-500 dark:text-slate-400">
+            <GitBranch size={12} className="shrink-0 text-black" />
+            <span className="font-bold text-black" style={{ fontSize: "12px" }}>
               {selectedSession.repo}
             </span>
           </div>
