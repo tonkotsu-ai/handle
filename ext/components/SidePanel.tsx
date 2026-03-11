@@ -687,7 +687,6 @@ function SidePanel({ demo = false }: SidePanelProps) {
         componentPath: string | null
         elements: {
           selector: string
-          selectorPath: string
           changes: { prop: string; from: string; to: string }[]
         }[]
       }
@@ -709,7 +708,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
       const lastSegment = selectorPath.split(" > ").pop() || entry.selector
       groups
         .get(key)!
-        .elements.push({ selector: lastSegment, selectorPath, changes: changedProps })
+        .elements.push({ selector: lastSegment, changes: changedProps })
     }
     return groups
   }
@@ -872,9 +871,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
                       <div
                         key={elIdx}
                         className="flex flex-col gap-1 rounded-md border border-slate-200 dark:border-slate-700 p-2">
-                        <div
-                          className="text-xs font-medium text-slate-600 dark:text-slate-300"
-                          title={el.selectorPath}>
+                        <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
                           {el.selector}
                         </div>
                         {el.changes.map((ch) => (
