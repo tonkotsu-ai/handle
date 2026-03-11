@@ -5,12 +5,12 @@ import {
   AlignLeft,
   AlignRight,
   AlignVerticalSpaceAround,
+  ArrowDownFromLine,
+  ArrowRightFromLine,
   Blend,
   Dot,
   LayoutGrid,
   Scan,
-  StretchHorizontal,
-  StretchVertical,
   Undo2
 } from "lucide-react"
 import { useMemo, useState } from "react"
@@ -143,8 +143,8 @@ function FlowControls({
   onUndo?: () => void
 }) {
   const flows = [
-    { mode: "column", icon: <StretchVertical size={14} />, title: "Vertical" },
-    { mode: "row", icon: <StretchHorizontal size={14} />, title: "Horizontal" },
+    { mode: "column", icon: <ArrowDownFromLine size={14} />, title: "Vertical" },
+    { mode: "row", icon: <ArrowRightFromLine size={14} />, title: "Horizontal" },
     { mode: "grid", icon: <LayoutGrid size={14} />, title: "Grid" }
   ]
 
