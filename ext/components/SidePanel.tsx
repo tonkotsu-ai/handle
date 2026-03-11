@@ -1,4 +1,4 @@
-import { Diff, Palette } from "lucide-react"
+import { Diff, GripHorizontal, Palette } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { io, type Socket } from "socket.io-client"
 
@@ -21,28 +21,48 @@ const DEMO_HIERARCHY: HierarchyItem[] = [
     tag: "h3",
     id: "",
     classes: ".text-lg.font-semibold",
-    component: null
+    component: null,
+    selectorPath:
+      "body > div#app > main.flex.flex-col.items-center.gap-8 > div.card.p-6.rounded-xl.shadow-md > div.flex.flex-col.gap-2 > h3.text-lg.font-semibold"
   },
-  { tag: "div", id: "", classes: ".flex.flex-col.gap-2", component: null },
+  {
+    tag: "div",
+    id: "",
+    classes: ".flex.flex-col.gap-2",
+    component: null,
+    selectorPath:
+      "body > div#app > main.flex.flex-col.items-center.gap-8 > div.card.p-6.rounded-xl.shadow-md > div.flex.flex-col.gap-2"
+  },
   {
     tag: "div",
     id: "",
     classes: ".card.p-6.rounded-xl.shadow-md",
-    component: "ProfileCard"
+    component: "ProfileCard",
+    selectorPath:
+      "body > div#app > main.flex.flex-col.items-center.gap-8 > div.card.p-6.rounded-xl.shadow-md"
   },
   {
     tag: "main",
     id: "",
     classes: ".flex.flex-col.items-center.gap-8",
-    component: null
+    component: null,
+    selectorPath:
+      "body > div#app > main.flex.flex-col.items-center.gap-8"
   },
   {
     tag: "div",
     id: "app",
     classes: ".min-h-screen.bg-gray-50",
-    component: "App"
+    component: "App",
+    selectorPath: "body > div#app"
   },
-  { tag: "body", id: "", classes: "", component: null }
+  {
+    tag: "body",
+    id: "",
+    classes: "",
+    component: null,
+    selectorPath: "body"
+  }
 ]
 
 const DEMO_STYLES: StyleData[] = [
@@ -161,8 +181,11 @@ function SidePanel({ demo = false }: SidePanelProps) {
     demo ? DEMO_STYLES[DEMO_HIERARCHY.length - 1] : null
   )
   const [collapsedNodes, setCollapsedNodes] = useState<Set<number>>(new Set())
+  const [pageTokens, setPageTokens] = useState<
+    Array<{ name: string; value: string }>
+  >([])
 
-  const editsRef = useRef<Map<number, EditEntry>>(new Map())
+  const editsRef = useRef<Map<string, EditEntry>>(new Map())
   const hierarchyRef = useRef<HierarchyItem[]>(demo ? DEMO_HIERARCHY : [])
   const socketRef = useRef<Socket | null>(null)
   const callbackRef = useRef<((response: { content: string }) => void) | null>(
@@ -198,6 +221,17 @@ function SidePanel({ demo = false }: SidePanelProps) {
     return () => setDesignMode(false)
   }, [demo, tabId, setDesignMode])
 
+  // Fetch page tokens once for color picker display
+  useEffect(() => {
+    if (demo || tabId == null) return
+    chrome.tabs
+      .sendMessage(tabId, { type: "get-page-tokens" })
+      .then((tokens) => {
+        if (Array.isArray(tokens)) setPageTokens(tokens)
+      })
+      .catch(() => {})
+  }, [demo, tabId])
+
   // Connect a port so background can detect panel closure
   useEffect(() => {
     if (demo || tabId == null) return
@@ -219,7 +253,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
   }
 
   function hasEditsForElement(index: number) {
-    const entry = editsRef.current.get(index)
+    const path = hierarchyRef.current[index]?.selectorPath
+    if (!path) return false
+    const entry = editsRef.current.get(path)
     if (!entry) return false
     for (const [, { original, current }] of entry.props) {
       if (original !== current) return true
@@ -230,7 +266,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
   function getEditedPropsForElement(
     index: number
   ): Map<string, { original: string; current: string }> {
-    const entry = editsRef.current.get(index)
+    const path = hierarchyRef.current[index]?.selectorPath
+    if (!path) return new Map()
+    const entry = editsRef.current.get(path)
     if (!entry) return new Map()
     const result = new Map<string, { original: string; current: string }>()
     for (const [prop, { original, current }] of entry.props) {
@@ -245,8 +283,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
     originalValue: string,
     newValue: string
   ) {
-    if (!editsRef.current.has(index)) {
-      const item = hierarchyRef.current[index]
+    const item = hierarchyRef.current[index]
+    const path = item?.selectorPath || `element[${index}]`
+    if (!editsRef.current.has(path)) {
       const selector = item
         ? `${item.tag}${item.id}${item.classes}`
         : `element[${index}]`
@@ -261,13 +300,13 @@ function SidePanel({ demo = false }: SidePanelProps) {
           }
         }
       }
-      editsRef.current.set(index, {
+      editsRef.current.set(path, {
         selector,
         component,
         props: new Map()
       })
     }
-    const entry = editsRef.current.get(index)!
+    const entry = editsRef.current.get(path)!
     if (!entry.props.has(prop)) {
       entry.props.set(prop, { original: originalValue, current: newValue })
     } else {
@@ -279,11 +318,11 @@ function SidePanel({ demo = false }: SidePanelProps) {
     const byComponent = new Map<
       string,
       {
-        selector: string
+        selectorPath: string
         changes: { prop: string; from: string; to: string }[]
       }[]
     >()
-    for (const [, entry] of editsRef.current) {
+    for (const [selectorPath, entry] of editsRef.current) {
       const changedProps: { prop: string; from: string; to: string }[] = []
       for (const [prop, { original, current }] of entry.props) {
         if (original !== current) {
@@ -293,9 +332,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
       if (changedProps.length === 0) continue
       const key = entry.component || "(no component)"
       if (!byComponent.has(key)) byComponent.set(key, [])
-      byComponent
-        .get(key)!
-        .push({ selector: entry.selector, changes: changedProps })
+      byComponent.get(key)!.push({ selectorPath, changes: changedProps })
     }
 
     if (byComponent.size === 0) return "No feedback given"
@@ -305,10 +342,10 @@ function SidePanel({ demo = false }: SidePanelProps) {
       lines.push(
         `In ${component === "(no component)" ? "unowned elements" : component}:`
       )
-      for (const { selector, changes } of elements) {
+      for (const { selectorPath, changes } of elements) {
         for (const { prop, from, to } of changes) {
           lines.push(
-            `  - On ${selector}: change ${prop} from "${from}" to "${to}"`
+            `  - On ${selectorPath}: change ${prop} from "${from}" to "${to}"`
           )
         }
       }
@@ -378,7 +415,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
 
   const handleUndo = useCallback(
     (index: number, props: string[]) => {
-      const entry = editsRef.current.get(index)
+      const path = hierarchyRef.current[index]?.selectorPath
+      if (!path) return
+      const entry = editsRef.current.get(path)
       if (!entry) return
       for (const prop of props) {
         const edit = entry.props.get(prop)
@@ -410,7 +449,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
         entry.props.delete(prop)
       }
       if (entry.props.size === 0) {
-        editsRef.current.delete(index)
+        editsRef.current.delete(path)
       }
       recomputeChangeCount()
     },
@@ -423,6 +462,12 @@ function SidePanel({ demo = false }: SidePanelProps) {
       if (selectedIndex === index) return
       setSelectedIndex(index)
       setSelectedStyles(null)
+      if (!demo && tabId) {
+        chrome.tabs.sendMessage(tabId, {
+          type: "highlight-element",
+          index
+        })
+      }
       const result = demo
         ? DEMO_STYLES[index] ?? null
         : await chrome.tabs.sendMessage(tabId!, {
@@ -462,9 +507,16 @@ function SidePanel({ demo = false }: SidePanelProps) {
 
   const handleMouseLeave = useCallback(() => {
     if (!demo && tabId) {
-      chrome.tabs.sendMessage(tabId, { type: "clear-highlight" })
+      if (selectedIndex != null) {
+        chrome.tabs.sendMessage(tabId, {
+          type: "highlight-element",
+          index: selectedIndex
+        })
+      } else {
+        chrome.tabs.sendMessage(tabId, { type: "clear-highlight" })
+      }
     }
-  }, [demo, tabId])
+  }, [demo, tabId, selectedIndex])
 
   // Poll discovery endpoint for available sessions (continuous)
   useEffect(() => {
@@ -574,6 +626,34 @@ function SidePanel({ demo = false }: SidePanelProps) {
     selectedIndex != null ? hierarchy[selectedIndex] : null
 
   const [activeTab, setActiveTab] = useState<"design" | "changes">("design")
+  const [treeHeight, setTreeHeight] = useState(276)
+  const dragRef = useRef<{
+    startY: number
+    startHeight: number
+  } | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragRef.current) return
+      const delta = e.clientY - dragRef.current.startY
+      const newH = Math.max(80, Math.min(dragRef.current.startHeight + delta, 600))
+      setTreeHeight(newH)
+    }
+    const onMouseUp = () => {
+      if (dragRef.current) {
+        dragRef.current = null
+        document.body.style.cursor = ""
+        document.body.style.userSelect = ""
+      }
+    }
+    window.addEventListener("mousemove", onMouseMove)
+    window.addEventListener("mouseup", onMouseUp)
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove)
+      window.removeEventListener("mouseup", onMouseUp)
+    }
+  }, [])
 
   // Build changes grouped by component for the Changes tab
   function getChangesByComponent() {
@@ -581,7 +661,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
       string,
       { selector: string; changes: { prop: string; from: string; to: string }[] }[]
     >()
-    for (const [, entry] of editsRef.current) {
+    for (const [selectorPath, entry] of editsRef.current) {
       const changedProps: { prop: string; from: string; to: string }[] = []
       for (const [prop, { original, current }] of entry.props) {
         if (original !== current) {
@@ -591,7 +671,8 @@ function SidePanel({ demo = false }: SidePanelProps) {
       if (changedProps.length === 0) continue
       const key = entry.component || "(no component)"
       if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push({ selector: entry.selector, changes: changedProps })
+      const lastSegment = selectorPath.split(" > ").pop() || entry.selector
+      groups.get(key)!.push({ selector: lastSegment, changes: changedProps })
     }
     return groups
   }
@@ -600,29 +681,29 @@ function SidePanel({ demo = false }: SidePanelProps) {
     <div
       className={`flex flex-col h-full ${demo ? "w-96 mx-auto mt-8 border border-slate-300 dark:border-slate-700 rounded-3xl overflow-hidden max-h-[calc(100vh-64px)]" : ""}`}>
       {/* Tab bar */}
-      <div className="shrink-0 bg-softgray border-b border-slate-200 dark:border-slate-700" style={{ padding: "8px 32px" }}>
-        <div className="flex border border-slate-300 dark:border-slate-600 overflow-hidden" style={{ borderRadius: "6px" }}>
+      <div className="shrink-0 bg-softgray dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700" style={{ padding: "8px 32px" }}>
+        <div className="flex w-full rounded-lg bg-slate-200 dark:bg-slate-700" style={{ padding: "2px" }}>
           <button
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
               activeTab === "design"
-                ? "bg-white text-electricblue-700 dark:bg-slate-700 dark:text-electricblue-300"
-                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                : "text-slate-600 dark:text-slate-300 dark:hover:text-white"
             }`}
             onClick={() => setActiveTab("design")}>
-            <Palette size={14} />
+            <Palette size={12} />
             Design
           </button>
           <button
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium transition-colors border-l border-slate-300 dark:border-slate-600 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
               activeTab === "changes"
-                ? "bg-white text-electricblue-700 dark:bg-slate-700 dark:text-electricblue-300"
-                : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                : "text-slate-600 dark:text-slate-300 dark:hover:text-white"
             }`}
             onClick={() => setActiveTab("changes")}>
-            <Diff size={14} />
+            <Diff size={12} />
             Changes
             {changeCount > 0 && (
-              <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-juicyorange-500 text-white text-[10px] font-bold leading-none min-w-[18px] h-[18px] px-1">
+              <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-juicyorange-500 text-white text-[9px] font-bold leading-none min-w-[14px] h-[14px] px-0.5">
                 {changeCount}
               </span>
             )}
@@ -634,8 +715,8 @@ function SidePanel({ demo = false }: SidePanelProps) {
         <>
           {/* Tree panel */}
           <div
-            className="shrink-0 overflow-y-auto border-b border-slate-200 dark:border-slate-700"
-            style={{ height: 276 }}>
+            className="shrink-0 overflow-y-auto"
+            style={{ height: treeHeight }}>
             <div className="flex flex-col p-2">
               {hierarchy.length === 0 && (
                 <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
@@ -682,6 +763,21 @@ function SidePanel({ demo = false }: SidePanelProps) {
             </div>
           </div>
 
+          {/* Resize handle */}
+          <div
+            className="shrink-0 flex items-center justify-center h-3 cursor-row-resize border-y border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 active:bg-blue-200 dark:active:bg-blue-800/40 transition-colors"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              dragRef.current = {
+                startY: e.clientY,
+                startHeight: treeHeight
+              }
+              document.body.style.cursor = "row-resize"
+              document.body.style.userSelect = "none"
+            }}>
+            <GripHorizontal size={10} className="text-slate-400 dark:text-slate-500" />
+          </div>
+
           {/* Style editor panel */}
           <div className="flex-1 min-h-0 overflow-y-auto">
             {selectedIndex != null && selectedStyles ? (
@@ -699,6 +795,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
                       : null
                   }
                   tabId={tabId}
+                  pageTokens={pageTokens}
                   onStyleEdit={handleStyleEdit}
                   onTextEdit={handleTextEdit}
                   onUndo={handleUndo}

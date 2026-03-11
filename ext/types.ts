@@ -3,6 +3,7 @@ export interface HierarchyItem {
   id: string
   classes: string
   component: string | null
+  selectorPath: string
 }
 
 export interface StyleData {
