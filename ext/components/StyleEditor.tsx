@@ -93,7 +93,7 @@ function NumericInput({
   const input = (
     <input
       type="text"
-      className={`${icon ? "w-full bg-transparent outline-none text-xs text-center" : "w-16 rounded border-0 bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs text-center outline-none focus:border-electricblue-500"}`}
+      className={`${icon ? "w-full bg-transparent outline-none text-xs" : "w-full rounded border-0 bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs outline-none focus:border-electricblue-500"}`}
       value={current}
       onChange={(e) => setCurrent(e.target.value)}
       onBlur={() => {
@@ -107,7 +107,7 @@ function NumericInput({
 
   if (icon) {
     return (
-      <div className="flex items-center gap-1 w-16 rounded border-0 bg-slate-100 dark:bg-slate-800 px-2 py-1 focus-within:border-electricblue-500">
+      <div className="flex items-center gap-1 w-full rounded border-0 bg-slate-100 dark:bg-slate-800 px-2 py-1 focus-within:border-electricblue-500">
         <span className="shrink-0 text-slate-400">{icon}</span>
         {input}
       </div>
@@ -389,50 +389,44 @@ export default function StyleEditor({
           />
           <div className="flex flex-col gap-1">
             <FieldLabel edited={editedProps.has("gap")} onUndo={() => onUndo(index, ["gap"])}>Gap</FieldLabel>
-            <div>
-              <NumericInput
-                key={effective(editedProps, "gap", styles.gap || "")}
-                icon={flowMode === "column" ? <GripHorizontal size={14} /> : <GripVertical size={14} />}
-                value={(isFlex || isGrid) ? (parseInt(effective(editedProps, "gap", styles.gap || "")) || 0) : ""}
-                onChange={(val) => {
-                  const v = val.match(/\d/) ? val : "0"
-                  const gapVal = v.match(/[a-z%]/) ? v : v + "px"
-                  onStyleEdit(index, "gap", styles.gap || "", gapVal)
-                }}
-              />
-            </div>
+            <NumericInput
+              key={effective(editedProps, "gap", styles.gap || "")}
+              icon={flowMode === "column" ? <GripHorizontal size={14} /> : <GripVertical size={14} />}
+              value={(isFlex || isGrid) ? (parseInt(effective(editedProps, "gap", styles.gap || "")) || 0) : ""}
+              onChange={(val) => {
+                const v = val.match(/\d/) ? val : "0"
+                const gapVal = v.match(/[a-z%]/) ? v : v + "px"
+                onStyleEdit(index, "gap", styles.gap || "", gapVal)
+              }}
+            />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
             <FieldLabel edited={hasAny(editedProps, "paddingLeft", "paddingRight", "paddingTop", "paddingBottom")} onUndo={() => onUndo(index, ["paddingLeft", "paddingRight", "paddingTop", "paddingBottom"])}>Padding</FieldLabel>
-            <div>
-              <NumericInput
-                key={effective(editedProps, "paddingLeft", padLeft + "px")}
-                icon={<AlignHorizontalSpaceAround size={14} />}
-                value={parseInt(effective(editedProps, "paddingLeft", padLeft + "px")) || 0}
-                onChange={(val) => {
-                  const v = (parseInt(val) || 0) + "px"
-                  onStyleEdit(index, "paddingLeft", padLeft + "px", v)
-                  onStyleEdit(index, "paddingRight", padRight + "px", v)
-                }}
-              />
-            </div>
+            <NumericInput
+              key={effective(editedProps, "paddingLeft", padLeft + "px")}
+              icon={<AlignHorizontalSpaceAround size={14} />}
+              value={parseInt(effective(editedProps, "paddingLeft", padLeft + "px")) || 0}
+              onChange={(val) => {
+                const v = (parseInt(val) || 0) + "px"
+                onStyleEdit(index, "paddingLeft", padLeft + "px", v)
+                onStyleEdit(index, "paddingRight", padRight + "px", v)
+              }}
+            />
           </div>
           <div className="flex flex-col gap-1">
             <div className="text-xs">&nbsp;</div>
-            <div>
-              <NumericInput
-                key={effective(editedProps, "paddingTop", padTop + "px")}
-                icon={<AlignVerticalSpaceAround size={14} />}
-                value={parseInt(effective(editedProps, "paddingTop", padTop + "px")) || 0}
-                onChange={(val) => {
-                  const v = (parseInt(val) || 0) + "px"
-                  onStyleEdit(index, "paddingTop", padTop + "px", v)
-                  onStyleEdit(index, "paddingBottom", padBottom + "px", v)
-                }}
-              />
-            </div>
+            <NumericInput
+              key={effective(editedProps, "paddingTop", padTop + "px")}
+              icon={<AlignVerticalSpaceAround size={14} />}
+              value={parseInt(effective(editedProps, "paddingTop", padTop + "px")) || 0}
+              onChange={(val) => {
+                const v = (parseInt(val) || 0) + "px"
+                onStyleEdit(index, "paddingTop", padTop + "px", v)
+                onStyleEdit(index, "paddingBottom", padBottom + "px", v)
+              }}
+            />
           </div>
         </div>
       </div>
@@ -455,17 +449,15 @@ export default function StyleEditor({
           </div>
           <div className="flex flex-col gap-1">
             <FieldLabel edited={editedProps.has("borderRadius")} onUndo={() => onUndo(index, ["borderRadius"])}>Corner Radius</FieldLabel>
-            <div>
-              <NumericInput
-                key={effective(editedProps, "borderRadius", styles.borderRadius || "0px")}
-                icon={<SquareRoundCorner size={14} />}
-                value={parseInt(effective(editedProps, "borderRadius", styles.borderRadius || "0px")) || 0}
-                onChange={(val) => {
-                  const v = val.match(/[a-z%]/) ? val : val + "px"
-                  onStyleEdit(index, "borderRadius", styles.borderRadius || "0px", v)
-                }}
-              />
-            </div>
+            <NumericInput
+              key={effective(editedProps, "borderRadius", styles.borderRadius || "0px")}
+              icon={<SquareRoundCorner size={14} />}
+              value={parseInt(effective(editedProps, "borderRadius", styles.borderRadius || "0px")) || 0}
+              onChange={(val) => {
+                const v = val.match(/[a-z%]/) ? val : val + "px"
+                onStyleEdit(index, "borderRadius", styles.borderRadius || "0px", v)
+              }}
+            />
           </div>
         </div>
       </div>
