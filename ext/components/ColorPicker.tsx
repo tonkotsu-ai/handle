@@ -438,7 +438,7 @@ export default function ColorPicker({
           if (!open) setActiveTab(matchingToken ? "tokens" : "custom")
           setOpen(!open)
         }}
-        className="flex items-center gap-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 w-full">
+        className="flex items-center gap-2 rounded border-0 bg-slate-100 dark:bg-slate-800 px-2 py-1.5 text-xs hover:bg-slate-200 dark:hover:bg-slate-700 w-full">
         <Swatch color={value} size={16} />
         {matchingToken ? (
           <span className="truncate">

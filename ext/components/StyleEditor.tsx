@@ -6,9 +6,9 @@ import {
   AlignVerticalSpaceAround,
   GripHorizontal,
   GripVertical,
-  Grid2x2,
-  RectangleHorizontal,
-  RectangleVertical,
+  LayoutGrid,
+  StretchHorizontal,
+  StretchVertical,
   SquareRoundCorner,
   Undo2
 } from "lucide-react"
@@ -37,7 +37,7 @@ function EditDot() {
 
 function FieldLabel({ children, edited, onUndo }: { children: React.ReactNode; edited?: boolean; onUndo?: () => void }) {
   return (
-    <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+    <div className="flex items-center gap-1 text-xs text-slate-900 dark:text-slate-400">
       {edited && <EditDot />}
       {children}
       {edited && onUndo && (
@@ -64,7 +64,7 @@ function FieldInput({
   return (
     <input
       type="text"
-      className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs outline-none focus:border-electricblue-500"
+      className="w-full rounded border-0 bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs outline-none focus:border-electricblue-500"
       value={current}
       onChange={(e) => setCurrent(e.target.value)}
       onBlur={() => {
@@ -92,7 +92,7 @@ function NumericInput({
   const input = (
     <input
       type="text"
-      className={`${icon ? "w-full bg-transparent outline-none text-xs text-center" : "w-16 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-center outline-none focus:border-electricblue-500"}`}
+      className={`${icon ? "w-full bg-transparent outline-none text-xs text-center" : "w-16 rounded border-0 bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs text-center outline-none focus:border-electricblue-500"}`}
       value={current}
       onChange={(e) => setCurrent(e.target.value)}
       onBlur={() => {
@@ -106,7 +106,7 @@ function NumericInput({
 
   if (icon) {
     return (
-      <div className="flex items-center gap-1 w-16 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 focus-within:border-electricblue-500">
+      <div className="flex items-center gap-1 w-16 rounded border-0 bg-slate-100 dark:bg-slate-800 px-2 py-1 focus-within:border-electricblue-500">
         <span className="shrink-0 text-slate-400">{icon}</span>
         {input}
       </div>
@@ -142,15 +142,15 @@ function FlowControls({
   onUndo?: () => void
 }) {
   const flows = [
-    { mode: "column", icon: <RectangleVertical size={14} />, title: "Vertical" },
-    { mode: "row", icon: <RectangleHorizontal size={14} />, title: "Horizontal" },
-    { mode: "grid", icon: <Grid2x2 size={14} />, title: "Grid" }
+    { mode: "column", icon: <StretchVertical size={14} />, title: "Vertical" },
+    { mode: "row", icon: <StretchHorizontal size={14} />, title: "Horizontal" },
+    { mode: "grid", icon: <LayoutGrid size={14} />, title: "Grid" }
   ]
 
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>Flow</FieldLabel>
-      <div className="flex w-full rounded-lg bg-slate-200 dark:bg-slate-700" style={{ padding: "2px" }}>
+      <div className="flex w-full rounded-lg bg-slate-100 dark:bg-slate-700" style={{ padding: "2px" }}>
         {flows.map((f) => (
           <button
             key={f.mode}
@@ -247,7 +247,7 @@ function AlignmentGrid({
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>Alignment</FieldLabel>
-      <div className="grid grid-cols-3 gap-px rounded border border-slate-300 dark:border-slate-600 overflow-hidden w-fit">
+      <div className="grid grid-cols-3 gap-px rounded border-0 bg-slate-100 dark:border-slate-600 overflow-hidden w-fit">
         {Array.from({ length: 9 }).map((_, i) => {
           const r = Math.floor(i / 3)
           const c = i % 3
@@ -266,7 +266,7 @@ function AlignmentGrid({
               className={`h-6 w-6 flex items-center justify-center ${
                 isActive
                   ? "bg-electricblue-100 text-electricblue-700 dark:bg-electricblue-900 dark:text-electricblue-300"
-                  : "bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  : "dark:bg-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700"
               }`}
               onMouseEnter={() => setHoveredCell({ row: r, col: c })}
               onMouseLeave={() => setHoveredCell(null)}
@@ -516,7 +516,7 @@ export default function StyleEditor({
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
             <FieldLabel edited={editedProps.has("borderStyle")} onUndo={() => onUndo(index, ["borderStyle"])}>Position</FieldLabel>
-            <div className="flex w-full rounded-lg bg-slate-200 dark:bg-slate-700" style={{ padding: "2px" }}>
+            <div className="flex w-full rounded-lg bg-slate-100 dark:bg-slate-700" style={{ padding: "2px" }}>
               {[
                 { value: "inside", label: "Inside" },
                 { value: "outside", label: "Outside" }
