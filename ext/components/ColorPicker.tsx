@@ -167,7 +167,7 @@ function CustomTab({
             onChange={(e) =>
               setColorFormat(e.target.value as "hex" | "rgba")
             }
-            className="appearance-none rounded-md bg-slate-100 dark:bg-slate-800 pl-2 pr-6 py-1.5 text-xs outline-none">
+            className="appearance-none rounded-md bg-slate-100 dark:bg-slate-600 pl-2 pr-6 py-1.5 text-xs outline-none">
             <option value="hex">Hex</option>
             <option value="rgba">RGBA</option>
           </select>
@@ -178,7 +178,7 @@ function CustomTab({
         </div>
         {/* Color + opacity segmented control */}
         <div className="flex flex-1 min-w-0 gap-px rounded-md overflow-hidden">
-          <div className="flex flex-1 min-w-0 items-center gap-2 px-2 py-1.5 bg-slate-100 dark:bg-slate-800">
+          <div className="flex flex-1 min-w-0 items-center gap-2 px-2 py-1.5 bg-slate-100 dark:bg-slate-600">
             <Swatch color={value} size={16} />
             <input
               type="text"
@@ -189,7 +189,7 @@ function CustomTab({
               onKeyDown={(e) => handleKeyDown(e, commitInput)}
             />
           </div>
-          <div className="flex items-center gap-0.5 pl-2 pr-1 py-1.5 bg-slate-100 dark:bg-slate-800">
+          <div className="flex items-center gap-0.5 pl-2 pr-1 py-1.5 bg-slate-100 dark:bg-slate-600">
             <input
               type="text"
               className="w-8 bg-transparent text-xs text-center outline-none"
@@ -444,7 +444,7 @@ export default function ColorPicker({
           if (!open) setActiveTab(matchingToken ? "tokens" : "custom")
           setOpen(!open)
         }}
-        className={`flex items-center gap-2 rounded border-0 px-2 py-1.5 text-xs w-full ${edited ? "bg-mintfresh-100 hover:bg-mintfresh-200" : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
+        className={`flex items-center gap-2 rounded border-0 px-2 py-1.5 text-xs w-full ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800 hover:bg-mintfresh-200 dark:hover:bg-mintfresh-700" : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
         <Swatch color={value} size={16} />
         {matchingToken ? (
           <span className="truncate">
