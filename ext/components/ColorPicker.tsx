@@ -19,6 +19,7 @@ import {
 interface ColorPickerProps {
   value: string
   tabId: number | null
+  tokens?: TokenEntry[]
   onChange: (val: string) => void
 }
 
@@ -249,13 +250,14 @@ function TokensTab({
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    return q
+    const list = q
       ? tokens.filter(
           (t) =>
             t.name.toLowerCase().includes(q) ||
             t.value.toLowerCase().includes(q)
         )
-      : tokens
+      : [...tokens]
+    return list.sort((a, b) => a.name.localeCompare(b.name))
   }, [search, tokens])
 
   return (
@@ -297,9 +299,11 @@ function TokensTab({
               <span className="truncate flex-1 text-left">
                 {highlightMatch(displayName, search)}
               </span>
-              <span className="shrink-0 text-slate-400 dark:text-slate-500">
-                {hex}
-              </span>
+              {hex.startsWith("#") && (
+                <span className="shrink-0 text-slate-400 dark:text-slate-500">
+                  {hex}
+                </span>
+              )}
             </button>
           )
         })}
@@ -316,6 +320,7 @@ function TokensTab({
 export default function ColorPicker({
   value,
   tabId,
+  tokens: tokensProp,
   onChange,
 }: ColorPickerProps) {
   const [open, setOpen] = useState(false)
@@ -334,17 +339,26 @@ export default function ColorPicker({
   const popupRef = useRef<HTMLDivElement>(null)
 
   const displayHex = normalizeToHex(value)
+  const tokens = tokensProp ?? pageTokens
+
+  const matchingToken = useMemo(() => {
+    if (tokens.length === 0) return null
+    const hex = displayHex.toLowerCase()
+    return tokens.find(
+      (t) => normalizeToHex(t.value).toLowerCase() === hex
+    ) ?? null
+  }, [tokens, displayHex])
 
   // Exclude colors that already appear in tokens
   const filteredPageColors = useMemo(() => {
-    if (pageTokens.length === 0) return pageColors
+    if (tokens.length === 0) return pageColors
     const tokenHexes = new Set(
-      pageTokens.map((t) => normalizeToHex(t.value).toLowerCase())
+      tokens.map((t) => normalizeToHex(t.value).toLowerCase())
     )
     return pageColors.filter(
       (c) => !tokenHexes.has(normalizeToHex(c).toLowerCase())
     )
-  }, [pageColors, pageTokens])
+  }, [pageColors, tokens])
 
   // Fetch page colors and tokens when popup opens
   useEffect(() => {
@@ -355,13 +369,15 @@ export default function ColorPicker({
         if (Array.isArray(colors)) setPageColors(colors)
       })
       .catch(() => {})
-    chrome.tabs
-      .sendMessage(tabId, { type: "get-page-tokens" })
-      .then((tokens) => {
-        if (Array.isArray(tokens)) setPageTokens(tokens)
-      })
-      .catch(() => {})
-  }, [open, tabId])
+    if (!tokensProp) {
+      chrome.tabs
+        .sendMessage(tabId, { type: "get-page-tokens" })
+        .then((t) => {
+          if (Array.isArray(t)) setPageTokens(t)
+        })
+        .catch(() => {})
+    }
+  }, [open, tabId, tokensProp])
 
   // Position popup
   useLayoutEffect(() => {
@@ -419,13 +435,22 @@ export default function ColorPicker({
       <button
         ref={buttonRef}
         onClick={() => {
+          if (!open) setActiveTab(matchingToken ? "tokens" : "custom")
           setOpen(!open)
         }}
         className="flex items-center gap-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 w-full">
         <Swatch color={value} size={16} />
-        <span className="truncate text-slate-600 dark:text-slate-300">
-          {displayHex}
-        </span>
+        {matchingToken ? (
+          <span className="truncate">
+            <span className="font-bold text-slate-800 dark:text-slate-200">{matchingToken.name.replace(/^--/, "")}</span>
+            {" "}
+            <span className="text-slate-500 dark:text-slate-400">{displayHex}</span>
+          </span>
+        ) : (
+          <span className="truncate text-slate-600 dark:text-slate-300">
+            {displayHex}
+          </span>
+        )}
       </button>
       {open &&
         createPortal(
@@ -466,7 +491,7 @@ export default function ColorPicker({
             ) : (
               <TokensTab
                 value={value}
-                tokens={pageTokens}
+                tokens={tokens}
                 onChange={(val) => {
                   onChange(val)
                 }}

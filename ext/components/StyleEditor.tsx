@@ -25,6 +25,7 @@ interface StyleEditorProps {
   editedProps: Map<string, { original: string; current: string }>
   lucideIconName?: string | null
   tabId: number | null
+  pageTokens?: Array<{ name: string; value: string }>
   onStyleEdit: (index: number, prop: string, original: string, value: string) => void
   onTextEdit: (index: number, original: string, value: string) => void
   onUndo: (index: number, props: string[]) => void
@@ -332,6 +333,7 @@ export default function StyleEditor({
   editedProps,
   lucideIconName,
   tabId,
+  pageTokens,
   onStyleEdit,
   onTextEdit,
   onUndo
@@ -475,9 +477,9 @@ export default function StyleEditor({
         <div className="flex flex-col gap-1">
           <FieldLabel edited={editedProps.has("backgroundColor")} onUndo={() => onUndo(index, ["backgroundColor"])}>Color</FieldLabel>
           <ColorPicker
-            key={effective(editedProps, "backgroundColor", styles.backgroundColor || "transparent")}
             value={effective(editedProps, "backgroundColor", styles.backgroundColor || "transparent")}
             tabId={tabId}
+            tokens={pageTokens}
             onChange={(val) =>
               onStyleEdit(
                 index,
@@ -498,9 +500,9 @@ export default function StyleEditor({
         <div className="flex flex-col gap-1">
           <FieldLabel edited={editedProps.has("borderColor")} onUndo={() => onUndo(index, ["borderColor"])}>Color</FieldLabel>
           <ColorPicker
-            key={effective(editedProps, "borderColor", styles.borderColor || "none")}
             value={effective(editedProps, "borderColor", styles.borderColor || "none")}
             tabId={tabId}
+            tokens={pageTokens}
             onChange={(val) =>
               onStyleEdit(
                 index,

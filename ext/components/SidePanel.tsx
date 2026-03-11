@@ -161,6 +161,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
     demo ? DEMO_STYLES[DEMO_HIERARCHY.length - 1] : null
   )
   const [collapsedNodes, setCollapsedNodes] = useState<Set<number>>(new Set())
+  const [pageTokens, setPageTokens] = useState<
+    Array<{ name: string; value: string }>
+  >([])
 
   const editsRef = useRef<Map<number, EditEntry>>(new Map())
   const hierarchyRef = useRef<HierarchyItem[]>(demo ? DEMO_HIERARCHY : [])
@@ -197,6 +200,17 @@ function SidePanel({ demo = false }: SidePanelProps) {
     setDesignMode(true)
     return () => setDesignMode(false)
   }, [demo, tabId, setDesignMode])
+
+  // Fetch page tokens once for color picker display
+  useEffect(() => {
+    if (demo || tabId == null) return
+    chrome.tabs
+      .sendMessage(tabId, { type: "get-page-tokens" })
+      .then((tokens) => {
+        if (Array.isArray(tokens)) setPageTokens(tokens)
+      })
+      .catch(() => {})
+  }, [demo, tabId])
 
   // Connect a port so background can detect panel closure
   useEffect(() => {
@@ -755,6 +769,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
                       : null
                   }
                   tabId={tabId}
+                  pageTokens={pageTokens}
                   onStyleEdit={handleStyleEdit}
                   onTextEdit={handleTextEdit}
                   onUndo={handleUndo}

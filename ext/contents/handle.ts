@@ -198,16 +198,44 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   } else if (message.type === "get-page-tokens") {
     const seen = new Set<string>()
     const names: string[] = []
+    const utilityClasses = new Map<string, string>()
+    const utilityRe = /^\.(bg|text)-([\w-]+)$/
 
-    // Collect custom property names from all CSS rules in all stylesheets
+    // Collect custom property names and utility classes from all stylesheets
     function scanRules(rules: CSSRuleList) {
       for (const rule of rules) {
         if (rule instanceof CSSStyleRule) {
+          // Collect CSS custom properties
           for (let i = 0; i < rule.style.length; i++) {
             const prop = rule.style[i]
             if (prop.startsWith("--") && !seen.has(prop)) {
               seen.add(prop)
               names.push(prop)
+            }
+          }
+
+          // Collect Tailwind utility classes (bg-*, text-*)
+          const m = utilityRe.exec(rule.selectorText)
+          if (m) {
+            const prefix = m[1]
+            const colorProp =
+              prefix === "bg" ? "background-color" : "color"
+            // Only include if every property is the color prop or a --tw-* var
+            let valid = false
+            for (let i = 0; i < rule.style.length; i++) {
+              const p = rule.style[i]
+              if (p === colorProp) valid = true
+              else if (!p.startsWith("--tw-")) {
+                valid = false
+                break
+              }
+            }
+            if (valid) {
+              const colorName = "color-" + m[2] // bg-xyz / text-xyz → color-xyz
+              const value = rule.style.getPropertyValue(colorProp).trim()
+              if (value && !utilityClasses.has(colorName)) {
+                utilityClasses.set(colorName, value)
+              }
             }
           }
         } else if (
@@ -232,16 +260,47 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       // styleSheets access failed
     }
 
-    // Resolve each variable to its computed value on :root
+    // Resolve a CSS color string to the browser's canonical rgb() form
+    const probe = document.createElement("span")
+    probe.style.display = "none"
+    document.body.appendChild(probe)
+    function resolveColor(css: string): string | null {
+      probe.style.color = ""
+      probe.style.color = css
+      if (!probe.style.color) return null
+      return getComputedStyle(probe).color
+    }
+
+    // Resolve CSS variable tokens
     const rootCs = getComputedStyle(document.documentElement)
     const isColor = /^#|^rgba?\(|^hsla?\(|^oklch\(|^oklab\(|^lch\(|^lab\(|^color\(/
     const tokens: Array<{ name: string; value: string }> = []
+    const tokenValues = new Set<string>()
     for (const name of names) {
-      const resolved = rootCs.getPropertyValue(name).trim()
-      if (resolved && isColor.test(resolved)) {
+      const raw = rootCs.getPropertyValue(name).trim()
+      if (!raw || !isColor.test(raw)) continue
+      const resolved = resolveColor(raw)
+      if (resolved) {
         tokens.push({ name, value: resolved })
+        tokenValues.add(resolved.toLowerCase())
       }
     }
+
+    // Merge utility class tokens, skipping duplicates of CSS variable values
+    for (const [name, raw] of utilityClasses) {
+      // Resolve var() references (e.g. rgba(10,20,30, var(--tw-bg-opacity)))
+      const withVars = raw.replace(/var\((--[\w-]+)\)/g, (_, v) =>
+        rootCs.getPropertyValue(v).trim() || "1"
+      )
+      if (!isColor.test(withVars)) continue
+      const resolved = resolveColor(withVars)
+      if (resolved && !tokenValues.has(resolved.toLowerCase())) {
+        tokens.push({ name: `--${name}`, value: resolved })
+        tokenValues.add(resolved.toLowerCase())
+      }
+    }
+
+    probe.remove()
 
     sendResponse(tokens.slice(0, 100))
     return true
