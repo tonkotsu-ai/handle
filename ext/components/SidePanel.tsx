@@ -184,6 +184,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
   const [pageTokens, setPageTokens] = useState<
     Array<{ name: string; value: string }>
   >([])
+  const [toast, setToast] = useState<string | null>(null)
 
   const editsRef = useRef<Map<string, EditEntry>>(new Map())
   const hierarchyRef = useRef<HierarchyItem[]>(demo ? DEMO_HIERARCHY : [])
@@ -640,6 +641,21 @@ function SidePanel({ demo = false }: SidePanelProps) {
         }
       } else if (message.type === "tab-refreshed") {
         if (tabId != null && message.tabId !== tabId) return
+        // Copy queued changes to clipboard before clearing
+        const content = generateFeedbackDescription()
+        if (content !== "No feedback given") {
+          navigator.clipboard.writeText(content).catch(() => {})
+          let count = 0
+          for (const [, entry] of editsRef.current) {
+            for (const [, { original, current }] of entry.props) {
+              if (original !== current) count++
+            }
+          }
+          setToast(
+            `Page refreshed — ${count} unsaved change${count === 1 ? "" : "s"} copied to clipboard`
+          )
+          setTimeout(() => setToast(null), 4000)
+        }
         // Clear all queued changes and reset UI state
         editsRef.current = new Map()
         setChangeCount(0)
@@ -733,7 +749,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
 
   return (
     <div
-      className={`flex flex-col h-full ${demo ? "w-96 mx-auto mt-8 border border-slate-300 dark:border-slate-700 rounded-3xl overflow-hidden max-h-[calc(100vh-64px)]" : ""}`}>
+      className={`relative flex flex-col h-full ${demo ? "w-96 mx-auto mt-8 border border-slate-300 dark:border-slate-700 rounded-3xl overflow-hidden max-h-[calc(100vh-64px)]" : ""}`}>
       {/* Tab bar */}
       <div className="shrink-0 bg-softgray dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700" style={{ padding: "8px 32px" }}>
         <div className="flex w-full rounded-lg bg-slate-200 dark:bg-slate-700" style={{ padding: "2px" }}>
@@ -923,6 +939,13 @@ function SidePanel({ demo = false }: SidePanelProps) {
           onSend={handleSend}
           onCopy={handleCopy}
         />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="absolute bottom-16 left-3 right-3 rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-xs px-3 py-2 shadow-lg animate-fade-in">
+          {toast}
+        </div>
       )}
     </div>
   )
