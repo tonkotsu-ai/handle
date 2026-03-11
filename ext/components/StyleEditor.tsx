@@ -177,7 +177,6 @@ function FlowControls({
               }
             }}>
             {f.icon}
-            {f.title}
           </button>
         ))}
       </div>
