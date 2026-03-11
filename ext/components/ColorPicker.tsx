@@ -1,4 +1,4 @@
-import { Search } from "lucide-react"
+import { ChevronDown, Search } from "lucide-react"
 import {
   useEffect,
   useLayoutEffect,
@@ -159,43 +159,47 @@ function CustomTab({
 
   return (
     <div className="flex flex-col gap-3 p-3">
-      {/* Fill type */}
-      <select className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs outline-none focus:border-electricblue-500">
-        <option>Solid fill</option>
-      </select>
-
       {/* Format row */}
       <div className="flex items-center gap-2">
-        <select
-          value={colorFormat}
-          onChange={(e) =>
-            setColorFormat(e.target.value as "hex" | "rgba")
-          }
-          className="rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs outline-none focus:border-electricblue-500">
-          <option value="hex">Hex</option>
-          <option value="rgba">RGBA</option>
-        </select>
-        <Swatch color={value} size={20} />
-        <input
-          type="text"
-          className="flex-1 min-w-0 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs outline-none focus:border-electricblue-500"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onBlur={commitInput}
-          onKeyDown={(e) => handleKeyDown(e, commitInput)}
-        />
-        <div className="flex items-center gap-0.5">
-          <input
-            type="text"
-            className="w-10 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-1.5 py-1 text-xs text-center outline-none focus:border-electricblue-500"
-            value={opacityInput}
-            onChange={(e) => setOpacityInput(e.target.value)}
-            onBlur={commitOpacity}
-            onKeyDown={(e) =>
-              handleKeyDown(e, commitOpacity)
+        <div className="relative">
+          <select
+            value={colorFormat}
+            onChange={(e) =>
+              setColorFormat(e.target.value as "hex" | "rgba")
             }
+            className="appearance-none rounded-md bg-slate-100 dark:bg-slate-800 pl-2 pr-6 py-1.5 text-xs outline-none">
+            <option value="hex">Hex</option>
+            <option value="rgba">RGBA</option>
+          </select>
+          <ChevronDown
+            size={12}
+            className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-slate-400"
           />
-          <span className="text-xs text-slate-400">%</span>
+        </div>
+        {/* Color + opacity segmented control */}
+        <div className="flex flex-1 min-w-0 gap-px rounded-md overflow-hidden">
+          <div className="flex flex-1 min-w-0 items-center gap-2 px-2 py-1.5 bg-slate-100 dark:bg-slate-800">
+            <Swatch color={value} size={16} />
+            <input
+              type="text"
+              className="flex-1 min-w-0 bg-transparent text-xs outline-none"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onBlur={commitInput}
+              onKeyDown={(e) => handleKeyDown(e, commitInput)}
+            />
+          </div>
+          <div className="flex items-center gap-0.5 pl-2 pr-1 py-1.5 bg-slate-100 dark:bg-slate-800">
+            <input
+              type="text"
+              className="w-8 bg-transparent text-xs text-center outline-none"
+              value={opacityInput}
+              onChange={(e) => setOpacityInput(e.target.value)}
+              onBlur={commitOpacity}
+              onKeyDown={(e) => handleKeyDown(e, commitOpacity)}
+            />
+            <span className="text-xs text-slate-400 pr-0.5">%</span>
+          </div>
         </div>
       </div>
 
