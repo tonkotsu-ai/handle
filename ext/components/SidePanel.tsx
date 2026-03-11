@@ -1,4 +1,4 @@
-import { Diff, Palette } from "lucide-react"
+import { Diff, GripHorizontal, Palette } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { io, type Socket } from "socket.io-client"
 
@@ -712,7 +712,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
 
           {/* Resize handle */}
           <div
-            className="shrink-0 h-1.5 cursor-row-resize border-y border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 active:bg-blue-200 dark:active:bg-blue-800/40 transition-colors"
+            className="shrink-0 flex items-center justify-center h-3 cursor-row-resize border-y border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 active:bg-blue-200 dark:active:bg-blue-800/40 transition-colors"
             onMouseDown={(e) => {
               e.preventDefault()
               dragRef.current = {
@@ -721,8 +721,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
               }
               document.body.style.cursor = "row-resize"
               document.body.style.userSelect = "none"
-            }}
-          />
+            }}>
+            <GripHorizontal size={10} className="text-slate-400 dark:text-slate-500" />
+          </div>
 
           {/* Style editor panel */}
           <div className="flex-1 min-h-0 overflow-y-auto">
