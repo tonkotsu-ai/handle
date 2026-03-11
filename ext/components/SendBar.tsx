@@ -1,4 +1,4 @@
-import { ChevronDown, Clipboard, Check, GitBranch, Send } from "lucide-react"
+import { ArrowUp, ChevronDown, Clipboard, Check, GitBranch } from "lucide-react"
 import { useState } from "react"
 
 import type { SessionInfo } from "~types"
@@ -92,7 +92,7 @@ export default function SendBar({
               ? "bg-electricblue-700 hover:bg-electricblue-800 text-white"
               : "bg-slate-300 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
           }`}>
-          <Send size={14} />
+          <ArrowUp size={14} />
           Send to Coding Agent
           {changeCount > 0 && (
             <span className="ml-1 inline-flex items-center justify-center rounded-full bg-juicyorange-500 px-1.5 text-xs text-white">
