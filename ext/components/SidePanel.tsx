@@ -1,4 +1,4 @@
-import { Diff, GripHorizontal, Palette } from "lucide-react"
+import { Diff, GripHorizontal, PencilLine } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { io, type Socket } from "socket.io-client"
 
@@ -759,20 +759,20 @@ function SidePanel({ demo = false }: SidePanelProps) {
       <div className="shrink-0 bg-softgray dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700" style={{ padding: "8px 32px" }}>
         <div className="flex w-full rounded-lg bg-slate-200 dark:bg-slate-700" style={{ padding: "2px" }}>
           <button
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 transition-colors ${
               activeTab === "design"
-                ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
-                : "text-slate-600 dark:text-slate-300 dark:hover:text-white"
+                ? "text-xs font-bold bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                : "text-xs text-slate-600 dark:text-slate-300 dark:hover:text-white"
             }`}
             onClick={() => setActiveTab("design")}>
-            <Palette size={12} />
+            <PencilLine size={12} />
             Design
           </button>
           <button
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 transition-colors ${
               activeTab === "changes"
-                ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
-                : "text-slate-600 dark:text-slate-300 dark:hover:text-white"
+                ? "text-xs font-bold bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                : "text-xs text-slate-600 dark:text-slate-300 dark:hover:text-white"
             }`}
             onClick={() => setActiveTab("changes")}>
             <Diff size={12} />
