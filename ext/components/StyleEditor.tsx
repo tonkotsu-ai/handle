@@ -55,9 +55,11 @@ function FieldLabel({ children, edited, onUndo }: { children: React.ReactNode; e
 
 function FieldInput({
   value,
+  edited,
   onChange
 }: {
   value: string
+  edited?: boolean
   onChange: (val: string) => void
 }) {
   const [current, setCurrent] = useState(value)
@@ -65,7 +67,7 @@ function FieldInput({
   return (
     <input
       type="text"
-      className="w-full rounded border-0 bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs outline-none focus:border-electricblue-500"
+      className={`w-full rounded border-0 px-2 py-1 text-xs outline-none focus:border-electricblue-500 ${edited ? "bg-mintfresh-100" : "bg-slate-100 dark:bg-slate-800"}`}
       value={current}
       onChange={(e) => setCurrent(e.target.value)}
       onBlur={() => {
@@ -81,19 +83,23 @@ function FieldInput({
 function NumericInput({
   value,
   icon,
+  edited,
   onChange
 }: {
   value: string | number
   icon?: React.ReactNode
+  edited?: boolean
   onChange: (val: string) => void
 }) {
   const strVal = String(value)
   const [current, setCurrent] = useState(strVal)
 
+  const bg = edited ? "bg-mintfresh-100" : "bg-slate-100 dark:bg-slate-800"
+
   const input = (
     <input
       type="text"
-      className={`${icon ? "w-full bg-transparent outline-none text-xs" : "w-full rounded border-0 bg-slate-100 dark:bg-slate-800 px-2 py-1 text-xs outline-none focus:border-electricblue-500"}`}
+      className={`${icon ? "w-full bg-transparent outline-none text-xs" : `w-full rounded border-0 ${bg} px-2 py-1 text-xs outline-none focus:border-electricblue-500`}`}
       value={current}
       onChange={(e) => setCurrent(e.target.value)}
       onBlur={() => {
@@ -107,7 +113,7 @@ function NumericInput({
 
   if (icon) {
     return (
-      <div className="flex items-center gap-1 w-full rounded border-0 bg-slate-100 dark:bg-slate-800 px-2 py-1 focus-within:border-electricblue-500">
+      <div className={`flex items-center gap-1 w-full rounded border-0 ${bg} px-2 py-1 focus-within:border-electricblue-500`}>
         <span className="shrink-0 text-black dark:text-white">{icon}</span>
         {input}
       </div>
@@ -151,7 +157,7 @@ function FlowControls({
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>Flow</FieldLabel>
-      <div className="flex w-full rounded-lg bg-slate-100 dark:bg-slate-700" style={{ padding: "2px" }}>
+      <div className={`flex w-full rounded-lg ${edited ? "bg-mintfresh-100" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
         {flows.map((f) => (
           <button
             key={f.mode}
@@ -251,7 +257,7 @@ function AlignmentGrid({
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>Alignment</FieldLabel>
-      <div className="grid grid-cols-3 gap-px rounded bg-slate-100 overflow-hidden w-full p-0.5">
+      <div className={`grid grid-cols-3 gap-px rounded overflow-hidden w-full p-0.5 ${edited ? "bg-mintfresh-100" : "bg-slate-100"}`}>
         {Array.from({ length: 9 }).map((_, i) => {
           const r = Math.floor(i / 3)
           const c = i % 3
@@ -394,6 +400,7 @@ export default function StyleEditor({
             <NumericInput
               key={effective(editedProps, "gap", styles.gap || "")}
               icon={<AlignHorizontalSpaceBetween size={14} />}
+              edited={editedProps.has("gap")}
               value={(isFlex || isGrid) ? (parseInt(effective(editedProps, "gap", styles.gap || "")) || 0) : ""}
               onChange={(val) => {
                 const v = val.match(/\d/) ? val : "0"
@@ -409,6 +416,7 @@ export default function StyleEditor({
             <NumericInput
               key={effective(editedProps, "paddingLeft", padLeft + "px")}
               icon={<AlignHorizontalSpaceAround size={14} />}
+              edited={hasAny(editedProps, "paddingLeft", "paddingRight")}
               value={parseInt(effective(editedProps, "paddingLeft", padLeft + "px")) || 0}
               onChange={(val) => {
                 const v = (parseInt(val) || 0) + "px"
@@ -422,6 +430,7 @@ export default function StyleEditor({
             <NumericInput
               key={effective(editedProps, "paddingTop", padTop + "px")}
               icon={<AlignVerticalSpaceAround size={14} />}
+              edited={hasAny(editedProps, "paddingTop", "paddingBottom")}
               value={parseInt(effective(editedProps, "paddingTop", padTop + "px")) || 0}
               onChange={(val) => {
                 const v = (parseInt(val) || 0) + "px"
@@ -444,6 +453,7 @@ export default function StyleEditor({
             <NumericInput
               key={effective(editedProps, "opacity", styles.opacity || "1")}
               icon={<Blend size={14} />}
+              edited={editedProps.has("opacity")}
               value={effective(editedProps, "opacity", styles.opacity || "1")}
               onChange={(val) =>
                 onStyleEdit(index, "opacity", styles.opacity || "1", val)
@@ -455,6 +465,7 @@ export default function StyleEditor({
             <NumericInput
               key={effective(editedProps, "borderRadius", styles.borderRadius || "0px")}
               icon={<Scan size={14} />}
+              edited={editedProps.has("borderRadius")}
               value={parseInt(effective(editedProps, "borderRadius", styles.borderRadius || "0px")) || 0}
               onChange={(val) => {
                 const v = val.match(/[a-z%]/) ? val : val + "px"
@@ -476,6 +487,7 @@ export default function StyleEditor({
             value={effective(editedProps, "backgroundColor", styles.backgroundColor || "transparent")}
             tabId={tabId}
             tokens={pageTokens}
+            edited={editedProps.has("backgroundColor")}
             onChange={(val) =>
               onStyleEdit(
                 index,
@@ -499,6 +511,7 @@ export default function StyleEditor({
             value={effective(editedProps, "borderColor", styles.borderColor || "none")}
             tabId={tabId}
             tokens={pageTokens}
+            edited={editedProps.has("borderColor")}
             onChange={(val) =>
               onStyleEdit(
                 index,
@@ -512,7 +525,7 @@ export default function StyleEditor({
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
             <FieldLabel edited={editedProps.has("borderStyle")} onUndo={() => onUndo(index, ["borderStyle"])}>Position</FieldLabel>
-            <div className="flex w-full rounded-lg bg-slate-100 dark:bg-slate-700" style={{ padding: "2px" }}>
+            <div className={`flex w-full rounded-lg ${editedProps.has("borderStyle") ? "bg-mintfresh-100" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
               {[
                 { value: "inside", label: "Inside" },
                 { value: "outside", label: "Outside" }
@@ -545,6 +558,7 @@ export default function StyleEditor({
             <FieldLabel edited={editedProps.has("borderWidth")} onUndo={() => onUndo(index, ["borderWidth"])}>Weight</FieldLabel>
             <NumericInput
               key={effective(editedProps, "borderWidth", styles.borderWidth || "0px")}
+              edited={editedProps.has("borderWidth")}
               value={parseInt(effective(editedProps, "borderWidth", styles.borderWidth || "0px")) || 0}
               onChange={(val) => {
                 const v = val.match(/[a-z%]/) ? val : val + "px"
@@ -564,6 +578,7 @@ export default function StyleEditor({
           <FieldLabel edited={editedProps.has("fontFamily")} onUndo={() => onUndo(index, ["fontFamily"])}>Font</FieldLabel>
           <FieldInput
             key={effective(editedProps, "fontFamily", styles.fontFamily || "")}
+            edited={editedProps.has("fontFamily")}
             value={effective(editedProps, "fontFamily", styles.fontFamily || "")}
             onChange={(newVal) =>
               onStyleEdit(index, "fontFamily", styles.fontFamily || "", newVal)
@@ -581,6 +596,7 @@ export default function StyleEditor({
             value={effective(editedProps, "color", styles.color || "transparent")}
             tabId={tabId}
             tokens={pageTokens}
+            edited={editedProps.has("color")}
             onChange={(val) =>
               onStyleEdit(index, "color", styles.color || "transparent", val)
             }
@@ -591,6 +607,7 @@ export default function StyleEditor({
             <FieldLabel edited={editedProps.has("fontWeight")} onUndo={() => onUndo(index, ["fontWeight"])}>Weight</FieldLabel>
             <FieldInput
               key={effective(editedProps, "fontWeight", styles.fontWeight || "")}
+              edited={editedProps.has("fontWeight")}
               value={effective(editedProps, "fontWeight", styles.fontWeight || "")}
               onChange={(newVal) =>
                 onStyleEdit(index, "fontWeight", styles.fontWeight || "", newVal)
@@ -601,6 +618,7 @@ export default function StyleEditor({
             <FieldLabel edited={editedProps.has("fontSize")} onUndo={() => onUndo(index, ["fontSize"])}>Size</FieldLabel>
             <FieldInput
               key={effective(editedProps, "fontSize", styles.fontSize || "")}
+              edited={editedProps.has("fontSize")}
               value={effective(editedProps, "fontSize", styles.fontSize || "")}
               onChange={(newVal) =>
                 onStyleEdit(index, "fontSize", styles.fontSize || "", newVal)
@@ -622,6 +640,7 @@ export default function StyleEditor({
                 <FieldLabel edited={editedProps.has("textContent")} onUndo={() => onUndo(index, ["textContent"])}>Text</FieldLabel>
                 <FieldInput
                   key={effective(editedProps, "textContent", styles.textContent!)}
+                  edited={editedProps.has("textContent")}
                   value={effective(editedProps, "textContent", styles.textContent!)}
                   onChange={(val) => onTextEdit(index, styles.textContent!, val)}
                 />

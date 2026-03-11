@@ -20,6 +20,7 @@ interface ColorPickerProps {
   value: string
   tabId: number | null
   tokens?: TokenEntry[]
+  edited?: boolean
   onChange: (val: string) => void
 }
 
@@ -321,6 +322,7 @@ export default function ColorPicker({
   value,
   tabId,
   tokens: tokensProp,
+  edited,
   onChange,
 }: ColorPickerProps) {
   const [open, setOpen] = useState(false)
@@ -438,7 +440,7 @@ export default function ColorPicker({
           if (!open) setActiveTab(matchingToken ? "tokens" : "custom")
           setOpen(!open)
         }}
-        className="flex items-center gap-2 rounded border-0 bg-slate-100 dark:bg-slate-800 px-2 py-1.5 text-xs hover:bg-slate-200 dark:hover:bg-slate-700 w-full">
+        className={`flex items-center gap-2 rounded border-0 px-2 py-1.5 text-xs w-full ${edited ? "bg-mintfresh-100 hover:bg-mintfresh-200" : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
         <Swatch color={value} size={16} />
         {matchingToken ? (
           <span className="truncate">
