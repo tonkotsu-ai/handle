@@ -628,7 +628,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
     <div
       className={`flex flex-col h-full ${demo ? "w-96 mx-auto mt-8 border border-slate-300 dark:border-slate-700 rounded-3xl overflow-hidden max-h-[calc(100vh-64px)]" : ""}`}>
       {/* Tab bar */}
-      <div className="shrink-0 bg-softgray border-b border-slate-200 dark:border-slate-700" style={{ padding: "8px 32px" }}>
+      <div className="shrink-0 bg-softgray dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700" style={{ padding: "8px 32px" }}>
         <div className="flex border border-slate-300 dark:border-slate-600 overflow-hidden" style={{ borderRadius: "6px" }}>
           <button
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium transition-colors ${
