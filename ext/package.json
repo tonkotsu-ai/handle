@@ -1,7 +1,7 @@
 {
   "name": "handle-ext",
   "displayName": "Handle",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Handle extension",
   "author": "Tonkotsu AI Inc.",
   "scripts": {
