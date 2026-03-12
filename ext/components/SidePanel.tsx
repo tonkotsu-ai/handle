@@ -721,6 +721,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
         setSelectedIndex(null)
         setSelectedStyles(null)
         setCollapsedNodes(new Set())
+        setSelectionMode(true)
         // Re-fetch page tokens from the refreshed page
         chrome.tabs
           .sendMessage(tabId!, { type: "get-page-tokens" })
@@ -728,6 +729,13 @@ function SidePanel({ demo = false }: SidePanelProps) {
             if (Array.isArray(tokens)) setPageTokens(tokens)
           })
           .catch(() => {})
+      } else if (message.type === "spa-navigation") {
+        // SPA navigation: clear stale element tree but keep selection mode
+        hierarchyRef.current = []
+        setHierarchy([])
+        setSelectedIndex(null)
+        setSelectedStyles(null)
+        setCollapsedNodes(new Set())
       }
     }
     chrome.runtime.onMessage.addListener(onMessage)

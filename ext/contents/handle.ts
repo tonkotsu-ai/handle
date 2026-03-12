@@ -143,6 +143,39 @@ function onClick(e: MouseEvent) {
   pendingTarget = target
 }
 
+function clearElementState() {
+  if (hoveredEl) hoveredEl.style.outline = ""
+  hideOverlay()
+  pendingTarget = null
+  ancestors = []
+  elementCache.clear()
+}
+
+// Detect SPA navigations (pushState/replaceState/popstate) and notify
+// the sidepanel so it can clear stale element tree state.
+let lastUrl = location.href
+function checkUrlChange() {
+  if (location.href !== lastUrl) {
+    lastUrl = location.href
+    clearElementState()
+    chrome.runtime
+      .sendMessage({ type: "spa-navigation" })
+      .catch(() => {})
+  }
+}
+
+const origPushState = history.pushState.bind(history)
+history.pushState = function (...args) {
+  origPushState(...args)
+  checkUrlChange()
+}
+const origReplaceState = history.replaceState.bind(history)
+history.replaceState = function (...args) {
+  origReplaceState(...args)
+  checkUrlChange()
+}
+window.addEventListener("popstate", () => checkUrlChange())
+
 function enable() {
   if (active) return
   active = true
