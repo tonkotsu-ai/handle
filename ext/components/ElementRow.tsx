@@ -94,7 +94,7 @@ export default function ElementRow({
               </span>
             )}
             {(() => {
-              const last = item.selectorPath?.split(" > ").pop() || ""
+              const last = item.selectorPath?.split(" > ").shift() || ""
               const m = last.match(/:nth-child\((\d+)\)/)
               return m ? (
                 <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-0.5">
