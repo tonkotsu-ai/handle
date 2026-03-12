@@ -1,11 +1,36 @@
 {
-  "name": "handle-mcp",
-  "version": "0.1.0",
+  "name": "handle-design",
+  "version": "1.0.0",
+  "description": "Design feedback bridge between Handle's Chrome extension and AI coding agents via MCP",
   "type": "module",
-  "bin": "dist/index.js",
+  "bin": {
+    "handle-design": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "design",
+    "handle",
+    "handle-design",
+    "design-feedback",
+    "chrome-extension",
+    "ai-agents"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tonkotsu-ai/handle",
+    "directory": "mcp"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
