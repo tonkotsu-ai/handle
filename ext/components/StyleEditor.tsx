@@ -157,14 +157,14 @@ function FlowControls({
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>Flow</FieldLabel>
-      <div className={`flex w-full rounded-lg ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
+      <div className={`flex w-full rounded-lg ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-800"}`} style={{ padding: "2px" }}>
         {flows.map((f) => (
           <button
             key={f.mode}
             title={f.title}
             className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
               flowMode === f.mode
-                ? "bg-white text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
                 : "text-slate-600 dark:text-slate-300 dark:hover:text-white"
             }`}
             onClick={() => {
@@ -257,7 +257,7 @@ function AlignmentGrid({
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>Alignment</FieldLabel>
-      <div className={`grid grid-cols-3 gap-px rounded overflow-hidden w-full p-0.5 ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`}>
+      <div className={`grid grid-cols-3 gap-px rounded overflow-hidden w-full p-0.5 ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-800"}`}>
         {Array.from({ length: 9 }).map((_, i) => {
           const r = Math.floor(i / 3)
           const c = i % 3
@@ -276,7 +276,7 @@ function AlignmentGrid({
               className={`h-6 w-6 flex items-center justify-center w-full ${
                 isActive
                   ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300 rounded"
-                  : "dark:bg-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700"
+                  : "rounded dark:text-white hover:bg-slate-200 dark:hover:bg-slate-600"
               }`}
               onMouseEnter={() => setHoveredCell({ row: r, col: c })}
               onMouseLeave={() => setHoveredCell(null)}
@@ -525,7 +525,7 @@ export default function StyleEditor({
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
             <FieldLabel edited={editedProps.has("borderStyle")} onUndo={() => onUndo(index, ["borderStyle"])}>Position</FieldLabel>
-            <div className={`flex w-full rounded-lg ${editedProps.has("borderStyle") ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
+            <div className={`flex w-full rounded-lg ${editedProps.has("borderStyle") ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-800"}`} style={{ padding: "2px" }}>
               {[
                 { value: "inside", label: "Inside" },
                 { value: "outside", label: "Outside" }
@@ -538,7 +538,7 @@ export default function StyleEditor({
                     key={opt.value}
                     className={`flex-1 rounded-md py-1 text-xs transition-colors ${
                       isActive
-                        ? "bg-white font-bold text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
+                        ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
                         : "text-slate-600 dark:text-slate-300 dark:hover:text-white"
                     }`}
                     onClick={() => {

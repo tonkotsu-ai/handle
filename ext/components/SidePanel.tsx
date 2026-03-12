@@ -1,4 +1,4 @@
-import { Diff, GripHorizontal, MousePointer2, PencilLine } from "lucide-react"
+import { Diff, GripHorizontal, MessageSquare, MousePointer2, PencilLine } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { io, type Socket } from "socket.io-client"
 
@@ -191,6 +191,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
 
   const editsRef = useRef<Map<string, EditEntry>>(new Map())
   const hierarchyRef = useRef<HierarchyItem[]>(demo ? DEMO_HIERARCHY : [])
+  const styleRequestIdRef = useRef(0)
   const socketRef = useRef<Socket | null>(null)
   const callbackRef = useRef<((response: { content: string }) => void) | null>(
     null
@@ -528,13 +529,14 @@ function SidePanel({ demo = false }: SidePanelProps) {
           index
         })
       }
+      const reqId = ++styleRequestIdRef.current
       const result = demo
         ? DEMO_STYLES[index] ?? null
         : await chrome.tabs.sendMessage(tabId!, {
             type: "get-styles",
             index
           })
-      if (result) {
+      if (result && reqId === styleRequestIdRef.current) {
         setSelectedStyles(result as StyleData)
       }
     },
@@ -677,10 +679,12 @@ function SidePanel({ demo = false }: SidePanelProps) {
             type: "highlight-element",
             index: 0
           })
+          const reqId = ++styleRequestIdRef.current
           chrome.tabs
             .sendMessage(tabId!, { type: "get-styles", index: 0 })
             .then((result) => {
-              if (result) setSelectedStyles(result as StyleData)
+              if (result && reqId === styleRequestIdRef.current)
+                setSelectedStyles(result as StyleData)
             })
         } else {
           setSelectedIndex(null)
@@ -847,6 +851,14 @@ function SidePanel({ demo = false }: SidePanelProps) {
               )}
             </button>
           </div>
+          <a
+            href="https://gethandle.design/feedback"
+            target="_blank"
+            rel="noreferrer"
+            title="Share feedback on this extension"
+            className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white transition-colors shrink-0">
+            <MessageSquare size={14} />
+          </a>
         </div>
       </div>
 

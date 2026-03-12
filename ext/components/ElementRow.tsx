@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react"
+
 import { ChevronRight, Puzzle } from "lucide-react"
 
 import type { HierarchyItem } from "~types"
@@ -29,8 +31,17 @@ export default function ElementRow({
   onMouseEnter,
   onMouseLeave
 }: ElementRowProps) {
+  const rowRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (isSelected) {
+      rowRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+    }
+  }, [isSelected])
+
   return (
     <div
+      ref={rowRef}
       className={`flex items-center gap-1 px-2 py-1 cursor-pointer rounded ${
         isSelected
           ? "bg-electricblue-100 dark:bg-electricblue-900/40"
@@ -83,7 +94,7 @@ export default function ElementRow({
               </span>
             )}
             {(() => {
-              const last = item.selectorPath?.split(" > ").pop() || ""
+              const last = item.selectorPath?.split(" > ").shift() || ""
               const m = last.match(/:nth-child\((\d+)\)/)
               return m ? (
                 <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-0.5">
