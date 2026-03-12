@@ -7,7 +7,9 @@ export enum AnalyticEvent {
   ChangesSent = "handle_changes_sent",
   ChangesCopied = "handle_changes_copied",
   PageRefreshed = "handle_page_refreshed",
-  TabSwitched = "handle_tab_switched"
+  TabSwitched = "handle_tab_switched",
+  SelectionModeToggled = "handle_selection_mode_toggled",
+  ChangesCancelled = "handle_changes_cancelled",
 }
 
 let client: StatsigClient | null = null

@@ -413,6 +413,8 @@ function SidePanel({ demo = false }: SidePanelProps) {
     } else if (socketRef.current?.connected) {
       socketRef.current.emit("design_feedback", { content })
     }
+
+    logEvent(AnalyticEvent.ChangesCancelled)
   }, [])
 
   const handleSend = useCallback(() => {
@@ -809,7 +811,11 @@ function SidePanel({ demo = false }: SidePanelProps) {
       <div className="shrink-0 bg-softgray dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700" style={{ padding: "8px 32px" }}>
         <div className="flex items-center gap-2 w-full">
           <button
-            onClick={() => setSelectionMode((m) => !m)}
+            onClick={() => {
+              const next = !selectionMode
+              setSelectionMode(next)
+              logEvent(AnalyticEvent.SelectionModeToggled, next ? "on" : "off")
+            }}
             title={selectionMode ? "Turn off selection mode" : "Turn on selection mode to select an element from the page"}
             className={`shrink-0 flex items-center justify-center rounded-md p-1.5 transition-colors ${
               selectionMode
