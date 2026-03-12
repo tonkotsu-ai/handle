@@ -165,7 +165,7 @@ function FlowControls({
             className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
               flowMode === f.mode
                 ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
-                : "text-slate-600 dark:text-slate-300 dark:hover:text-white"
+                : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
             }`}
             onClick={() => {
               const display = styles.display || "block"
@@ -539,7 +539,7 @@ export default function StyleEditor({
                     className={`flex-1 rounded-md py-1 text-xs transition-colors ${
                       isActive
                         ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
-                        : "text-slate-600 dark:text-slate-300 dark:hover:text-white"
+                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
                     }`}
                     onClick={() => {
                       if (opt.value === "outside") {
