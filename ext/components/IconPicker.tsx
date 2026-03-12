@@ -1,4 +1,4 @@
-import { icons } from "lucide-react"
+import { icons, Search } from "lucide-react"
 import { createElement, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { renderToStaticMarkup } from "react-dom/server"
@@ -113,21 +113,24 @@ export default function IconPicker({ currentIcon, onSelect }: IconPickerProps) {
           setOpen(!open)
           setSearch("")
         }}
-        className="flex items-center gap-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 w-full">
+        className="flex items-center gap-2 rounded bg-white dark:bg-slate-800 px-2 py-1.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 w-full">
         {CurrentIconComponent && createElement(CurrentIconComponent, { size: 14 })}
         <span className="truncate text-slate-600 dark:text-slate-300">{currentIcon}</span>
       </button>
       {open && (() => {
         const searchInput = (
           <div className={`p-2 ${above ? "border-t" : "border-b"} border-slate-200 dark:border-slate-700`}>
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Search icons..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs outline-none focus:border-electricblue-500"
-            />
+            <div className="flex items-center gap-1.5 px-2 py-1">
+              <Search size={12} className="shrink-0 text-slate-400" />
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Search icons..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-transparent text-xs outline-none"
+              />
+            </div>
           </div>
         )
         return createPortal(
