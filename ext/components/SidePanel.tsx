@@ -16,6 +16,21 @@ import StyleEditor from "./StyleEditor"
 const DISCOVERY_URL = "http://localhost:58932/api/sessions"
 const POLL_INTERVAL = 3000
 
+/** Fallback clipboard write using a temporary textarea + execCommand("copy").
+ *  Works even when the sidepanel document doesn't have focus (e.g. during
+ *  page navigation) where navigator.clipboard.writeText would reject. */
+function execCopy(text: string) {
+  const ta = document.createElement("textarea")
+  ta.value = text
+  ta.style.position = "fixed"
+  ta.style.opacity = "0"
+  document.body.appendChild(ta)
+  ta.focus()
+  ta.select()
+  document.execCommand("copy")
+  document.body.removeChild(ta)
+}
+
 // Demo hierarchy is stored innermost-first (same order as content script),
 // but rendered root-first via reversal in the tree panel.
 const DEMO_HIERARCHY: HierarchyItem[] = [
@@ -396,9 +411,19 @@ function SidePanel({ demo = false }: SidePanelProps) {
     return lines.join("\n")
   }
 
+  const copyToClipboard = useCallback((text: string) => {
+    if (document.hasFocus()) {
+      navigator.clipboard.writeText(text).catch(() => {
+        execCopy(text)
+      })
+    } else {
+      execCopy(text)
+    }
+  }, [])
+
   const handleCopy = useCallback(() => {
     const content = generateFeedbackDescription()
-    navigator.clipboard.writeText(content)
+    copyToClipboard(content)
     logEvent(AnalyticEvent.ChangesCopied, undefined, {
       changeCount: String(changeCount)
     })
@@ -697,7 +722,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
         // Copy queued changes to clipboard before clearing
         const content = generateFeedbackDescription()
         if (content !== "No feedback given") {
-          navigator.clipboard.writeText(content).catch(() => {})
+          copyToClipboard(content)
           let count = 0
           for (const [, entry] of editsRef.current) {
             for (const [, { original, current }] of entry.props) {
