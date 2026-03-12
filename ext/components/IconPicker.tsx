@@ -113,7 +113,7 @@ export default function IconPicker({ currentIcon, onSelect }: IconPickerProps) {
           setOpen(!open)
           setSearch("")
         }}
-        className="flex items-center gap-2 rounded bg-white dark:bg-slate-800 px-2 py-1.5 text-xs hover:bg-slate-50 dark:hover:bg-slate-700 w-full">
+        className="flex items-center gap-2 rounded border-0 px-2 py-1.5 text-xs w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700">
         {CurrentIconComponent && createElement(CurrentIconComponent, { size: 14 })}
         <span className="truncate text-slate-600 dark:text-slate-300">{currentIcon}</span>
       </button>
