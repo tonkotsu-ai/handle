@@ -191,6 +191,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
 
   const editsRef = useRef<Map<string, EditEntry>>(new Map())
   const hierarchyRef = useRef<HierarchyItem[]>(demo ? DEMO_HIERARCHY : [])
+  const styleRequestIdRef = useRef(0)
   const socketRef = useRef<Socket | null>(null)
   const callbackRef = useRef<((response: { content: string }) => void) | null>(
     null
@@ -528,13 +529,14 @@ function SidePanel({ demo = false }: SidePanelProps) {
           index
         })
       }
+      const reqId = ++styleRequestIdRef.current
       const result = demo
         ? DEMO_STYLES[index] ?? null
         : await chrome.tabs.sendMessage(tabId!, {
             type: "get-styles",
             index
           })
-      if (result) {
+      if (result && reqId === styleRequestIdRef.current) {
         setSelectedStyles(result as StyleData)
       }
     },
@@ -677,10 +679,12 @@ function SidePanel({ demo = false }: SidePanelProps) {
             type: "highlight-element",
             index: 0
           })
+          const reqId = ++styleRequestIdRef.current
           chrome.tabs
             .sendMessage(tabId!, { type: "get-styles", index: 0 })
             .then((result) => {
-              if (result) setSelectedStyles(result as StyleData)
+              if (result && reqId === styleRequestIdRef.current)
+                setSelectedStyles(result as StyleData)
             })
         } else {
           setSelectedIndex(null)
