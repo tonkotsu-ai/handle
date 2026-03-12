@@ -10,6 +10,9 @@ const MCP_ENTRY = {
   args: ["-y", "handle-design"],
 }
 
+const HANDLE_COMMAND = `Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes.
+`
+
 export interface AgentConfig {
   id: string
   name: string
@@ -89,8 +92,19 @@ export function getAgents(): AgentConfig[] {
       name: "Claude Code",
       configPath: join(home, ".claude.json"),
       detect: () => exists(join(home, ".claude.json")),
-      configure: () =>
-        mergeConfig(join(home, ".claude.json"), SERVER_NAME, MCP_ENTRY),
+      configure: async () => {
+        const result = await mergeConfig(
+          join(home, ".claude.json"),
+          SERVER_NAME,
+          MCP_ENTRY
+        )
+        // Also install /handle slash command
+        const cmdDir = join(home, ".claude", "commands")
+        const cmdPath = join(cmdDir, "handle.md")
+        await mkdir(cmdDir, { recursive: true })
+        await writeFile(cmdPath, HANDLE_COMMAND)
+        return result
+      },
     },
     {
       id: "cursor",
