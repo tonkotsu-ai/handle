@@ -276,7 +276,7 @@ function AlignmentGrid({
               className={`h-6 w-6 flex items-center justify-center w-full ${
                 isActive
                   ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300 rounded"
-                  : "dark:bg-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700"
+                  : "rounded dark:text-white hover:bg-slate-200 dark:hover:bg-slate-600"
               }`}
               onMouseEnter={() => setHoveredCell({ row: r, col: c })}
               onMouseLeave={() => setHoveredCell(null)}
