@@ -4,6 +4,8 @@ import { createServer } from "http"
 import { Server as SocketIOServer } from "socket.io"
 import { nanoid } from "nanoid"
 import { z } from "zod"
+import { exec } from "child_process"
+import { platform } from "os"
 import {
   appendFile,
   mkdir,
@@ -151,6 +153,20 @@ discoveryServer
     )
   })
 
+function openChrome() {
+  const os = platform()
+  const cmd =
+    os === "darwin"
+      ? 'open -a "Google Chrome"'
+      : os === "win32"
+        ? "start chrome"
+        : "xdg-open http://localhost"
+  exec(cmd, (err) => {
+    if (err) console.error(`[chrome] failed to open: ${err.message}`)
+    else console.error("[chrome] brought to foreground")
+  })
+}
+
 // MCP server setup
 const mcp = new McpServer({
   name: "handle",
@@ -175,6 +191,8 @@ mcp.tool(
       ),
   },
   async ({ agent_name: agentName, repo: toolRepo, context }, extra) => {
+    openChrome()
+
     const id = nanoid()
     log({
       event: "tool_call",
