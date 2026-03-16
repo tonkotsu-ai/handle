@@ -4,14 +4,19 @@ import { io, type Socket } from "socket.io-client"
 
 import "~style.css"
 
-import type { EditEntry, HierarchyItem, SessionInfo, StyleData } from "~types"
+import {
+  ElementRow,
+  StyleEditor,
+  getIconSvgChildren,
+  useEditTracker,
+} from "@anthropic-ai/handle-shared"
+import type { ElementId, ElementMeta } from "@anthropic-ai/handle-shared"
+
+import type { HierarchyItem, SessionInfo, StyleData } from "~types"
 
 import { AnalyticEvent, initStatsig, logEvent } from "~lib/statsig"
 
-import ElementRow from "./ElementRow"
-import { getIconSvgChildren } from "./IconPicker"
 import SendBar from "./SendBar"
-import StyleEditor from "./StyleEditor"
 
 const DISCOVERY_URL = "http://localhost:58932/api/sessions"
 const POLL_INTERVAL = 3000
@@ -186,7 +191,6 @@ function SidePanel({ demo = false }: SidePanelProps) {
   const [tabId, setTabId] = useState<number | null>(() =>
     demo ? null : getTabIdFromLocation()
   )
-  const [changeCount, setChangeCount] = useState(0)
   const [selectionMode, setSelectionMode] = useState(true)
   const [selectionKey, setSelectionKey] = useState(0)
   const [availableSessions, setAvailableSessions] = useState<SessionInfo[]>([])
@@ -202,9 +206,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
   const [pageTokens, setPageTokens] = useState<
     Array<{ name: string; value: string }>
   >([])
+  const [pageColors, setPageColors] = useState<string[]>([])
   const [toast, setToast] = useState<string | null>(null)
 
-  const editsRef = useRef<Map<string, EditEntry>>(new Map())
   const hierarchyRef = useRef<HierarchyItem[]>(demo ? DEMO_HIERARCHY : [])
   const styleRequestIdRef = useRef(0)
   const socketRef = useRef<Socket | null>(null)
@@ -212,6 +216,61 @@ function SidePanel({ demo = false }: SidePanelProps) {
     null
   )
   const [agentName, setAgentName] = useState<string | null>(null)
+
+  // Shared edit tracking hook
+  const {
+    editsRef,
+    changeCount,
+    recordEdit,
+    recomputeChangeCount,
+    hasEditsForElement,
+    getEditedPropsForElement,
+    generateFeedbackDescription,
+    resetEdits,
+  } = useEditTracker({
+    resolvePath: (elementId: ElementId) => {
+      const index = elementId as number
+      return hierarchyRef.current[index]?.selectorPath
+    },
+    resolveElementMeta: (elementId: ElementId): ElementMeta => {
+      const index = elementId as number
+      const item = hierarchyRef.current[index]
+      const selector = item
+        ? `${item.tag}${item.id}${item.classes}`
+        : `element[${index}]`
+      let component: string | null = null
+      let componentPath: string | null = null
+      if (item?.component) {
+        component = item.component
+      } else {
+        for (let i = index + 1; i < hierarchyRef.current.length; i++) {
+          if (hierarchyRef.current[i]?.component) {
+            component = hierarchyRef.current[i].component
+            break
+          }
+        }
+      }
+      {
+        const parts: string[] = []
+        const hier = hierarchyRef.current
+        const stopIdx = item?.component
+          ? index
+          : (() => {
+              for (let i = index + 1; i < hier.length; i++) {
+                if (hier[i]?.component) return i
+              }
+              return hier.length - 1
+            })()
+        for (let i = hier.length - 1; i >= stopIdx; i--) {
+          const h = hier[i]
+          if (!h) continue
+          parts.push(h.component || `${h.tag}${h.id}${h.classes}`)
+        }
+        componentPath = parts.join(" > ")
+      }
+      return { selector, component, componentPath }
+    },
+  })
 
   // Initialize Statsig analytics
   useEffect(() => {
@@ -255,13 +314,19 @@ function SidePanel({ demo = false }: SidePanelProps) {
     return () => logEvent(AnalyticEvent.SidepanelClosed)
   }, [demo, tabId])
 
-  // Fetch page tokens once for color picker display
+  // Fetch page tokens and colors once for color picker display
   useEffect(() => {
     if (demo || tabId == null) return
     chrome.tabs
       .sendMessage(tabId, { type: "get-page-tokens" })
       .then((tokens) => {
         if (Array.isArray(tokens)) setPageTokens(tokens)
+      })
+      .catch(() => {})
+    chrome.tabs
+      .sendMessage(tabId, { type: "get-page-colors" })
+      .then((colors) => {
+        if (Array.isArray(colors)) setPageColors(colors)
       })
       .catch(() => {})
   }, [demo, tabId])
@@ -272,144 +337,6 @@ function SidePanel({ demo = false }: SidePanelProps) {
     const port = chrome.runtime.connect({ name: `sidepanel:${tabId}` })
     return () => port.disconnect()
   }, [demo, tabId])
-
-  // Compute change count from edits — also bumps a revision to ensure re-render
-  const [editRevision, setEditRevision] = useState(0)
-  function recomputeChangeCount() {
-    let count = 0
-    for (const [, entry] of editsRef.current) {
-      for (const [, { original, current }] of entry.props) {
-        if (original !== current) count++
-      }
-    }
-    setChangeCount(count)
-    setEditRevision((r) => r + 1)
-  }
-
-  function hasEditsForElement(index: number) {
-    const path = hierarchyRef.current[index]?.selectorPath
-    if (!path) return false
-    const entry = editsRef.current.get(path)
-    if (!entry) return false
-    for (const [, { original, current }] of entry.props) {
-      if (original !== current) return true
-    }
-    return false
-  }
-
-  function getEditedPropsForElement(
-    index: number
-  ): Map<string, { original: string; current: string }> {
-    const path = hierarchyRef.current[index]?.selectorPath
-    if (!path) return new Map()
-    const entry = editsRef.current.get(path)
-    if (!entry) return new Map()
-    const result = new Map<string, { original: string; current: string }>()
-    for (const [prop, { original, current }] of entry.props) {
-      if (original !== current) result.set(prop, { original, current })
-    }
-    return result
-  }
-
-  function recordEdit(
-    index: number,
-    prop: string,
-    originalValue: string,
-    newValue: string
-  ) {
-    const item = hierarchyRef.current[index]
-    const path = item?.selectorPath || `element[${index}]`
-    if (!editsRef.current.has(path)) {
-      const selector = item
-        ? `${item.tag}${item.id}${item.classes}`
-        : `element[${index}]`
-      let component: string | null = null
-      let componentPath: string | null = null
-      if (item?.component) {
-        component = item.component
-      } else {
-        for (let i = index + 1; i < hierarchyRef.current.length; i++) {
-          if (hierarchyRef.current[i]?.component) {
-            component = hierarchyRef.current[i].component
-            break
-          }
-        }
-      }
-      // Build path from body to the owning component, using component
-      // names where available and tag+id+classes for plain DOM elements
-      {
-        const parts: string[] = []
-        const hier = hierarchyRef.current
-        // hierarchy is innermost-first; walk from outermost (end) down
-        // stop at the component owner (or the element itself if it is one)
-        const stopIdx = item?.component
-          ? index
-          : (() => {
-              for (let i = index + 1; i < hier.length; i++) {
-                if (hier[i]?.component) return i
-              }
-              return hier.length - 1
-            })()
-        for (let i = hier.length - 1; i >= stopIdx; i--) {
-          const h = hier[i]
-          if (!h) continue
-          parts.push(h.component || `${h.tag}${h.id}${h.classes}`)
-        }
-        componentPath = parts.join(" > ")
-      }
-      editsRef.current.set(path, {
-        selector,
-        component,
-        componentPath,
-        props: new Map()
-      })
-    }
-    const entry = editsRef.current.get(path)!
-    if (!entry.props.has(prop)) {
-      entry.props.set(prop, { original: originalValue, current: newValue })
-    } else {
-      entry.props.get(prop)!.current = newValue
-    }
-  }
-
-  function generateFeedbackDescription() {
-    const byComponent = new Map<
-      string,
-      {
-        selectorPath: string
-        changes: { prop: string; from: string; to: string }[]
-      }[]
-    >()
-    for (const [selectorPath, entry] of editsRef.current) {
-      const changedProps: { prop: string; from: string; to: string }[] = []
-      for (const [prop, { original, current }] of entry.props) {
-        if (original !== current) {
-          changedProps.push({ prop, from: original, to: current })
-        }
-      }
-      if (changedProps.length === 0) continue
-      const key = entry.component || "(no component)"
-      if (!byComponent.has(key)) byComponent.set(key, [])
-      byComponent.get(key)!.push({ selectorPath, changes: changedProps })
-    }
-
-    if (byComponent.size === 0) return "No feedback given"
-
-    const lines: string[] = []
-    for (const [component, elements] of byComponent) {
-      lines.push(
-        `In ${component === "(no component)" ? "unowned elements" : component}:`
-      )
-      for (const { selectorPath, changes } of elements) {
-        for (const { prop, from, to } of changes) {
-          lines.push(
-            `  - On ${selectorPath}: change ${prop} from "${from}" to "${to}"`
-          )
-        }
-      }
-    }
-    return lines.join("\n")
-  }
 
   const copyToClipboard = useCallback((text: string) => {
     if (document.hasFocus()) {
@@ -458,15 +385,13 @@ function SidePanel({ demo = false }: SidePanelProps) {
       changeCount: String(changeCount)
     })
 
-    // Reset edits but keep design mode on and preserve hierarchy
-    editsRef.current = new Map()
-    setChangeCount(0)
-    setEditRevision((r) => r + 1)
+    resetEdits()
   }, [changeCount, selectedSession])
 
   const handleStyleEdit = useCallback(
-    (index: number, prop: string, original: string, value: string) => {
-      recordEdit(index, prop, original, value)
+    (elementId: ElementId, prop: string, original: string, value: string) => {
+      const index = elementId as number
+      recordEdit(elementId, prop, original, value)
       if (!demo && tabId) {
         if (prop === "lucideIcon") {
           const svgChildren = getIconSvgChildren(value)
@@ -491,8 +416,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
   )
 
   const handleTextEdit = useCallback(
-    (index: number, original: string, value: string) => {
-      recordEdit(index, "textContent", original, value)
+    (elementId: ElementId, original: string, value: string) => {
+      const index = elementId as number
+      recordEdit(elementId, "textContent", original, value)
       if (!demo && tabId) {
         chrome.tabs.sendMessage(tabId, { type: "set-text", index, value })
       }
@@ -502,7 +428,8 @@ function SidePanel({ demo = false }: SidePanelProps) {
   )
 
   const handleUndo = useCallback(
-    (index: number, props: string[]) => {
+    (elementId: ElementId, props: string[]) => {
+      const index = elementId as number
       const path = hierarchyRef.current[index]?.selectorPath
       if (!path) return
       const entry = editsRef.current.get(path)
@@ -738,20 +665,24 @@ function SidePanel({ demo = false }: SidePanelProps) {
           setTimeout(() => setToast(null), 4000)
         }
         // Clear all queued changes and reset UI state
-        editsRef.current = new Map()
-        setChangeCount(0)
-        setEditRevision((r) => r + 1)
+        resetEdits()
         hierarchyRef.current = []
         setHierarchy([])
         setSelectedIndex(null)
         setSelectedStyles(null)
         setCollapsedNodes(new Set())
         setSelectionMode(true)
-        // Re-fetch page tokens from the refreshed page
+        // Re-fetch page tokens and colors from the refreshed page
         chrome.tabs
           .sendMessage(tabId!, { type: "get-page-tokens" })
           .then((tokens) => {
             if (Array.isArray(tokens)) setPageTokens(tokens)
+          })
+          .catch(() => {})
+        chrome.tabs
+          .sendMessage(tabId!, { type: "get-page-colors" })
+          .then((colors) => {
+            if (Array.isArray(colors)) setPageColors(colors)
           })
           .catch(() => {})
       } else if (message.type === "spa-navigation") {
@@ -935,14 +866,14 @@ function SidePanel({ demo = false }: SidePanelProps) {
                     <ElementRow
                       key={`${selectionKey}-${index}`}
                       item={item}
-                      index={index}
+                      elementId={index}
                       depth={depth}
                       isLeaf={isLeaf}
                       isExpanded={isExpanded}
                       isEdited={hasEditsForElement(index)}
                       isSelected={selectedIndex === index}
-                      onSelect={handleSelect}
-                      onToggleExpand={handleToggleExpand}
+                      onSelect={(id) => handleSelect(id as number)}
+                      onToggleExpand={(id) => handleToggleExpand(id as number)}
                       onMouseEnter={() => handleMouseEnter(index)}
                       onMouseLeave={handleMouseLeave}
                     />
@@ -975,7 +906,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
                 <StyleEditor
                   key={`${selectionKey}-${selectedIndex}`}
                   styles={selectedStyles}
-                  index={selectedIndex}
+                  elementId={selectedIndex}
                   editedProps={getEditedPropsForElement(selectedIndex)}
                   lucideIconName={
                     selectedItem?.classes.includes(".lucide")
@@ -984,8 +915,8 @@ function SidePanel({ demo = false }: SidePanelProps) {
                         )?.[1] ?? null)
                       : null
                   }
-                  tabId={tabId}
                   pageTokens={pageTokens}
+                  pageColors={pageColors}
                   onStyleEdit={handleStyleEdit}
                   onTextEdit={handleTextEdit}
                   onUndo={handleUndo}
@@ -1032,8 +963,6 @@ function SidePanel({ demo = false }: SidePanelProps) {
                             (h) => h.selectorPath === el.selectorPath
                           )
                           if (idx !== -1) {
-                            // Element is in the current hierarchy — select directly
-                            // Inline instead of handleSelect to avoid stale selectedIndex closure
                             setSelectedIndex(idx)
                             setSelectedStyles(null)
                             chrome.tabs.sendMessage(tabId, {
@@ -1050,8 +979,6 @@ function SidePanel({ demo = false }: SidePanelProps) {
                                   setSelectedStyles(result as StyleData)
                               })
                           } else {
-                            // Element not in current hierarchy — re-select on the page
-                            // (triggers element-hierarchy which auto-selects index 0)
                             chrome.tabs.sendMessage(tabId, {
                               type: "select-by-selector",
                               selectorPath: el.selectorPath

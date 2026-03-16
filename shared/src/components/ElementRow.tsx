@@ -1,26 +1,25 @@
 import { useEffect, useRef } from "react"
-
 import { ChevronRight, Puzzle } from "lucide-react"
 
-import type { HierarchyItem } from "~types"
+import type { ElementId, ElementItem } from "../types"
 
-interface ElementRowProps {
-  item: HierarchyItem
-  index: number
+export interface ElementRowProps {
+  item: ElementItem
+  elementId: ElementId
   depth: number
   isLeaf: boolean
   isExpanded: boolean
   isEdited: boolean
   isSelected: boolean
-  onSelect: (index: number) => void
-  onToggleExpand: (index: number) => void
+  onSelect: (elementId: ElementId) => void
+  onToggleExpand: (elementId: ElementId) => void
   onMouseEnter?: () => void
   onMouseLeave?: () => void
 }
 
 export default function ElementRow({
   item,
-  index,
+  elementId,
   depth,
   isLeaf,
   isExpanded,
@@ -48,7 +47,7 @@ export default function ElementRow({
           : "hover:bg-slate-100 dark:hover:bg-slate-800"
       }`}
       style={{ paddingLeft: `${8 + depth * 12}px` }}
-      onClick={() => onSelect(index)}
+      onClick={() => onSelect(elementId)}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}>
       {isLeaf ? (
@@ -58,7 +57,7 @@ export default function ElementRow({
           className="shrink-0 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
           onClick={(e) => {
             e.stopPropagation()
-            onToggleExpand(index)
+            onToggleExpand(elementId)
           }}>
           <ChevronRight
             size={12}
@@ -72,12 +71,12 @@ export default function ElementRow({
       {item.component && (
         <Puzzle
           size={13}
-          className="shrink-0 dark:text-electricblue-400"
+          className="shrink-0 text-electricblue-500 dark:text-electricblue-400"
         />
       )}
       <div className="flex items-center gap-0.5 font-sans text-xs truncate min-w-0">
         {item.component ? (
-          <span className="font-bold dark:text-electricblue-400 truncate">
+          <span className="font-bold text-electricblue-500 dark:text-electricblue-400 truncate">
             {item.component}
           </span>
         ) : (
@@ -93,16 +92,12 @@ export default function ElementRow({
                 {item.classes}
               </span>
             )}
-            {(() => {
-              const last = item.selectorPath?.split(" > ").shift() || ""
-              const m = last.match(/:nth-child\((\d+)\)/)
-              return m ? (
-                <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-0.5">
-                  [{m[1]}]
-                </span>
-              ) : null
-            })()}
           </>
+        )}
+        {!isLeaf && !isExpanded && item.childCount != null && item.childCount > 0 && (
+          <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-0.5">
+            ({item.childCount})
+          </span>
         )}
       </div>
     </div>
