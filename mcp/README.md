@@ -28,7 +28,7 @@ Add this to your agent's MCP config:
   "mcpServers": {
     "handle": {
       "command": "npx",
-      "args": ["-y", "handle-design"]
+      "args": ["-y", "handle-design@latest"]
     }
   }
 }

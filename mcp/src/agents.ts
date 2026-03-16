@@ -7,7 +7,7 @@ const SERVER_NAME = "handle"
 
 const MCP_ENTRY = {
   command: "npx",
-  args: ["-y", "handle-design"],
+  args: ["-y", "handle-design@latest"],
 }
 
 const HANDLE_COMMAND = `Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes.
