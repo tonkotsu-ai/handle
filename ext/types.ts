@@ -7,6 +7,8 @@ export interface HierarchyItem {
   classes: string
   component: string | null
   selectorPath: string
+  hidden?: boolean
+  hiddenSiblings?: HierarchyItem[]
 }
 
 export interface SessionInfo {

@@ -1,6 +1,6 @@
 import type { PlasmoCSConfig } from "plasmo"
 
-import { visibleElementAtPoint } from "@handle-ai/handle-shared"
+import { isElementVisible, visibleElementAtPoint } from "@handle-ai/handle-shared"
 
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"],
@@ -64,24 +64,71 @@ function buildSelectorSegment(el: HTMLElement): string {
   return `${base}:nth-child(${childIndex})`
 }
 
+function buildHierarchyItem(el: HTMLElement, parentSegments: string[]) {
+  const tag = el.tagName.toLowerCase()
+  const id = el.id ? `#${el.id}` : ""
+  const classes = el.classList.length
+    ? `.${[...el.classList].join(".")}`
+    : ""
+  const component = el.getAttribute("data-handle-component") || null
+  const segment = buildSelectorSegment(el)
+  const selectorPath = [...parentSegments, segment].reverse().join(" > ")
+  elementCache.set(selectorPath, el)
+  return { tag, id, classes, component, selectorPath }
+}
+
 function buildHierarchy(el: HTMLElement) {
   ancestors = []
-  const hierarchy = []
+  const hierarchy: Array<{
+    tag: string
+    id: string
+    classes: string
+    component: string | null
+    selectorPath: string
+    hidden?: boolean
+    hiddenSiblings?: Array<{
+      tag: string
+      id: string
+      classes: string
+      component: string | null
+      selectorPath: string
+      hidden: boolean
+    }>
+  }> = []
   const segments: string[] = []
   let current: HTMLElement | null = el
+  let isFirst = true
+  // Collect hidden sibling DOM elements to append after the main hierarchy
+  const hiddenSiblingEls: HTMLElement[] = []
   while (current && current !== document.documentElement) {
     ancestors.push(current)
-    const tag = current.tagName.toLowerCase()
-    const id = current.id ? `#${current.id}` : ""
-    const classes = current.classList.length
-      ? `.${[...current.classList].join(".")}`
-      : ""
-    const component = current.getAttribute("data-handle-component") || null
     segments.push(buildSelectorSegment(current))
-    const selectorPath = [...segments].reverse().join(" > ")
-    elementCache.set(selectorPath, current)
-    hierarchy.push({ tag, id, classes, component, selectorPath })
+    const item = buildHierarchyItem(current, [...segments])
+    // For the selected (innermost) element, find hidden siblings
+    if (isFirst && current.parentElement) {
+      isFirst = false
+      const hiddenSiblings: typeof hierarchy[number]["hiddenSiblings"] = []
+      const siblings = Array.from(current.parentElement.children) as HTMLElement[]
+      for (const sib of siblings) {
+        if (sib === current) continue
+        if (!isElementVisible(sib)) {
+          const sibSegments = [...segments.slice(0, -1), buildSelectorSegment(sib)]
+          const sibItem = buildHierarchyItem(sib, [...sibSegments])
+          hiddenSiblings.push({ ...sibItem, hidden: true })
+          hiddenSiblingEls.push(sib)
+        }
+      }
+      if (hiddenSiblings.length > 0) {
+        ;(item as any).hiddenSiblings = hiddenSiblings
+      }
+    }
+    hierarchy.push(item)
     current = current.parentElement
+  }
+  // Append hidden siblings after the main hierarchy so their indices
+  // match what SidePanel expects (hierarchy.length + si)
+  for (const sib of hiddenSiblingEls) {
+    ancestors.push(sib)
   }
   return hierarchy
 }

@@ -42,6 +42,7 @@ export interface ElementItem {
   component: string | null
   childCount?: number
   selectorPath?: string
+  hidden?: boolean
 }
 
 export interface TokenEntry {
