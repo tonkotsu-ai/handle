@@ -1,5 +1,7 @@
 import type { PlasmoCSConfig } from "plasmo"
 
+import { visibleElementAtPoint } from "@handle-ai/handle-shared"
+
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"],
   run_at: "document_idle"
@@ -124,7 +126,7 @@ function getStyles(index: number) {
 
 function onMouseOver(e: MouseEvent) {
   if (hoveredEl) hoveredEl.style.outline = ""
-  hoveredEl = e.target as HTMLElement
+  hoveredEl = visibleElementAtPoint(e.clientX, e.clientY, e.target as HTMLElement, overlay)
   hoveredEl.style.outline = "2px solid #4A90D9"
 }
 
@@ -137,7 +139,7 @@ function onClick(e: MouseEvent) {
   e.stopPropagation()
   if (hoveredEl) hoveredEl.style.outline = ""
   hoveredEl = null
-  const target = e.target as HTMLElement
+  const target = visibleElementAtPoint(e.clientX, e.clientY, e.target as HTMLElement, overlay)
   target.setAttribute("data-handle-target", "")
   chrome.runtime.sendMessage({ type: "annotate-react" })
   pendingTarget = target
