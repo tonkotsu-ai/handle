@@ -1,10 +1,10 @@
 {
-  "name": "handle-design",
+  "name": "handle-ext",
   "version": "1.0.0",
   "description": "Design feedback bridge between Handle's Chrome extension and AI coding agents via MCP",
   "type": "module",
   "bin": {
-    "handle-design": "dist/index.js"
+    "handle-ext": "dist/index.js"
   },
   "files": [
     "dist"
