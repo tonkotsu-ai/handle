@@ -8,25 +8,21 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 
+import type { TokenEntry } from "../types"
 import {
   formatColor,
   getOpacity,
   normalizeToHex,
   parseColor,
   withOpacity,
-} from "~utils/color"
+} from "../utils/color"
 
-interface ColorPickerProps {
+export interface ColorPickerProps {
   value: string
-  tabId: number | null
+  pageColors?: string[]
   tokens?: TokenEntry[]
   edited?: boolean
   onChange: (val: string) => void
-}
-
-interface TokenEntry {
-  name: string
-  value: string
 }
 
 function highlightMatch(text: string, query: string) {
@@ -93,9 +89,7 @@ function CustomTab({
   onChange: (val: string) => void
 }) {
   const parsed = parseColor(value)
-  const [colorFormat, setColorFormat] = useState<"hex" | "rgba">(
-    "hex"
-  )
+  const [colorFormat, setColorFormat] = useState<"hex" | "rgba">("hex")
   const displayValue = parsed
     ? formatColor(parsed, colorFormat)
     : value
@@ -110,7 +104,6 @@ function CustomTab({
 
   const currentHex = parsed ? normalizeToHex(value) : value
 
-  // Sync input when value prop changes
   useEffect(() => {
     const p = parseColor(value)
     if (p) {
@@ -142,7 +135,7 @@ function CustomTab({
 
   function handleKeyDown(
     e: React.KeyboardEvent,
-    commit: () => void
+    _commit: () => void
   ) {
     if (e.key === "Enter")
       (e.target as HTMLInputElement).blur()
@@ -159,7 +152,6 @@ function CustomTab({
 
   return (
     <div className="flex flex-col gap-3 p-3">
-      {/* Format row */}
       <div className="flex items-center gap-2">
         <div className="relative">
           <select
@@ -176,7 +168,6 @@ function CustomTab({
             className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-slate-400"
           />
         </div>
-        {/* Color + opacity segmented control */}
         <div className="flex flex-1 min-w-0 gap-px rounded-md overflow-hidden">
           <div className="flex flex-1 min-w-0 items-center gap-2 px-2 py-1.5 bg-slate-100 dark:bg-slate-600">
             <Swatch color={value} size={16} />
@@ -203,10 +194,8 @@ function CustomTab({
         </div>
       </div>
 
-      {/* Divider */}
       <hr className="-mx-3 border-slate-200 dark:border-slate-700" />
 
-      {/* Other colors on this page */}
       {normalizedPageColors.length > 0 && (
         <div className="flex flex-col gap-2">
           <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -324,28 +313,22 @@ function TokensTab({
 
 export default function ColorPicker({
   value,
-  tabId,
+  pageColors: pageColorsProp,
   tokens: tokensProp,
   edited,
   onChange,
 }: ColorPickerProps) {
   const [open, setOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<
-    "custom" | "tokens"
-  >("custom")
-  const [pageColors, setPageColors] = useState<string[]>([])
-  const [pageTokens, setPageTokens] = useState<TokenEntry[]>(
-    []
-  )
-  const [popupStyle, setPopupStyle] =
-    useState<React.CSSProperties>({})
+  const [activeTab, setActiveTab] = useState<"custom" | "tokens">("custom")
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({})
   const [above, setAbove] = useState(false)
 
   const buttonRef = useRef<HTMLButtonElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
 
   const displayHex = normalizeToHex(value)
-  const tokens = tokensProp ?? pageTokens
+  const tokens = tokensProp ?? []
+  const pageColors = pageColorsProp ?? []
 
   const matchingToken = useMemo(() => {
     if (tokens.length === 0) return null
@@ -355,7 +338,6 @@ export default function ColorPicker({
     ) ?? null
   }, [tokens, displayHex])
 
-  // Exclude colors that already appear in tokens
   const filteredPageColors = useMemo(() => {
     if (tokens.length === 0) return pageColors
     const tokenHexes = new Set(
@@ -366,39 +348,14 @@ export default function ColorPicker({
     )
   }, [pageColors, tokens])
 
-  // Fetch page colors and tokens when popup opens
-  useEffect(() => {
-    if (!open || tabId == null) return
-    chrome.tabs
-      .sendMessage(tabId, { type: "get-page-colors" })
-      .then((colors) => {
-        if (Array.isArray(colors)) setPageColors(colors)
-      })
-      .catch(() => {})
-    if (!tokensProp) {
-      chrome.tabs
-        .sendMessage(tabId, { type: "get-page-tokens" })
-        .then((t) => {
-          if (Array.isArray(t)) setPageTokens(t)
-        })
-        .catch(() => {})
-    }
-  }, [open, tabId, tokensProp])
-
-  // Position popup
   useLayoutEffect(() => {
     if (!open || !buttonRef.current) return
     const rect = buttonRef.current.getBoundingClientRect()
     const popupW = Math.max(rect.width, 280)
-    const spaceBelow =
-      window.innerHeight - rect.bottom - 12
+    const spaceBelow = window.innerHeight - rect.bottom - 12
     const spaceAbove = rect.top - 12
-    const showAbove =
-      spaceBelow < 260 && spaceAbove > spaceBelow
-    const maxH = Math.min(
-      400,
-      showAbove ? spaceAbove : spaceBelow
-    )
+    const showAbove = spaceBelow < 260 && spaceAbove > spaceBelow
+    const maxH = Math.min(400, showAbove ? spaceAbove : spaceBelow)
     setAbove(showAbove)
     const left = Math.max(
       0,
@@ -415,7 +372,6 @@ export default function ColorPicker({
     })
   }, [open])
 
-  // Click outside to close
   useEffect(() => {
     if (!open) return
     function handleClickOutside(e: MouseEvent) {
@@ -430,10 +386,7 @@ export default function ColorPicker({
     }
     document.addEventListener("mousedown", handleClickOutside)
     return () =>
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
-      )
+      document.removeEventListener("mousedown", handleClickOutside)
   }, [open])
 
   return (
@@ -464,7 +417,6 @@ export default function ColorPicker({
             ref={popupRef}
             className="z-50 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg flex flex-col overflow-hidden"
             style={popupStyle}>
-            {/* Tab bar */}
             <div className="p-1.5">
               <div className="flex w-full rounded-lg bg-slate-100 dark:bg-slate-700" style={{ padding: "2px" }}>
                 {(["custom", "tokens"] as const).map(
@@ -477,30 +429,23 @@ export default function ColorPicker({
                           ? "bg-white font-bold text-electricblue-700 shadow-sm dark:bg-slate-600 dark:text-electricblue-300"
                           : "text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                       }`}>
-                      {tab === "custom"
-                        ? "Custom"
-                        : "Tokens"}
+                      {tab === "custom" ? "Custom" : "Tokens"}
                     </button>
                   )
                 )}
               </div>
             </div>
-            {/* Tab content */}
             {activeTab === "custom" ? (
               <CustomTab
                 value={value}
                 pageColors={filteredPageColors}
-                onChange={(val) => {
-                  onChange(val)
-                }}
+                onChange={(val) => onChange(val)}
               />
             ) : (
               <TokensTab
                 value={value}
                 tokens={tokens}
-                onChange={(val) => {
-                  onChange(val)
-                }}
+                onChange={(val) => onChange(val)}
                 onClose={() => setOpen(false)}
               />
             )}

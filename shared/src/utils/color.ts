@@ -1,9 +1,4 @@
-export interface RGBA {
-  r: number // 0-255
-  g: number // 0-255
-  b: number // 0-255
-  a: number // 0-1
-}
+import type { RGBA } from "../types"
 
 let ctx: CanvasRenderingContext2D | null = null
 

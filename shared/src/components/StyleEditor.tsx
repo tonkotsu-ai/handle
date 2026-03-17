@@ -15,21 +15,21 @@ import {
 } from "lucide-react"
 import { useMemo, useState } from "react"
 
-import type { StyleData } from "~types"
+import type { ElementId, StyleData, TokenEntry } from "../types"
 
 import ColorPicker from "./ColorPicker"
 import IconPicker from "./IconPicker"
 
-interface StyleEditorProps {
+export interface StyleEditorProps {
   styles: StyleData
-  index: number
+  elementId: ElementId
   editedProps: Map<string, { original: string; current: string }>
   lucideIconName?: string | null
-  tabId: number | null
-  pageTokens?: Array<{ name: string; value: string }>
-  onStyleEdit: (index: number, prop: string, original: string, value: string) => void
-  onTextEdit: (index: number, original: string, value: string) => void
-  onUndo: (index: number, props: string[]) => void
+  pageTokens?: TokenEntry[]
+  pageColors?: string[]
+  onStyleEdit: (elementId: ElementId, prop: string, original: string, value: string) => void
+  onTextEdit: (elementId: ElementId, original: string, value: string) => void
+  onUndo: (elementId: ElementId, props: string[]) => void
 }
 
 function EditDot() {
@@ -133,7 +133,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function FlowControls({
   styles,
-  index,
+  elementId,
   flowMode,
   edited,
   onFlowChange,
@@ -141,7 +141,7 @@ function FlowControls({
   onUndo
 }: {
   styles: StyleData
-  index: number
+  elementId: ElementId
   flowMode: string | null
   edited: boolean
   onFlowChange: (mode: string | null) => void
@@ -170,15 +170,15 @@ function FlowControls({
             onClick={() => {
               const display = styles.display || "block"
               if (flowMode === f.mode) {
-                onStyleEdit(index, "display", display, "block")
-                onStyleEdit(index, "flexDirection", styles.flexDirection || "", "")
+                onStyleEdit(elementId, "display", display, "block")
+                onStyleEdit(elementId, "flexDirection", styles.flexDirection || "", "")
                 onFlowChange(null)
               } else if (f.mode === "grid") {
-                onStyleEdit(index, "display", display, "grid")
+                onStyleEdit(elementId, "display", display, "grid")
                 onFlowChange("grid")
               } else {
-                onStyleEdit(index, "display", display, "flex")
-                onStyleEdit(index, "flexDirection", styles.flexDirection || "", f.mode)
+                onStyleEdit(elementId, "display", display, "flex")
+                onStyleEdit(elementId, "flexDirection", styles.flexDirection || "", f.mode)
                 onFlowChange(f.mode)
               }
             }}>
@@ -192,7 +192,7 @@ function FlowControls({
 
 function AlignmentGrid({
   styles,
-  index,
+  elementId,
   flowMode,
   editedProps,
   edited,
@@ -201,7 +201,7 @@ function AlignmentGrid({
   onUndo
 }: {
   styles: StyleData
-  index: number
+  elementId: ElementId
   flowMode: string | null
   editedProps: Map<string, { original: string; current: string }>
   edited: boolean
@@ -284,9 +284,9 @@ function AlignmentGrid({
                 let mode = flowMode
                 if (!mode) {
                   const display = styles.display || "block"
-                  onStyleEdit(index, "display", display, "flex")
+                  onStyleEdit(elementId, "display", display, "flex")
                   onStyleEdit(
-                    index,
+                    elementId,
                     "flexDirection",
                     styles.flexDirection || "",
                     "row"
@@ -307,13 +307,13 @@ function AlignmentGrid({
                       ? "justifyContent"
                       : "alignItems"
                 onStyleEdit(
-                  index,
+                  elementId,
                   hProp,
                   styles[hProp] || "",
                   alignValues[c]
                 )
                 onStyleEdit(
-                  index,
+                  elementId,
                   vProp,
                   styles[vProp] || "",
                   alignValues[r]
@@ -338,14 +338,14 @@ function effective(editedProps: Map<string, { original: string; current: string 
 
 export default function StyleEditor({
   styles,
-  index,
+  elementId,
   editedProps,
   lucideIconName,
-  tabId,
   pageTokens,
+  pageColors,
   onStyleEdit,
   onTextEdit,
-  onUndo
+  onUndo,
 }: StyleEditorProps) {
   const display = styles.display || "block"
   const isFlex = display === "flex" || display === "inline-flex"
@@ -374,29 +374,29 @@ export default function StyleEditor({
         <SectionLabel>Layout</SectionLabel>
         <FlowControls
           styles={styles}
-          index={index}
+          elementId={elementId}
           flowMode={flowMode}
           edited={hasAny(editedProps, "display", "flexDirection")}
           onFlowChange={setFlowMode}
           onStyleEdit={onStyleEdit}
           onUndo={() => {
-            onUndo(index, ["display", "flexDirection"])
+            onUndo(elementId, ["display", "flexDirection"])
             setFlowMode(initialFlowMode)
           }}
         />
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
           <AlignmentGrid
             styles={styles}
-            index={index}
+            elementId={elementId}
             flowMode={flowMode}
             editedProps={editedProps}
             edited={hasAny(editedProps, "justifyContent", "alignItems", "justifyItems")}
             onFlowChange={setFlowMode}
             onStyleEdit={onStyleEdit}
-            onUndo={() => onUndo(index, ["justifyContent", "alignItems", "justifyItems"])}
+            onUndo={() => onUndo(elementId, ["justifyContent", "alignItems", "justifyItems"])}
           />
           <div className="flex flex-col gap-1">
-            <FieldLabel edited={editedProps.has("gap")} onUndo={() => onUndo(index, ["gap"])}>Gap</FieldLabel>
+            <FieldLabel edited={editedProps.has("gap")} onUndo={() => onUndo(elementId, ["gap"])}>Gap</FieldLabel>
             <NumericInput
               key={effective(editedProps, "gap", styles.gap || "")}
               icon={<AlignHorizontalSpaceBetween size={14} />}
@@ -405,14 +405,14 @@ export default function StyleEditor({
               onChange={(val) => {
                 const v = val.match(/\d/) ? val : "0"
                 const gapVal = v.match(/[a-z%]/) ? v : v + "px"
-                onStyleEdit(index, "gap", styles.gap || "", gapVal)
+                onStyleEdit(elementId, "gap", styles.gap || "", gapVal)
               }}
             />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
-            <FieldLabel edited={hasAny(editedProps, "paddingLeft", "paddingRight", "paddingTop", "paddingBottom")} onUndo={() => onUndo(index, ["paddingLeft", "paddingRight", "paddingTop", "paddingBottom"])}>Padding</FieldLabel>
+            <FieldLabel edited={hasAny(editedProps, "paddingLeft", "paddingRight", "paddingTop", "paddingBottom")} onUndo={() => onUndo(elementId, ["paddingLeft", "paddingRight", "paddingTop", "paddingBottom"])}>Padding</FieldLabel>
             <NumericInput
               key={effective(editedProps, "paddingLeft", padLeft + "px")}
               icon={<AlignHorizontalSpaceAround size={14} />}
@@ -420,8 +420,8 @@ export default function StyleEditor({
               value={parseInt(effective(editedProps, "paddingLeft", padLeft + "px")) || 0}
               onChange={(val) => {
                 const v = (parseInt(val) || 0) + "px"
-                onStyleEdit(index, "paddingLeft", padLeft + "px", v)
-                onStyleEdit(index, "paddingRight", padRight + "px", v)
+                onStyleEdit(elementId, "paddingLeft", padLeft + "px", v)
+                onStyleEdit(elementId, "paddingRight", padRight + "px", v)
               }}
             />
           </div>
@@ -434,8 +434,8 @@ export default function StyleEditor({
               value={parseInt(effective(editedProps, "paddingTop", padTop + "px")) || 0}
               onChange={(val) => {
                 const v = (parseInt(val) || 0) + "px"
-                onStyleEdit(index, "paddingTop", padTop + "px", v)
-                onStyleEdit(index, "paddingBottom", padBottom + "px", v)
+                onStyleEdit(elementId, "paddingTop", padTop + "px", v)
+                onStyleEdit(elementId, "paddingBottom", padBottom + "px", v)
               }}
             />
           </div>
@@ -449,19 +449,19 @@ export default function StyleEditor({
         <SectionLabel>Appearance</SectionLabel>
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
-            <FieldLabel edited={editedProps.has("opacity")} onUndo={() => onUndo(index, ["opacity"])}>Opacity</FieldLabel>
+            <FieldLabel edited={editedProps.has("opacity")} onUndo={() => onUndo(elementId, ["opacity"])}>Opacity</FieldLabel>
             <NumericInput
               key={effective(editedProps, "opacity", styles.opacity || "1")}
               icon={<Blend size={14} />}
               edited={editedProps.has("opacity")}
               value={effective(editedProps, "opacity", styles.opacity || "1")}
               onChange={(val) =>
-                onStyleEdit(index, "opacity", styles.opacity || "1", val)
+                onStyleEdit(elementId, "opacity", styles.opacity || "1", val)
               }
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel edited={editedProps.has("borderRadius")} onUndo={() => onUndo(index, ["borderRadius"])}>Corner Radius</FieldLabel>
+            <FieldLabel edited={editedProps.has("borderRadius")} onUndo={() => onUndo(elementId, ["borderRadius"])}>Corner Radius</FieldLabel>
             <NumericInput
               key={effective(editedProps, "borderRadius", styles.borderRadius || "0px")}
               icon={<Scan size={14} />}
@@ -469,7 +469,7 @@ export default function StyleEditor({
               value={parseInt(effective(editedProps, "borderRadius", styles.borderRadius || "0px")) || 0}
               onChange={(val) => {
                 const v = val.match(/[a-z%]/) ? val : val + "px"
-                onStyleEdit(index, "borderRadius", styles.borderRadius || "0px", v)
+                onStyleEdit(elementId, "borderRadius", styles.borderRadius || "0px", v)
               }}
             />
           </div>
@@ -482,15 +482,15 @@ export default function StyleEditor({
       <div className="flex flex-col gap-2">
         <SectionLabel>Fill</SectionLabel>
         <div className="flex flex-col gap-1">
-          <FieldLabel edited={editedProps.has("backgroundColor")} onUndo={() => onUndo(index, ["backgroundColor"])}>Color</FieldLabel>
+          <FieldLabel edited={editedProps.has("backgroundColor")} onUndo={() => onUndo(elementId, ["backgroundColor"])}>Color</FieldLabel>
           <ColorPicker
             value={effective(editedProps, "backgroundColor", styles.backgroundColor || "transparent")}
-            tabId={tabId}
             tokens={pageTokens}
+            pageColors={pageColors}
             edited={editedProps.has("backgroundColor")}
             onChange={(val) =>
               onStyleEdit(
-                index,
+                elementId,
                 "backgroundColor",
                 styles.backgroundColor || "transparent",
                 val
@@ -506,15 +506,15 @@ export default function StyleEditor({
       <div className="flex flex-col gap-2">
         <SectionLabel>Stroke</SectionLabel>
         <div className="flex flex-col gap-1">
-          <FieldLabel edited={editedProps.has("borderColor")} onUndo={() => onUndo(index, ["borderColor"])}>Color</FieldLabel>
+          <FieldLabel edited={editedProps.has("borderColor")} onUndo={() => onUndo(elementId, ["borderColor"])}>Color</FieldLabel>
           <ColorPicker
             value={effective(editedProps, "borderColor", styles.borderColor || "none")}
-            tabId={tabId}
             tokens={pageTokens}
+            pageColors={pageColors}
             edited={editedProps.has("borderColor")}
             onChange={(val) =>
               onStyleEdit(
-                index,
+                elementId,
                 "borderColor",
                 styles.borderColor || "none",
                 val
@@ -524,7 +524,7 @@ export default function StyleEditor({
         </div>
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
-            <FieldLabel edited={editedProps.has("borderStyle")} onUndo={() => onUndo(index, ["borderStyle"])}>Position</FieldLabel>
+            <FieldLabel edited={editedProps.has("borderStyle")} onUndo={() => onUndo(elementId, ["borderStyle"])}>Position</FieldLabel>
             <div className={`flex w-full rounded-lg ${editedProps.has("borderStyle") ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-800"}`} style={{ padding: "2px" }}>
               {[
                 { value: "inside", label: "Inside" },
@@ -543,9 +543,9 @@ export default function StyleEditor({
                     }`}
                     onClick={() => {
                       if (opt.value === "outside") {
-                        onStyleEdit(index, "borderStyle", styles.borderStyle || "none", "outline")
+                        onStyleEdit(elementId, "borderStyle", styles.borderStyle || "none", "outline")
                       } else {
-                        onStyleEdit(index, "borderStyle", styles.borderStyle || "none", "solid")
+                        onStyleEdit(elementId, "borderStyle", styles.borderStyle || "none", "solid")
                       }
                     }}>
                     {opt.label}
@@ -555,14 +555,14 @@ export default function StyleEditor({
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel edited={editedProps.has("borderWidth")} onUndo={() => onUndo(index, ["borderWidth"])}>Weight</FieldLabel>
+            <FieldLabel edited={editedProps.has("borderWidth")} onUndo={() => onUndo(elementId, ["borderWidth"])}>Weight</FieldLabel>
             <NumericInput
               key={effective(editedProps, "borderWidth", styles.borderWidth || "0px")}
               edited={editedProps.has("borderWidth")}
               value={parseInt(effective(editedProps, "borderWidth", styles.borderWidth || "0px")) || 0}
               onChange={(val) => {
                 const v = val.match(/[a-z%]/) ? val : val + "px"
-                onStyleEdit(index, "borderWidth", styles.borderWidth || "0px", v)
+                onStyleEdit(elementId, "borderWidth", styles.borderWidth || "0px", v)
               }}
             />
           </div>
@@ -575,53 +575,53 @@ export default function StyleEditor({
       <div className="flex flex-col gap-2">
         <SectionLabel>Typography</SectionLabel>
         <div className="flex flex-col gap-1">
-          <FieldLabel edited={editedProps.has("fontFamily")} onUndo={() => onUndo(index, ["fontFamily"])}>Font</FieldLabel>
+          <FieldLabel edited={editedProps.has("fontFamily")} onUndo={() => onUndo(elementId, ["fontFamily"])}>Font</FieldLabel>
           <FieldInput
             key={effective(editedProps, "fontFamily", styles.fontFamily || "")}
             edited={editedProps.has("fontFamily")}
             value={effective(editedProps, "fontFamily", styles.fontFamily || "")}
             onChange={(newVal) =>
-              onStyleEdit(index, "fontFamily", styles.fontFamily || "", newVal)
+              onStyleEdit(elementId, "fontFamily", styles.fontFamily || "", newVal)
             }
           />
         </div>
         <div className="flex flex-col gap-1">
           <FieldLabel
             edited={editedProps.has("color")}
-            onUndo={() => onUndo(index, ["color"])}
+            onUndo={() => onUndo(elementId, ["color"])}
           >
             Color
           </FieldLabel>
           <ColorPicker
             value={effective(editedProps, "color", styles.color || "transparent")}
-            tabId={tabId}
             tokens={pageTokens}
+            pageColors={pageColors}
             edited={editedProps.has("color")}
             onChange={(val) =>
-              onStyleEdit(index, "color", styles.color || "transparent", val)
+              onStyleEdit(elementId, "color", styles.color || "transparent", val)
             }
           />
         </div>
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
-            <FieldLabel edited={editedProps.has("fontWeight")} onUndo={() => onUndo(index, ["fontWeight"])}>Weight</FieldLabel>
+            <FieldLabel edited={editedProps.has("fontWeight")} onUndo={() => onUndo(elementId, ["fontWeight"])}>Weight</FieldLabel>
             <FieldInput
               key={effective(editedProps, "fontWeight", styles.fontWeight || "")}
               edited={editedProps.has("fontWeight")}
               value={effective(editedProps, "fontWeight", styles.fontWeight || "")}
               onChange={(newVal) =>
-                onStyleEdit(index, "fontWeight", styles.fontWeight || "", newVal)
+                onStyleEdit(elementId, "fontWeight", styles.fontWeight || "", newVal)
               }
             />
           </div>
           <div className="flex flex-col gap-1">
-            <FieldLabel edited={editedProps.has("fontSize")} onUndo={() => onUndo(index, ["fontSize"])}>Size</FieldLabel>
+            <FieldLabel edited={editedProps.has("fontSize")} onUndo={() => onUndo(elementId, ["fontSize"])}>Size</FieldLabel>
             <FieldInput
               key={effective(editedProps, "fontSize", styles.fontSize || "")}
               edited={editedProps.has("fontSize")}
               value={effective(editedProps, "fontSize", styles.fontSize || "")}
               onChange={(newVal) =>
-                onStyleEdit(index, "fontSize", styles.fontSize || "", newVal)
+                onStyleEdit(elementId, "fontSize", styles.fontSize || "", newVal)
               }
             />
           </div>
@@ -632,26 +632,25 @@ export default function StyleEditor({
         <>
           <hr className="border-slate-200 dark:border-slate-700 -mx-3" />
 
-          {/* Content */}
           <div className="flex flex-col gap-2">
             <SectionLabel>Content</SectionLabel>
             {styles.textContent != null && (
               <div className="flex flex-col gap-1">
-                <FieldLabel edited={editedProps.has("textContent")} onUndo={() => onUndo(index, ["textContent"])}>Text</FieldLabel>
+                <FieldLabel edited={editedProps.has("textContent")} onUndo={() => onUndo(elementId, ["textContent"])}>Text</FieldLabel>
                 <FieldInput
                   key={effective(editedProps, "textContent", styles.textContent!)}
                   edited={editedProps.has("textContent")}
                   value={effective(editedProps, "textContent", styles.textContent!)}
-                  onChange={(val) => onTextEdit(index, styles.textContent!, val)}
+                  onChange={(val) => onTextEdit(elementId, styles.textContent!, val)}
                 />
               </div>
             )}
             {lucideIconName && (
               <div className="flex flex-col gap-1">
-                <FieldLabel edited={editedProps.has("lucideIcon")} onUndo={() => onUndo(index, ["lucideIcon"])}>Icon</FieldLabel>
+                <FieldLabel edited={editedProps.has("lucideIcon")} onUndo={() => onUndo(elementId, ["lucideIcon"])}>Icon</FieldLabel>
                 <IconPicker
                   currentIcon={effective(editedProps, "lucideIcon", lucideIconName)}
-                  onSelect={(name) => onStyleEdit(index, "lucideIcon", lucideIconName, name)}
+                  onSelect={(name) => onStyleEdit(elementId, "lucideIcon", lucideIconName, name)}
                 />
               </div>
             )}
