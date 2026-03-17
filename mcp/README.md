@@ -7,7 +7,7 @@ Users visually select and edit elements on a webpage, then send structured feedb
 ## Quick Start
 
 ```bash
-npx handle-design setup
+npx handle-ext init
 ```
 
 This detects your installed coding agents and configures them automatically. Supported agents:
@@ -28,7 +28,7 @@ Add this to your agent's MCP config:
   "mcpServers": {
     "handle": {
       "command": "npx",
-      "args": ["-y", "handle-design@latest"]
+      "args": ["-y", "handle-ext@latest"]
     }
   }
 }
@@ -45,9 +45,9 @@ Add this to your agent's MCP config:
 ## CLI
 
 ```
-npx handle-design           Run MCP server (stdio mode)
-npx handle-design setup     Configure coding agents to use Handle
-npx handle-design help      Show help
+npx handle-ext           Run MCP server (stdio mode)
+npx handle-ext init      Configure coding agents to use Handle
+npx handle-ext help      Show help
 ```
 
 ## Chrome Extension

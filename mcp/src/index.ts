@@ -2,7 +2,7 @@
 
 const command = process.argv[2]
 
-if (command === "setup") {
+if (command === "init") {
   const { runSetup } = await import("./setup.js")
   await runSetup()
 } else if (command === "help" || command === "--help" || command === "-h") {
@@ -23,11 +23,11 @@ if (command === "setup") {
 
 function printHelp() {
   console.log(`
-handle-design — Design feedback bridge for AI coding agents
+handle-ext — Design feedback bridge for AI coding agents
 
 Usage:
-  npx handle-design           Run MCP server (stdio mode)
-  npx handle-design setup     Configure coding agents to use Handle
-  npx handle-design help      Show this help message
+  npx handle-ext           Run MCP server (stdio mode)
+  npx handle-ext init      Configure coding agents to use Handle
+  npx handle-ext help      Show this help message
 `)
 }
