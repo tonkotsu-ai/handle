@@ -1,4 +1,5 @@
 import { createInterface } from "readline"
+import { spawn } from "child_process"
 import { getAgents } from "./agents.js"
 
 export async function runSetup(): Promise<void> {
@@ -95,11 +96,41 @@ export async function runSetup(): Promise<void> {
     }
   }
 
+  const EXTENSION_URL =
+    "https://chromewebstore.google.com/detail/fmhnojgloiknohiednlmbblcjfghbpfe"
+
   console.log()
   console.log(
     "  Setup complete! Restart your coding agent to activate Handle."
   )
   console.log()
+  console.log(
+    "  Last step: install the Handle Chrome extension to start sending"
+  )
+  console.log("  design feedback from your browser.")
+  console.log()
 
+  let openAnswer: string
+  try {
+    openAnswer = await ask("  Open the Chrome Web Store page? [Y/n]: ")
+  } catch {
+    console.log()
+    rl.close()
+    return
+  }
+
+  const trimmedOpen = openAnswer.trim().toLowerCase()
+  if (trimmedOpen === "" || trimmedOpen === "y") {
+    const platform = process.platform
+    const cmd =
+      platform === "win32" ? "start" : platform === "darwin" ? "open" : "xdg-open"
+    spawn(cmd, [EXTENSION_URL], { detached: true, stdio: "ignore" }).unref()
+  } else {
+    console.log()
+    console.log("  You can install it later at:")
+    console.log(`  ${EXTENSION_URL}`)
+  }
+
+  console.log()
   rl.close()
 }
