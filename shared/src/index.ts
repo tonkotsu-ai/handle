@@ -9,6 +9,13 @@ export type {
   RefineTransport,
 } from "./types"
 
+// DOM utilities
+export {
+  isElementVisible,
+  visibleElementAtPoint,
+  visibleElementAtPointSnippet,
+} from "./utils/dom"
+
 // Color utilities
 export {
   parseColor,
