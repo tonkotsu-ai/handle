@@ -13,6 +13,7 @@ export interface ElementRowProps {
   isSelected: boolean
   onSelect: (elementId: ElementId) => void
   onToggleExpand: (elementId: ElementId) => void
+  isHidden?: boolean
   onMouseEnter?: () => void
   onMouseLeave?: () => void
 }
@@ -25,6 +26,7 @@ export default function ElementRow({
   isExpanded,
   isEdited,
   isSelected,
+  isHidden,
   onSelect,
   onToggleExpand,
   onMouseEnter,
@@ -45,7 +47,7 @@ export default function ElementRow({
         isSelected
           ? "bg-electricblue-100 dark:bg-electricblue-900/40"
           : "hover:bg-slate-100 dark:hover:bg-slate-800"
-      }`}
+      } ${isHidden ? "opacity-50" : ""}`}
       style={{ paddingLeft: `${8 + depth * 12}px` }}
       onClick={() => onSelect(elementId)}
       onMouseEnter={onMouseEnter}

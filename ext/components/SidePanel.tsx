@@ -878,6 +878,32 @@ function SidePanel({ demo = false }: SidePanelProps) {
                       onMouseLeave={handleMouseLeave}
                     />
                   )
+                  // Render hidden siblings after the leaf (innermost) element
+                  if (isLeaf && item.hiddenSiblings) {
+                    for (let si = 0; si < item.hiddenSiblings.length; si++) {
+                      const sibItem = item.hiddenSiblings[si]
+                      // Hidden siblings are appended to ancestors after the
+                      // normal hierarchy, so their index starts at hierarchy.length
+                      const sibIndex = hierarchy.length + si
+                      rows.push(
+                        <ElementRow
+                          key={`${selectionKey}-hidden-${si}`}
+                          item={sibItem}
+                          elementId={sibIndex}
+                          depth={depth}
+                          isLeaf={true}
+                          isExpanded={false}
+                          isEdited={hasEditsForElement(sibIndex)}
+                          isSelected={selectedIndex === sibIndex}
+                          isHidden={true}
+                          onSelect={(id) => handleSelect(id as number)}
+                          onToggleExpand={() => {}}
+                          onMouseEnter={() => handleMouseEnter(sibIndex)}
+                          onMouseLeave={handleMouseLeave}
+                        />
+                      )
+                    }
+                  }
                 }
                 return rows
               })()}
