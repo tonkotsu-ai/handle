@@ -1,4 +1,4 @@
-import type { EditEntry, StyleData } from "@anthropic-ai/handle-shared"
+import type { EditEntry, StyleData } from "@handle-ai/handle-shared"
 export type { EditEntry, StyleData }
 
 export interface HierarchyItem {

@@ -9,8 +9,8 @@ import {
   StyleEditor,
   getIconSvgChildren,
   useEditTracker,
-} from "@anthropic-ai/handle-shared"
-import type { ElementId, ElementMeta } from "@anthropic-ai/handle-shared"
+} from "@handle-ai/handle-shared"
+import type { ElementId, ElementMeta } from "@handle-ai/handle-shared"
 
 import type { HierarchyItem, SessionInfo, StyleData } from "~types"
 
