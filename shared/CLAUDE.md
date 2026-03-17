@@ -3,7 +3,7 @@
 Shared package consumed by two sibling projects:
 
 - **`ext/`** (Chrome extension) — `"@handle-ai/handle-shared": "file:../shared"` via npm workspaces
-- **`handle-app/`** (Electron desktop app at `../handle-app`) — `"@handle-ai/handle-shared": "file:../handle/shared"`
+- **`handle-app/`** (Electron desktop app at `../handle-app`) — depends on `@handle-ai/handle-shared` via the `handle` git submodule at `./handle/shared/`
 
 ## Structure
 
