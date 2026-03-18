@@ -77,7 +77,13 @@ export default function ElementRow({
         />
       )}
       <div className="flex items-center gap-0.5 font-sans text-xs truncate min-w-0">
-        {item.component ? (
+        {item.tag === "#text" ? (
+          <span className="italic text-slate-500 dark:text-slate-400 truncate">
+            &quot;{item.textContent && item.textContent.length > 40
+              ? item.textContent.slice(0, 40) + "…"
+              : item.textContent}&quot;
+          </span>
+        ) : item.component ? (
           <span className="font-bold text-electricblue-500 dark:text-electricblue-400 truncate">
             {item.component}
           </span>

@@ -9,6 +9,8 @@ export interface HierarchyItem {
   selectorPath: string
   hidden?: boolean
   hiddenSiblings?: HierarchyItem[]
+  textContent?: string
+  textChildren?: HierarchyItem[]
 }
 
 export interface SessionInfo {

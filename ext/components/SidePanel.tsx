@@ -210,6 +210,8 @@ function SidePanel({ demo = false }: SidePanelProps) {
   const [toast, setToast] = useState<string | null>(null)
 
   const hierarchyRef = useRef<HierarchyItem[]>(demo ? DEMO_HIERARCHY : [])
+  // Maps index (in ancestors array) → item for all entries including hidden siblings and text children
+  const allItemsRef = useRef<Map<number, HierarchyItem>>(new Map())
   const styleRequestIdRef = useRef(0)
   const socketRef = useRef<Socket | null>(null)
   const callbackRef = useRef<((response: { content: string }) => void) | null>(
@@ -230,11 +232,12 @@ function SidePanel({ demo = false }: SidePanelProps) {
   } = useEditTracker({
     resolvePath: (elementId: ElementId) => {
       const index = elementId as number
-      return hierarchyRef.current[index]?.selectorPath
+      const item = allItemsRef.current.get(index) ?? hierarchyRef.current[index]
+      return item?.selectorPath
     },
     resolveElementMeta: (elementId: ElementId): ElementMeta => {
       const index = elementId as number
-      const item = hierarchyRef.current[index]
+      const item = allItemsRef.current.get(index) ?? hierarchyRef.current[index]
       const selector = item
         ? `${item.tag}${item.id}${item.classes}`
         : `element[${index}]`
@@ -430,7 +433,8 @@ function SidePanel({ demo = false }: SidePanelProps) {
   const handleUndo = useCallback(
     (elementId: ElementId, props: string[]) => {
       const index = elementId as number
-      const path = hierarchyRef.current[index]?.selectorPath
+      const item = allItemsRef.current.get(index) ?? hierarchyRef.current[index]
+      const path = item?.selectorPath
       if (!path) return
       const entry = editsRef.current.get(path)
       if (!entry) return
@@ -623,6 +627,25 @@ function SidePanel({ demo = false }: SidePanelProps) {
         if (tabId != null && message.tabId !== tabId) return
         const h: HierarchyItem[] = message.hierarchy
         hierarchyRef.current = h
+        // Build allItemsRef with hierarchy items + hidden siblings + text children
+        const allItems = new Map<number, HierarchyItem>()
+        for (let i = 0; i < h.length; i++) {
+          allItems.set(i, h[i])
+        }
+        // The innermost element (index 0) may have hidden siblings and text children
+        const innermost = h[0]
+        let nextIdx = h.length
+        if (innermost?.hiddenSiblings) {
+          for (const sib of innermost.hiddenSiblings) {
+            allItems.set(nextIdx++, sib)
+          }
+        }
+        if (innermost?.textChildren) {
+          for (const tc of innermost.textChildren) {
+            allItems.set(nextIdx++, tc)
+          }
+        }
+        allItemsRef.current = allItems
         setHierarchy(h)
         setSelectionKey((k) => k + 1)
         setCollapsedNodes(new Set())
@@ -667,6 +690,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
         // Clear all queued changes and reset UI state
         resetEdits()
         hierarchyRef.current = []
+        allItemsRef.current = new Map()
         setHierarchy([])
         setSelectedIndex(null)
         setSelectedStyles(null)
@@ -688,6 +712,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
       } else if (message.type === "spa-navigation") {
         // SPA navigation: clear stale element tree but keep selection mode
         hierarchyRef.current = []
+        allItemsRef.current = new Map()
         setHierarchy([])
         setSelectedIndex(null)
         setSelectedStyles(null)
@@ -853,7 +878,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
                   const item = reversed[displayIdx]
                   const index = hierarchy.length - 1 - displayIdx
                   const depth = displayIdx
-                  const isLeaf = displayIdx === reversed.length - 1
+                  const isLastInChain = displayIdx === reversed.length - 1
+                  const hasTextChildren = isLastInChain && item.textChildren && item.textChildren.length > 0
+                  const isLeaf = isLastInChain && !hasTextChildren
 
                   // Skip nodes hidden by a collapsed ancestor
                   if (hiddenBelowDepth != null && depth > hiddenBelowDepth) continue
@@ -878,8 +905,8 @@ function SidePanel({ demo = false }: SidePanelProps) {
                       onMouseLeave={handleMouseLeave}
                     />
                   )
-                  // Render hidden siblings after the leaf (innermost) element
-                  if (isLeaf && item.hiddenSiblings) {
+                  // Render hidden siblings after the innermost element
+                  if (isLastInChain && item.hiddenSiblings) {
                     for (let si = 0; si < item.hiddenSiblings.length; si++) {
                       const sibItem = item.hiddenSiblings[si]
                       // Hidden siblings are appended to ancestors after the
@@ -899,6 +926,31 @@ function SidePanel({ demo = false }: SidePanelProps) {
                           onSelect={(id) => handleSelect(id as number)}
                           onToggleExpand={() => {}}
                           onMouseEnter={() => handleMouseEnter(sibIndex)}
+                          onMouseLeave={handleMouseLeave}
+                        />
+                      )
+                    }
+                  }
+                  // Render text node children after the innermost element
+                  if (isLastInChain && isExpanded && item.textChildren) {
+                    const hiddenCount = item.hiddenSiblings?.length ?? 0
+                    for (let ti = 0; ti < item.textChildren.length; ti++) {
+                      const textItem = item.textChildren[ti]
+                      // Text children are appended to ancestors after hidden siblings
+                      const textIndex = hierarchy.length + hiddenCount + ti
+                      rows.push(
+                        <ElementRow
+                          key={`${selectionKey}-text-${ti}`}
+                          item={textItem}
+                          elementId={textIndex}
+                          depth={depth + 1}
+                          isLeaf={true}
+                          isExpanded={false}
+                          isEdited={hasEditsForElement(textIndex)}
+                          isSelected={selectedIndex === textIndex}
+                          onSelect={(id) => handleSelect(id as number)}
+                          onToggleExpand={() => {}}
+                          onMouseEnter={() => handleMouseEnter(textIndex)}
                           onMouseLeave={handleMouseLeave}
                         />
                       )
@@ -985,9 +1037,18 @@ function SidePanel({ demo = false }: SidePanelProps) {
                         onClick={() => {
                           setActiveTab("design")
                           if (!tabId) return
-                          const idx = hierarchyRef.current.findIndex(
+                          let idx = hierarchyRef.current.findIndex(
                             (h) => h.selectorPath === el.selectorPath
                           )
+                          // Also search extended items (hidden siblings, text children)
+                          if (idx === -1) {
+                            for (const [key, val] of allItemsRef.current) {
+                              if (val.selectorPath === el.selectorPath) {
+                                idx = key
+                                break
+                              }
+                            }
+                          }
                           if (idx !== -1) {
                             setSelectedIndex(idx)
                             setSelectedStyles(null)

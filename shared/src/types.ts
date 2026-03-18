@@ -43,6 +43,7 @@ export interface ElementItem {
   childCount?: number
   selectorPath?: string
   hidden?: boolean
+  textContent?: string
 }
 
 export interface TokenEntry {

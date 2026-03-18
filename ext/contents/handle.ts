@@ -9,7 +9,7 @@ export const config: PlasmoCSConfig = {
 
 let active = false
 let hoveredEl: HTMLElement | null = null
-let ancestors: HTMLElement[] = []
+let ancestors: (HTMLElement | Text)[] = []
 let overlay: HTMLDivElement | null = null
 let pendingTarget: HTMLElement | null = null
 // Cache every element we've seen, keyed by selectorPath, so we can
@@ -86,6 +86,7 @@ function buildHierarchy(el: HTMLElement) {
     component: string | null
     selectorPath: string
     hidden?: boolean
+    textContent?: string
     hiddenSiblings?: Array<{
       tag: string
       id: string
@@ -94,17 +95,27 @@ function buildHierarchy(el: HTMLElement) {
       selectorPath: string
       hidden: boolean
     }>
+    textChildren?: Array<{
+      tag: string
+      id: string
+      classes: string
+      component: string | null
+      selectorPath: string
+      textContent: string
+    }>
   }> = []
   const segments: string[] = []
   let current: HTMLElement | null = el
   let isFirst = true
   // Collect hidden sibling DOM elements to append after the main hierarchy
   const hiddenSiblingEls: HTMLElement[] = []
+  // Collect text node children to append after hidden siblings
+  const textChildNodes: Text[] = []
   while (current && current !== document.documentElement) {
     ancestors.push(current)
     segments.push(buildSelectorSegment(current))
     const item = buildHierarchyItem(current, [...segments])
-    // For the selected (innermost) element, find hidden siblings
+    // For the selected (innermost) element, find hidden siblings and text children
     if (isFirst && current.parentElement) {
       isFirst = false
       const hiddenSiblings: typeof hierarchy[number]["hiddenSiblings"] = []
@@ -121,6 +132,30 @@ function buildHierarchy(el: HTMLElement) {
       if (hiddenSiblings.length > 0) {
         ;(item as any).hiddenSiblings = hiddenSiblings
       }
+      // Find text node children of the innermost element
+      const textChildren: typeof hierarchy[number]["textChildren"] = []
+      const childNodes = Array.from(current.childNodes)
+      for (const child of childNodes) {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const text = (child.textContent || "").trim()
+          if (text.length > 0) {
+            const parentSelectorPath = item.selectorPath
+            const textIdx = childNodes.indexOf(child)
+            textChildren.push({
+              tag: "#text",
+              id: "",
+              classes: "",
+              component: null,
+              selectorPath: `${parentSelectorPath}/#text(${textIdx})`,
+              textContent: text
+            })
+            textChildNodes.push(child as Text)
+          }
+        }
+      }
+      if (textChildren.length > 0) {
+        ;(item as any).textChildren = textChildren
+      }
     }
     hierarchy.push(item)
     current = current.parentElement
@@ -130,12 +165,37 @@ function buildHierarchy(el: HTMLElement) {
   for (const sib of hiddenSiblingEls) {
     ancestors.push(sib)
   }
+  // Append text children after hidden siblings
+  for (const textNode of textChildNodes) {
+    ancestors.push(textNode)
+  }
   return hierarchy
 }
 
 function getStyles(index: number) {
-  const el = ancestors[index]
-  if (!el) return null
+  const node = ancestors[index]
+  if (!node) return null
+  // Text node: return minimal styles with just textContent
+  if (node.nodeType === Node.TEXT_NODE) {
+    const parentEl = node.parentElement
+    const parentCs = parentEl ? getComputedStyle(parentEl) : null
+    return {
+      fontFamily: parentCs ? parentCs.fontFamily : "",
+      fontWeight: parentCs ? parentCs.fontWeight : "",
+      fontSize: parentCs ? parentCs.fontSize : "",
+      color: parentCs ? parentCs.color : "",
+      padding: "0px",
+      display: "inline",
+      borderRadius: "0px",
+      opacity: "1",
+      backgroundColor: "rgba(0, 0, 0, 0)",
+      borderColor: "rgba(0, 0, 0, 0)",
+      borderWidth: "0px",
+      borderStyle: "none",
+      textContent: node.textContent || ""
+    }
+  }
+  const el = node as HTMLElement
   const cs = getComputedStyle(el)
   const styles: Record<string, string> = {
     fontFamily: cs.fontFamily,
@@ -257,16 +317,24 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   } else if (message.type === "disable-design-mode") {
     disable()
   } else if (message.type === "highlight-element") {
-    const el = ancestors[message.index]
-    if (el) showOverlay(el)
+    const node = ancestors[message.index]
+    if (node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        if (node.parentElement) showOverlay(node.parentElement)
+      } else {
+        showOverlay(node as HTMLElement)
+      }
+    }
   } else if (message.type === "clear-highlight") {
     hideOverlay()
   } else if (message.type === "get-styles") {
     sendResponse(getStyles(message.index))
     return true
   } else if (message.type === "set-style") {
-    const el = ancestors[message.index]
-    if (el) el.style[message.prop as any] = message.value
+    const node = ancestors[message.index]
+    if (node && node.nodeType === Node.ELEMENT_NODE) {
+      ;(node as HTMLElement).style[message.prop as any] = message.value
+    }
   } else if (message.type === "set-icon") {
     const el = ancestors[message.index]
     if (el && message.svgChildren != null) {
@@ -278,8 +346,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (oldLucideClass) el.classList.replace(oldLucideClass, `lucide-${message.name}`)
     }
   } else if (message.type === "set-text") {
-    const el = ancestors[message.index]
-    if (el) el.textContent = message.value
+    const node = ancestors[message.index]
+    if (node) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        node.nodeValue = message.value
+      } else {
+        node.textContent = message.value
+      }
+    }
   } else if (message.type === "select-by-selector") {
     const el = elementCache.get(message.selectorPath)
     if (el && document.contains(el)) {
