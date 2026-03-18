@@ -2,10 +2,23 @@ import { homedir, platform } from "os"
 import { join, dirname } from "path"
 import { readFile, writeFile, mkdir, access } from "fs/promises"
 import { constants } from "fs"
+import { parse as parseToml, stringify as stringifyToml } from "smol-toml"
 
 const SERVER_NAME = "handle"
 
 const MCP_ENTRY = {
+  command: "npx",
+  args: ["-y", "handle-design@latest"],
+}
+
+const MCP_ENTRY_VSCODE = {
+  type: "stdio",
+  command: "npx",
+  args: ["-y", "handle-design@latest"],
+}
+
+const MCP_ENTRY_ROVODEV = {
+  transport: "stdio",
   command: "npx",
   args: ["-y", "handle-design@latest"],
 }
@@ -84,6 +97,118 @@ async function mergeConfig(
   return { status: "created", message: "Added handle entry" }
 }
 
+async function mergeVscodeConfig(
+  configPath: string,
+  serverName: string,
+  entry: Record<string, unknown>
+): Promise<ConfigResult> {
+  let existing: Record<string, unknown> = {}
+
+  try {
+    const raw = await readFile(configPath, "utf-8")
+    existing = JSON.parse(raw)
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+      return {
+        status: "error",
+        message: `Failed to read ${configPath}: ${err}`,
+      }
+    }
+  }
+
+  const mcp = (existing.mcp as Record<string, unknown>) ?? {}
+  const servers = (mcp.servers as Record<string, unknown>) ?? {}
+
+  if (servers[serverName]) {
+    if (JSON.stringify(servers[serverName]) === JSON.stringify(entry)) {
+      return {
+        status: "already_configured",
+        message: "Already configured",
+      }
+    }
+    servers[serverName] = entry
+    mcp.servers = servers
+    existing.mcp = mcp
+    await mkdir(dirname(configPath), { recursive: true })
+    await writeFile(
+      configPath,
+      JSON.stringify(existing, null, 2) + "\n"
+    )
+    return { status: "updated", message: "Updated existing entry" }
+  }
+
+  servers[serverName] = entry
+  mcp.servers = servers
+  existing.mcp = mcp
+  await mkdir(dirname(configPath), { recursive: true })
+  await writeFile(
+    configPath,
+    JSON.stringify(existing, null, 2) + "\n"
+  )
+  return { status: "created", message: "Added handle entry" }
+}
+
+async function mergeTomlConfig(
+  configPath: string,
+  serverName: string,
+  command: string,
+  args: string[]
+): Promise<ConfigResult> {
+  let existing: Record<string, unknown> = {}
+
+  try {
+    const raw = await readFile(configPath, "utf-8")
+    existing = parseToml(raw) as Record<string, unknown>
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+      return {
+        status: "error",
+        message: `Failed to read ${configPath}: ${err}`,
+      }
+    }
+  }
+
+  const mcpServers =
+    (existing.mcp_servers as Record<string, unknown>) ?? {}
+  const currentEntry = mcpServers[serverName] as
+    | Record<string, unknown>
+    | undefined
+
+  const newEntry = { command, args }
+
+  if (currentEntry) {
+    if (JSON.stringify(currentEntry) === JSON.stringify(newEntry)) {
+      return {
+        status: "already_configured",
+        message: "Already configured",
+      }
+    }
+    mcpServers[serverName] = newEntry
+    existing.mcp_servers = mcpServers
+    await mkdir(dirname(configPath), { recursive: true })
+    await writeFile(configPath, stringifyToml(existing))
+    return { status: "updated", message: "Updated existing entry" }
+  }
+
+  mcpServers[serverName] = newEntry
+  existing.mcp_servers = mcpServers
+  await mkdir(dirname(configPath), { recursive: true })
+  await writeFile(configPath, stringifyToml(existing))
+  return { status: "created", message: "Added handle entry" }
+}
+
+function getVscodeSettingsPath(): string {
+  const home = homedir()
+  const os = platform()
+  if (os === "win32") {
+    return join(process.env.APPDATA ?? join(home, "AppData", "Roaming"), "Code", "User", "settings.json")
+  } else if (os === "darwin") {
+    return join(home, "Library", "Application Support", "Code", "User", "settings.json")
+  } else {
+    return join(home, ".config", "Code", "User", "settings.json")
+  }
+}
+
 export function getAgents(): AgentConfig[] {
   const home = homedir()
   const agents: AgentConfig[] = [
@@ -111,23 +236,86 @@ export function getAgents(): AgentConfig[] {
       name: "Cursor",
       configPath: join(home, ".cursor", "mcp.json"),
       detect: () => exists(join(home, ".cursor")),
-      configure: () =>
-        mergeConfig(
+      configure: async () => {
+        const result = await mergeConfig(
           join(home, ".cursor", "mcp.json"),
           SERVER_NAME,
           MCP_ENTRY
-        ),
+        )
+        // Also install /handle slash command
+        const cmdDir = join(home, ".cursor", "commands")
+        const cmdPath = join(cmdDir, "handle.md")
+        await mkdir(cmdDir, { recursive: true })
+        await writeFile(cmdPath, HANDLE_COMMAND)
+        return result
+      },
     },
     {
       id: "windsurf",
       name: "Windsurf",
       configPath: join(home, ".codeium", "windsurf", "mcp_config.json"),
       detect: () => exists(join(home, ".codeium", "windsurf")),
-      configure: () =>
-        mergeConfig(
+      configure: async () => {
+        const result = await mergeConfig(
           join(home, ".codeium", "windsurf", "mcp_config.json"),
           SERVER_NAME,
           MCP_ENTRY
+        )
+        // Also install /handle workflow
+        const wfDir = join(home, ".codeium", "windsurf", "global_workflows")
+        const wfPath = join(wfDir, "handle.md")
+        await mkdir(wfDir, { recursive: true })
+        await writeFile(wfPath, HANDLE_COMMAND)
+        return result
+      },
+    },
+    {
+      id: "github-copilot",
+      name: "GitHub Copilot",
+      configPath: getVscodeSettingsPath(),
+      detect: () => exists(dirname(getVscodeSettingsPath())),
+      configure: () =>
+        mergeVscodeConfig(
+          getVscodeSettingsPath(),
+          SERVER_NAME,
+          MCP_ENTRY_VSCODE
+        ),
+    },
+    {
+      id: "codex",
+      name: "Codex CLI",
+      configPath: join(home, ".codex", "config.toml"),
+      detect: () => exists(join(home, ".codex")),
+      configure: () =>
+        mergeTomlConfig(
+          join(home, ".codex", "config.toml"),
+          SERVER_NAME,
+          MCP_ENTRY.command,
+          MCP_ENTRY.args
+        ),
+    },
+    {
+      id: "gemini",
+      name: "Gemini CLI",
+      configPath: join(home, ".gemini", "settings.json"),
+      detect: () => exists(join(home, ".gemini")),
+      configure: () =>
+        mergeConfig(
+          join(home, ".gemini", "settings.json"),
+          SERVER_NAME,
+          MCP_ENTRY
+        ),
+    },
+    {
+      id: "rovo-dev",
+      name: "Rovo Dev",
+      configPath: join(home, ".rovodev", "mcp.json"),
+      detect: () => exists(join(home, ".rovodev")),
+      configure: () =>
+        mergeConfig(
+          join(home, ".rovodev", "mcp.json"),
+          SERVER_NAME,
+          MCP_ENTRY_ROVODEV
         ),
     },
   ]
