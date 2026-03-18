@@ -726,7 +726,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
   }, [demo, tabId])
 
   const selectedItem =
-    selectedIndex != null ? hierarchy[selectedIndex] : null
+    selectedIndex != null
+      ? (hierarchy[selectedIndex] ?? allItemsRef.current.get(selectedIndex) ?? null)
+      : null
 
   const [activeTab, setActiveTab] = useState<"design" | "changes">("design")
   const [treeHeight, setTreeHeight] = useState(276)
@@ -993,6 +995,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
                         )?.[1] ?? null)
                       : null
                   }
+                  isTextNode={selectedItem?.tag === "#text"}
                   pageTokens={pageTokens}
                   pageColors={pageColors}
                   onStyleEdit={handleStyleEdit}

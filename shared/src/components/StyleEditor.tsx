@@ -27,6 +27,7 @@ export interface StyleEditorProps {
   lucideIconName?: string | null
   pageTokens?: TokenEntry[]
   pageColors?: string[]
+  isTextNode?: boolean
   onStyleEdit: (elementId: ElementId, prop: string, original: string, value: string) => void
   onTextEdit: (elementId: ElementId, original: string, value: string) => void
   onUndo: (elementId: ElementId, props: string[]) => void
@@ -343,6 +344,7 @@ export default function StyleEditor({
   lucideIconName,
   pageTokens,
   pageColors,
+  isTextNode,
   onStyleEdit,
   onTextEdit,
   onUndo,
@@ -369,6 +371,7 @@ export default function StyleEditor({
 
   return (
     <div className="flex flex-col gap-4 py-3">
+      {!isTextNode && <>
       {/* Layout */}
       <div className="flex flex-col gap-2">
         <SectionLabel>Layout</SectionLabel>
@@ -627,6 +630,7 @@ export default function StyleEditor({
           </div>
         </div>
       </div>
+      </>}
 
       {(styles.textContent != null || lucideIconName) && (
         <>
