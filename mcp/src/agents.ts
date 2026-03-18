@@ -209,6 +209,82 @@ function getVscodeSettingsPath(): string {
   }
 }
 
+export function getProjectAgents(projectRoot: string): AgentConfig[] {
+  const home = homedir()
+  const agents: AgentConfig[] = [
+    {
+      id: "claude-code",
+      name: "Claude Code",
+      configPath: join(projectRoot, ".claude", "settings.json"),
+      detect: () => exists(join(home, ".claude.json")),
+      configure: async () => {
+        const result = await mergeConfig(
+          join(projectRoot, ".claude", "settings.json"),
+          SERVER_NAME,
+          MCP_ENTRY
+        )
+        // Also install /handle slash command
+        const cmdDir = join(projectRoot, ".claude", "commands")
+        const cmdPath = join(cmdDir, "handle.md")
+        await mkdir(cmdDir, { recursive: true })
+        await writeFile(cmdPath, HANDLE_COMMAND)
+        return result
+      },
+    },
+    {
+      id: "cursor",
+      name: "Cursor",
+      configPath: join(projectRoot, ".cursor", "mcp.json"),
+      detect: () => exists(join(home, ".cursor")),
+      configure: () =>
+        mergeConfig(
+          join(projectRoot, ".cursor", "mcp.json"),
+          SERVER_NAME,
+          MCP_ENTRY
+        ),
+    },
+    {
+      id: "github-copilot",
+      name: "GitHub Copilot",
+      configPath: join(projectRoot, ".vscode", "mcp.json"),
+      detect: () => exists(dirname(getVscodeSettingsPath())),
+      configure: () =>
+        mergeVscodeConfig(
+          join(projectRoot, ".vscode", "mcp.json"),
+          SERVER_NAME,
+          MCP_ENTRY_VSCODE
+        ),
+    },
+    {
+      id: "gemini",
+      name: "Gemini CLI",
+      configPath: join(projectRoot, ".gemini", "settings.json"),
+      detect: () => exists(join(home, ".gemini")),
+      configure: () =>
+        mergeConfig(
+          join(projectRoot, ".gemini", "settings.json"),
+          SERVER_NAME,
+          MCP_ENTRY
+        ),
+    },
+    {
+      id: "codex",
+      name: "Codex CLI",
+      configPath: join(projectRoot, ".codex", "config.toml"),
+      detect: () => exists(join(home, ".codex")),
+      configure: () =>
+        mergeTomlConfig(
+          join(projectRoot, ".codex", "config.toml"),
+          SERVER_NAME,
+          MCP_ENTRY.command,
+          MCP_ENTRY.args
+        ),
+    },
+  ]
+
+  return agents
+}
+
 export function getAgents(): AgentConfig[] {
   const home = homedir()
   const agents: AgentConfig[] = [
