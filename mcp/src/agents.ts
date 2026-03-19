@@ -251,6 +251,25 @@ export function getProjectAgents(projectRoot: string): AgentConfig[] {
       },
     },
     {
+      id: "windsurf",
+      name: "Windsurf",
+      configPath: join(projectRoot, ".windsurf", "mcp.json"),
+      detect: () => exists(join(home, ".codeium", "windsurf")),
+      configure: async () => {
+        const result = await mergeConfig(
+          join(projectRoot, ".windsurf", "mcp.json"),
+          SERVER_NAME,
+          MCP_ENTRY
+        )
+        // Also install /handle workflow
+        const wfDir = join(projectRoot, ".windsurf", "workflows")
+        const wfPath = join(wfDir, "handle.md")
+        await mkdir(wfDir, { recursive: true })
+        await writeFile(wfPath, HANDLE_COMMAND)
+        return result
+      },
+    },
+    {
       id: "github-copilot",
       name: "GitHub Copilot",
       configPath: join(projectRoot, ".vscode", "mcp.json"),
