@@ -236,12 +236,19 @@ export function getProjectAgents(projectRoot: string): AgentConfig[] {
       name: "Cursor",
       configPath: join(projectRoot, ".cursor", "mcp.json"),
       detect: () => exists(join(home, ".cursor")),
-      configure: () =>
-        mergeConfig(
+      configure: async () => {
+        const result = await mergeConfig(
           join(projectRoot, ".cursor", "mcp.json"),
           SERVER_NAME,
           MCP_ENTRY
-        ),
+        )
+        // Also install /handle slash command
+        const cmdDir = join(projectRoot, ".cursor", "commands")
+        const cmdPath = join(cmdDir, "handle.md")
+        await mkdir(cmdDir, { recursive: true })
+        await writeFile(cmdPath, HANDLE_COMMAND)
+        return result
+      },
     },
     {
       id: "github-copilot",
