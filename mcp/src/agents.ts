@@ -23,6 +23,12 @@ const MCP_ENTRY_ROVODEV = {
   args: ["-y", "handle-design@latest"],
 }
 
+const MCP_ENTRY_COPILOT_CLI = {
+  type: "stdio",
+  command: "npx",
+  args: ["-y", "handle-design@latest"],
+}
+
 const HANDLE_COMMAND = `Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes.
 `
 
@@ -174,6 +180,46 @@ async function mergeVscodeConfig(
   return { status: "created", message: "Added handle entry" }
 }
 
+// For .vscode/mcp.json which uses { "servers": {} } at root (not nested under "mcp")
+async function mergeVscodeMcpJson(
+  configPath: string,
+  serverName: string,
+  entry: Record<string, unknown>
+): Promise<ConfigResult> {
+  let existing: Record<string, unknown> = {}
+
+  try {
+    const raw = await readFile(configPath, "utf-8")
+    existing = JSON.parse(raw)
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+      return {
+        status: "error",
+        message: `Failed to read ${configPath}: ${err}`,
+      }
+    }
+  }
+
+  const servers = (existing.servers as Record<string, unknown>) ?? {}
+
+  if (servers[serverName]) {
+    if (JSON.stringify(servers[serverName]) === JSON.stringify(entry)) {
+      return { status: "already_configured", message: "Already configured" }
+    }
+    servers[serverName] = entry
+    existing.servers = servers
+    await mkdir(dirname(configPath), { recursive: true })
+    await writeFile(configPath, JSON.stringify(existing, null, 2) + "\n")
+    return { status: "updated", message: "Updated existing entry" }
+  }
+
+  servers[serverName] = entry
+  existing.servers = servers
+  await mkdir(dirname(configPath), { recursive: true })
+  await writeFile(configPath, JSON.stringify(existing, null, 2) + "\n")
+  return { status: "created", message: "Added handle entry" }
+}
+
 async function mergeTomlConfig(
   configPath: string,
   serverName: string,
@@ -297,11 +343,11 @@ export function getProjectAgents(projectRoot: string): AgentConfig[] {
     },
     {
       id: "github-copilot",
-      name: "GitHub Copilot",
+      name: "GitHub Copilot (VS Code)",
       configPath: join(projectRoot, ".vscode", "mcp.json"),
       detect: () => exists(dirname(getVscodeSettingsPath())),
       configure: () =>
-        mergeVscodeConfig(
+        mergeVscodeMcpJson(
           join(projectRoot, ".vscode", "mcp.json"),
           SERVER_NAME,
           MCP_ENTRY_VSCODE
@@ -425,7 +471,7 @@ export function getAgents(): AgentConfig[] {
     },
     {
       id: "github-copilot",
-      name: "GitHub Copilot",
+      name: "GitHub Copilot (VS Code)",
       configPath: getVscodeSettingsPath(),
       detect: () => exists(dirname(getVscodeSettingsPath())),
       configure: () =>
@@ -433,6 +479,18 @@ export function getAgents(): AgentConfig[] {
           getVscodeSettingsPath(),
           SERVER_NAME,
           MCP_ENTRY_VSCODE
+        ),
+    },
+    {
+      id: "copilot-cli",
+      name: "GitHub Copilot CLI",
+      configPath: join(home, ".copilot", "mcp-config.json"),
+      detect: () => exists(join(home, ".copilot")),
+      configure: () =>
+        mergeConfig(
+          join(home, ".copilot", "mcp-config.json"),
+          SERVER_NAME,
+          MCP_ENTRY_COPILOT_CLI
         ),
     },
     {
