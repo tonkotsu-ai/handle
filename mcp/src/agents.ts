@@ -416,6 +416,24 @@ export function getProjectAgents(projectRoot: string): AgentConfig[] {
       },
     },
     {
+      id: "copilot-cli",
+      name: "GitHub Copilot CLI",
+      configPath: join(projectRoot, ".copilot", "mcp-config.json"),
+      detect: () => exists(join(home, ".copilot")),
+      configure: async () => {
+        const result = await mergeConfig(
+          join(projectRoot, ".copilot", "mcp-config.json"),
+          SERVER_NAME,
+          MCP_ENTRY_COPILOT_CLI
+        )
+        // Also install /handle skill
+        const skillDir = join(projectRoot, ".github", "skills", "handle")
+        await mkdir(skillDir, { recursive: true })
+        await writeFile(join(skillDir, "SKILL.md"), HANDLE_COPILOT_SKILL_MD)
+        return result
+      },
+    },
+    {
       id: "rovo-dev",
       name: "Rovo Dev",
       configPath: join(projectRoot, ".rovodev", "mcp.json"),
@@ -522,12 +540,18 @@ export function getAgents(): AgentConfig[] {
       name: "GitHub Copilot CLI",
       configPath: join(home, ".copilot", "mcp-config.json"),
       detect: () => exists(join(home, ".copilot")),
-      configure: () =>
-        mergeConfig(
+      configure: async () => {
+        const result = await mergeConfig(
           join(home, ".copilot", "mcp-config.json"),
           SERVER_NAME,
           MCP_ENTRY_COPILOT_CLI
-        ),
+        )
+        // Also install /handle skill
+        const skillDir = join(home, ".copilot", "skills", "handle")
+        await mkdir(skillDir, { recursive: true })
+        await writeFile(join(skillDir, "SKILL.md"), HANDLE_COPILOT_SKILL_MD)
+        return result
+      },
     },
     {
       id: "codex",
