@@ -32,6 +32,23 @@ const MCP_ENTRY_COPILOT_CLI = {
 const HANDLE_COMMAND = `Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes.
 `
 
+const HANDLE_COPILOT_SKILL_MD = `---
+name: handle
+description: Receive visual design feedback from the browser extension and implement the requested changes.
+disable-model-invocation: true
+---
+${HANDLE_COMMAND}`
+
+const HANDLE_CODEX_SKILL_MD = `---
+name: handle
+description: Receive visual design feedback from the browser extension and implement the requested changes.
+---
+${HANDLE_COMMAND}`
+
+const HANDLE_CODEX_OPENAI_YAML = `policy:
+  allow_implicit_invocation: false
+`
+
 const HANDLE_GEMINI_COMMAND = `description = "Receive visual design feedback from the browser extension and implement the requested changes."
 prompt = "Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes."
 `
@@ -346,12 +363,18 @@ export function getProjectAgents(projectRoot: string): AgentConfig[] {
       name: "GitHub Copilot (VS Code)",
       configPath: join(projectRoot, ".vscode", "mcp.json"),
       detect: () => exists(dirname(getVscodeSettingsPath())),
-      configure: () =>
-        mergeVscodeMcpJson(
+      configure: async () => {
+        const result = await mergeVscodeMcpJson(
           join(projectRoot, ".vscode", "mcp.json"),
           SERVER_NAME,
           MCP_ENTRY_VSCODE
-        ),
+        )
+        // Also install /handle skill
+        const skillDir = join(projectRoot, ".github", "skills", "handle")
+        await mkdir(skillDir, { recursive: true })
+        await writeFile(join(skillDir, "SKILL.md"), HANDLE_COPILOT_SKILL_MD)
+        return result
+      },
     },
     {
       id: "gemini",
@@ -377,13 +400,20 @@ export function getProjectAgents(projectRoot: string): AgentConfig[] {
       name: "Codex CLI",
       configPath: join(projectRoot, ".codex", "config.toml"),
       detect: () => exists(join(home, ".codex")),
-      configure: () =>
-        mergeTomlConfig(
+      configure: async () => {
+        const result = await mergeTomlConfig(
           join(projectRoot, ".codex", "config.toml"),
           SERVER_NAME,
           MCP_ENTRY.command,
           MCP_ENTRY.args
-        ),
+        )
+        // Also install $handle skill
+        const skillDir = join(projectRoot, ".agents", "skills", "handle")
+        await mkdir(join(skillDir, "agents"), { recursive: true })
+        await writeFile(join(skillDir, "SKILL.md"), HANDLE_CODEX_SKILL_MD)
+        await writeFile(join(skillDir, "agents", "openai.yaml"), HANDLE_CODEX_OPENAI_YAML)
+        return result
+      },
     },
     {
       id: "rovo-dev",
@@ -474,12 +504,18 @@ export function getAgents(): AgentConfig[] {
       name: "GitHub Copilot (VS Code)",
       configPath: getVscodeSettingsPath(),
       detect: () => exists(dirname(getVscodeSettingsPath())),
-      configure: () =>
-        mergeVscodeConfig(
+      configure: async () => {
+        const result = await mergeVscodeConfig(
           getVscodeSettingsPath(),
           SERVER_NAME,
           MCP_ENTRY_VSCODE
-        ),
+        )
+        // Also install /handle skill
+        const skillDir = join(home, ".copilot", "skills", "handle")
+        await mkdir(skillDir, { recursive: true })
+        await writeFile(join(skillDir, "SKILL.md"), HANDLE_COPILOT_SKILL_MD)
+        return result
+      },
     },
     {
       id: "copilot-cli",
@@ -498,13 +534,20 @@ export function getAgents(): AgentConfig[] {
       name: "Codex CLI",
       configPath: join(home, ".codex", "config.toml"),
       detect: () => exists(join(home, ".codex")),
-      configure: () =>
-        mergeTomlConfig(
+      configure: async () => {
+        const result = await mergeTomlConfig(
           join(home, ".codex", "config.toml"),
           SERVER_NAME,
           MCP_ENTRY.command,
           MCP_ENTRY.args
-        ),
+        )
+        // Also install $handle skill
+        const skillDir = join(home, ".agents", "skills", "handle")
+        await mkdir(join(skillDir, "agents"), { recursive: true })
+        await writeFile(join(skillDir, "SKILL.md"), HANDLE_CODEX_SKILL_MD)
+        await writeFile(join(skillDir, "agents", "openai.yaml"), HANDLE_CODEX_OPENAI_YAML)
+        return result
+      },
     },
     {
       id: "gemini",
