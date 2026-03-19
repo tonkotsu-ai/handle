@@ -30,6 +30,28 @@ const HANDLE_GEMINI_COMMAND = `description = "Receive visual design feedback fro
 prompt = "Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes."
 `
 
+const HANDLE_ROVODEV_PROMPT_ENTRY = `- name: handle
+  description: Receive visual design feedback from the browser extension and implement the requested changes.
+  content_file: handle_prompt.md
+`
+
+async function mergeRovoDevPrompts(promptsPath: string): Promise<void> {
+  let existing = ""
+  try {
+    existing = await readFile(promptsPath, "utf-8")
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
+  }
+
+  if (existing.includes("name: handle")) return
+
+  const content = existing.trimEnd()
+  const updated = content
+    ? content + "\n" + HANDLE_ROVODEV_PROMPT_ENTRY
+    : `prompts:\n${HANDLE_ROVODEV_PROMPT_ENTRY}`
+  await writeFile(promptsPath, updated + "\n")
+}
+
 export interface AgentConfig {
   id: string
   name: string
@@ -317,6 +339,25 @@ export function getProjectAgents(projectRoot: string): AgentConfig[] {
           MCP_ENTRY.args
         ),
     },
+    {
+      id: "rovo-dev",
+      name: "Rovo Dev",
+      configPath: join(projectRoot, ".rovodev", "mcp.json"),
+      detect: () => exists(join(home, ".rovodev")),
+      configure: async () => {
+        const result = await mergeConfig(
+          join(projectRoot, ".rovodev", "mcp.json"),
+          SERVER_NAME,
+          MCP_ENTRY_ROVODEV
+        )
+        // Also install /prompts handle
+        const dir = join(projectRoot, ".rovodev")
+        await mkdir(dir, { recursive: true })
+        await mergeRovoDevPrompts(join(dir, "prompts.yml"))
+        await writeFile(join(dir, "handle_prompt.md"), HANDLE_COMMAND)
+        return result
+      },
+    },
   ]
 
   return agents
@@ -431,12 +472,19 @@ export function getAgents(): AgentConfig[] {
       name: "Rovo Dev",
       configPath: join(home, ".rovodev", "mcp.json"),
       detect: () => exists(join(home, ".rovodev")),
-      configure: () =>
-        mergeConfig(
+      configure: async () => {
+        const result = await mergeConfig(
           join(home, ".rovodev", "mcp.json"),
           SERVER_NAME,
           MCP_ENTRY_ROVODEV
-        ),
+        )
+        // Also install /prompts handle
+        const dir = join(home, ".rovodev")
+        await mkdir(dir, { recursive: true })
+        await mergeRovoDevPrompts(join(dir, "prompts.yml"))
+        await writeFile(join(dir, "handle_prompt.md"), HANDLE_COMMAND)
+        return result
+      },
     },
   ]
 
