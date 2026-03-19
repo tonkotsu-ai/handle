@@ -1,4 +1,4 @@
-# handle-design
+# handle-ext
 
 Design feedback bridge between a Chrome extension and AI coding agents via [MCP](https://modelcontextprotocol.io/).
 

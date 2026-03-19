@@ -71,7 +71,7 @@ npm run build
 npm start
 ```
 
-Or wire it up via `npx handle-design setup` as described above.
+Or wire it up via `npx handle-ext setup` as described above.
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines on submitting changes.
 

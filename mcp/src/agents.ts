@@ -8,25 +8,25 @@ const SERVER_NAME = "handle"
 
 const MCP_ENTRY = {
   command: "npx",
-  args: ["-y", "handle-design@latest"],
+  args: ["-y", "handle-ext@latest"],
 }
 
 const MCP_ENTRY_VSCODE = {
   type: "stdio",
   command: "npx",
-  args: ["-y", "handle-design@latest"],
+  args: ["-y", "handle-ext@latest"],
 }
 
 const MCP_ENTRY_ROVODEV = {
   transport: "stdio",
   command: "npx",
-  args: ["-y", "handle-design@latest"],
+  args: ["-y", "handle-ext@latest"],
 }
 
 const MCP_ENTRY_COPILOT_CLI = {
   type: "stdio",
   command: "npx",
-  args: ["-y", "handle-design@latest"],
+  args: ["-y", "handle-ext@latest"],
 }
 
 const HANDLE_COMMAND = `Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes.
