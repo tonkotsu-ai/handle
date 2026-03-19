@@ -26,6 +26,10 @@ const MCP_ENTRY_ROVODEV = {
 const HANDLE_COMMAND = `Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes.
 `
 
+const HANDLE_GEMINI_COMMAND = `description = "Receive visual design feedback from the browser extension and implement the requested changes."
+prompt = "Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes."
+`
+
 export interface AgentConfig {
   id: string
   name: string
@@ -286,12 +290,19 @@ export function getProjectAgents(projectRoot: string): AgentConfig[] {
       name: "Gemini CLI",
       configPath: join(projectRoot, ".gemini", "settings.json"),
       detect: () => exists(join(home, ".gemini")),
-      configure: () =>
-        mergeConfig(
+      configure: async () => {
+        const result = await mergeConfig(
           join(projectRoot, ".gemini", "settings.json"),
           SERVER_NAME,
           MCP_ENTRY
-        ),
+        )
+        // Also install /handle custom command
+        const cmdDir = join(projectRoot, ".gemini", "commands")
+        const cmdPath = join(cmdDir, "handle.toml")
+        await mkdir(cmdDir, { recursive: true })
+        await writeFile(cmdPath, HANDLE_GEMINI_COMMAND)
+        return result
+      },
     },
     {
       id: "codex",
@@ -401,12 +412,19 @@ export function getAgents(): AgentConfig[] {
       name: "Gemini CLI",
       configPath: join(home, ".gemini", "settings.json"),
       detect: () => exists(join(home, ".gemini")),
-      configure: () =>
-        mergeConfig(
+      configure: async () => {
+        const result = await mergeConfig(
           join(home, ".gemini", "settings.json"),
           SERVER_NAME,
           MCP_ENTRY
-        ),
+        )
+        // Also install /handle custom command
+        const cmdDir = join(home, ".gemini", "commands")
+        const cmdPath = join(cmdDir, "handle.toml")
+        await mkdir(cmdDir, { recursive: true })
+        await writeFile(cmdPath, HANDLE_GEMINI_COMMAND)
+        return result
+      },
     },
     {
       id: "rovo-dev",
