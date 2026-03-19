@@ -38,7 +38,7 @@ export async function runSetup(opts: { projectRoot?: string } = {}): Promise<voi
   if (detected.length === 0) {
     console.log("  No supported coding agents detected.")
     console.log(
-      "  Supported: Claude Code, Claude Desktop, Cursor, Windsurf, GitHub Copilot, Codex CLI, Gemini CLI, Rovo Dev"
+      "  Supported: Claude Code, Codex, Cursor, Claude Desktop, GitHub Copilot, Gemini CLI, Rovo Dev, Windsurf"
     )
     console.log()
     rl.close()

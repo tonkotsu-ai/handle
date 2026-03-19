@@ -321,6 +321,26 @@ export function getProjectAgents(projectRoot: string): AgentConfig[] {
       },
     },
     {
+      id: "codex",
+      name: "Codex",
+      configPath: join(projectRoot, ".codex", "config.toml"),
+      detect: () => exists(join(home, ".codex")),
+      configure: async () => {
+        const result = await mergeTomlConfig(
+          join(projectRoot, ".codex", "config.toml"),
+          SERVER_NAME,
+          MCP_ENTRY.command,
+          MCP_ENTRY.args
+        )
+        // Also install $handle skill
+        const skillDir = join(projectRoot, ".agents", "skills", "handle")
+        await mkdir(join(skillDir, "agents"), { recursive: true })
+        await writeFile(join(skillDir, "SKILL.md"), HANDLE_CODEX_SKILL_MD)
+        await writeFile(join(skillDir, "agents", "openai.yaml"), HANDLE_CODEX_OPENAI_YAML)
+        return result
+      },
+    },
+    {
       id: "cursor",
       name: "Cursor",
       configPath: join(projectRoot, ".cursor", "mcp.json"),
@@ -340,25 +360,6 @@ export function getProjectAgents(projectRoot: string): AgentConfig[] {
       },
     },
     {
-      id: "windsurf",
-      name: "Windsurf",
-      configPath: join(projectRoot, ".windsurf", "mcp.json"),
-      detect: () => exists(join(home, ".codeium", "windsurf")),
-      configure: async () => {
-        const result = await mergeConfig(
-          join(projectRoot, ".windsurf", "mcp.json"),
-          SERVER_NAME,
-          MCP_ENTRY
-        )
-        // Also install /handle workflow
-        const wfDir = join(projectRoot, ".windsurf", "workflows")
-        const wfPath = join(wfDir, "handle.md")
-        await mkdir(wfDir, { recursive: true })
-        await writeFile(wfPath, HANDLE_COMMAND)
-        return result
-      },
-    },
-    {
       id: "github-copilot",
       name: "GitHub Copilot (VS Code)",
       configPath: join(projectRoot, ".vscode", "mcp.json"),
@@ -368,6 +369,24 @@ export function getProjectAgents(projectRoot: string): AgentConfig[] {
           join(projectRoot, ".vscode", "mcp.json"),
           SERVER_NAME,
           MCP_ENTRY_VSCODE
+        )
+        // Also install /handle skill
+        const skillDir = join(projectRoot, ".github", "skills", "handle")
+        await mkdir(skillDir, { recursive: true })
+        await writeFile(join(skillDir, "SKILL.md"), HANDLE_COPILOT_SKILL_MD)
+        return result
+      },
+    },
+    {
+      id: "copilot-cli",
+      name: "GitHub Copilot CLI",
+      configPath: join(projectRoot, ".copilot", "mcp-config.json"),
+      detect: () => exists(join(home, ".copilot")),
+      configure: async () => {
+        const result = await mergeConfig(
+          join(projectRoot, ".copilot", "mcp-config.json"),
+          SERVER_NAME,
+          MCP_ENTRY_COPILOT_CLI
         )
         // Also install /handle skill
         const skillDir = join(projectRoot, ".github", "skills", "handle")
@@ -396,44 +415,6 @@ export function getProjectAgents(projectRoot: string): AgentConfig[] {
       },
     },
     {
-      id: "codex",
-      name: "Codex CLI",
-      configPath: join(projectRoot, ".codex", "config.toml"),
-      detect: () => exists(join(home, ".codex")),
-      configure: async () => {
-        const result = await mergeTomlConfig(
-          join(projectRoot, ".codex", "config.toml"),
-          SERVER_NAME,
-          MCP_ENTRY.command,
-          MCP_ENTRY.args
-        )
-        // Also install $handle skill
-        const skillDir = join(projectRoot, ".agents", "skills", "handle")
-        await mkdir(join(skillDir, "agents"), { recursive: true })
-        await writeFile(join(skillDir, "SKILL.md"), HANDLE_CODEX_SKILL_MD)
-        await writeFile(join(skillDir, "agents", "openai.yaml"), HANDLE_CODEX_OPENAI_YAML)
-        return result
-      },
-    },
-    {
-      id: "copilot-cli",
-      name: "GitHub Copilot CLI",
-      configPath: join(projectRoot, ".copilot", "mcp-config.json"),
-      detect: () => exists(join(home, ".copilot")),
-      configure: async () => {
-        const result = await mergeConfig(
-          join(projectRoot, ".copilot", "mcp-config.json"),
-          SERVER_NAME,
-          MCP_ENTRY_COPILOT_CLI
-        )
-        // Also install /handle skill
-        const skillDir = join(projectRoot, ".github", "skills", "handle")
-        await mkdir(skillDir, { recursive: true })
-        await writeFile(join(skillDir, "SKILL.md"), HANDLE_COPILOT_SKILL_MD)
-        return result
-      },
-    },
-    {
       id: "rovo-dev",
       name: "Rovo Dev",
       configPath: join(projectRoot, ".rovodev", "mcp.json"),
@@ -449,6 +430,25 @@ export function getProjectAgents(projectRoot: string): AgentConfig[] {
         await mkdir(dir, { recursive: true })
         await mergeRovoDevPrompts(join(dir, "prompts.yml"))
         await writeFile(join(dir, "handle_prompt.md"), HANDLE_COMMAND)
+        return result
+      },
+    },
+    {
+      id: "windsurf",
+      name: "Windsurf",
+      configPath: join(projectRoot, ".windsurf", "mcp.json"),
+      detect: () => exists(join(home, ".codeium", "windsurf")),
+      configure: async () => {
+        const result = await mergeConfig(
+          join(projectRoot, ".windsurf", "mcp.json"),
+          SERVER_NAME,
+          MCP_ENTRY
+        )
+        // Also install /handle workflow
+        const wfDir = join(projectRoot, ".windsurf", "workflows")
+        const wfPath = join(wfDir, "handle.md")
+        await mkdir(wfDir, { recursive: true })
+        await writeFile(wfPath, HANDLE_COMMAND)
         return result
       },
     },
@@ -480,6 +480,26 @@ export function getAgents(): AgentConfig[] {
       },
     },
     {
+      id: "codex",
+      name: "Codex",
+      configPath: join(home, ".codex", "config.toml"),
+      detect: () => exists(join(home, ".codex")),
+      configure: async () => {
+        const result = await mergeTomlConfig(
+          join(home, ".codex", "config.toml"),
+          SERVER_NAME,
+          MCP_ENTRY.command,
+          MCP_ENTRY.args
+        )
+        // Also install $handle skill
+        const skillDir = join(home, ".agents", "skills", "handle")
+        await mkdir(join(skillDir, "agents"), { recursive: true })
+        await writeFile(join(skillDir, "SKILL.md"), HANDLE_CODEX_SKILL_MD)
+        await writeFile(join(skillDir, "agents", "openai.yaml"), HANDLE_CODEX_OPENAI_YAML)
+        return result
+      },
+    },
+    {
       id: "cursor",
       name: "Cursor",
       configPath: join(home, ".cursor", "mcp.json"),
@@ -498,25 +518,37 @@ export function getAgents(): AgentConfig[] {
         return result
       },
     },
-    {
-      id: "windsurf",
-      name: "Windsurf",
-      configPath: join(home, ".codeium", "windsurf", "mcp_config.json"),
-      detect: () => exists(join(home, ".codeium", "windsurf")),
-      configure: async () => {
-        const result = await mergeConfig(
-          join(home, ".codeium", "windsurf", "mcp_config.json"),
+  ]
+
+  if (platform() === "darwin") {
+    agents.push({
+      id: "claude-desktop",
+      name: "Claude Desktop",
+      configPath: join(
+        home,
+        "Library",
+        "Application Support",
+        "Claude",
+        "claude_desktop_config.json"
+      ),
+      detect: () =>
+        exists(join(home, "Library", "Application Support", "Claude")),
+      configure: () =>
+        mergeConfig(
+          join(
+            home,
+            "Library",
+            "Application Support",
+            "Claude",
+            "claude_desktop_config.json"
+          ),
           SERVER_NAME,
           MCP_ENTRY
-        )
-        // Also install /handle workflow
-        const wfDir = join(home, ".codeium", "windsurf", "global_workflows")
-        const wfPath = join(wfDir, "handle.md")
-        await mkdir(wfDir, { recursive: true })
-        await writeFile(wfPath, HANDLE_COMMAND)
-        return result
-      },
-    },
+        ),
+    })
+  }
+
+  agents.push(
     {
       id: "github-copilot",
       name: "GitHub Copilot (VS Code)",
@@ -550,26 +582,6 @@ export function getAgents(): AgentConfig[] {
         const skillDir = join(home, ".copilot", "skills", "handle")
         await mkdir(skillDir, { recursive: true })
         await writeFile(join(skillDir, "SKILL.md"), HANDLE_COPILOT_SKILL_MD)
-        return result
-      },
-    },
-    {
-      id: "codex",
-      name: "Codex CLI",
-      configPath: join(home, ".codex", "config.toml"),
-      detect: () => exists(join(home, ".codex")),
-      configure: async () => {
-        const result = await mergeTomlConfig(
-          join(home, ".codex", "config.toml"),
-          SERVER_NAME,
-          MCP_ENTRY.command,
-          MCP_ENTRY.args
-        )
-        // Also install $handle skill
-        const skillDir = join(home, ".agents", "skills", "handle")
-        await mkdir(join(skillDir, "agents"), { recursive: true })
-        await writeFile(join(skillDir, "SKILL.md"), HANDLE_CODEX_SKILL_MD)
-        await writeFile(join(skillDir, "agents", "openai.yaml"), HANDLE_CODEX_OPENAI_YAML)
         return result
       },
     },
@@ -611,35 +623,26 @@ export function getAgents(): AgentConfig[] {
         return result
       },
     },
-  ]
-
-  if (platform() === "darwin") {
-    agents.push({
-      id: "claude-desktop",
-      name: "Claude Desktop",
-      configPath: join(
-        home,
-        "Library",
-        "Application Support",
-        "Claude",
-        "claude_desktop_config.json"
-      ),
-      detect: () =>
-        exists(join(home, "Library", "Application Support", "Claude")),
-      configure: () =>
-        mergeConfig(
-          join(
-            home,
-            "Library",
-            "Application Support",
-            "Claude",
-            "claude_desktop_config.json"
-          ),
+    {
+      id: "windsurf",
+      name: "Windsurf",
+      configPath: join(home, ".codeium", "windsurf", "mcp_config.json"),
+      detect: () => exists(join(home, ".codeium", "windsurf")),
+      configure: async () => {
+        const result = await mergeConfig(
+          join(home, ".codeium", "windsurf", "mcp_config.json"),
           SERVER_NAME,
           MCP_ENTRY
-        ),
-    })
-  }
+        )
+        // Also install /handle workflow
+        const wfDir = join(home, ".codeium", "windsurf", "global_workflows")
+        const wfPath = join(wfDir, "handle.md")
+        await mkdir(wfDir, { recursive: true })
+        await writeFile(wfPath, HANDLE_COMMAND)
+        return result
+      },
+    },
+  )
 
   return agents
 }
