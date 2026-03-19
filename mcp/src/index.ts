@@ -1,10 +1,22 @@
 #!/usr/bin/env node
 
+import { execSync } from "child_process"
+
 const command = process.argv[2]
 
 if (command === "init") {
+  const isProject = process.argv.includes("--project")
+  let projectRoot: string | undefined
+  if (isProject) {
+    try {
+      projectRoot = execSync("git rev-parse --show-toplevel", { encoding: "utf-8" }).trim()
+    } catch {
+      console.error("  Error: not inside a git repository.")
+      process.exit(1)
+    }
+  }
   const { runSetup } = await import("./setup.js")
-  await runSetup()
+  await runSetup({ projectRoot })
 } else if (command === "help" || command === "--help" || command === "-h") {
   printHelp()
 } else if (command && command !== "serve" && !command.startsWith("-")) {
@@ -26,8 +38,9 @@ function printHelp() {
 handle-ext — Design feedback bridge for AI coding agents
 
 Usage:
-  npx handle-ext           Run MCP server (stdio mode)
-  npx handle-ext init      Configure coding agents to use Handle
-  npx handle-ext help      Show this help message
+  npx handle-ext                    Run MCP server (stdio mode)
+  npx handle-ext init               Configure coding agents globally
+  npx handle-ext init --project     Configure coding agents for current project
+  npx handle-ext help               Show this help message
 `)
 }

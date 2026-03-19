@@ -1,8 +1,8 @@
 import { createInterface } from "readline"
 import { spawn } from "child_process"
-import { getAgents } from "./agents.js"
+import { getAgents, getProjectAgents } from "./agents.js"
 
-export async function runSetup(): Promise<void> {
+export async function runSetup(opts: { projectRoot?: string } = {}): Promise<void> {
   const rl = createInterface({ input: process.stdin, output: process.stdout })
   let closed = false
   rl.on("close", () => {
@@ -18,7 +18,14 @@ export async function runSetup(): Promise<void> {
   console.log("  Handle — Design feedback for AI coding agents")
   console.log()
 
-  const agents = getAgents()
+  if (opts.projectRoot) {
+    console.log(`  Installing for project: ${opts.projectRoot}`)
+    console.log()
+  }
+
+  const agents = opts.projectRoot
+    ? getProjectAgents(opts.projectRoot)
+    : getAgents()
 
   // Detect installed agents
   const detected: typeof agents = []
@@ -31,7 +38,7 @@ export async function runSetup(): Promise<void> {
   if (detected.length === 0) {
     console.log("  No supported coding agents detected.")
     console.log(
-      "  Supported: Claude Code, Claude Desktop, Cursor, Windsurf"
+      "  Supported: Claude Code, Claude Desktop, Cursor, Windsurf, GitHub Copilot, Codex CLI, Gemini CLI, Rovo Dev"
     )
     console.log()
     rl.close()
