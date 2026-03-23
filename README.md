@@ -43,7 +43,7 @@ Type `/handle` in your coding agent. Chrome will launch. Click on the Handle ext
 This is a monorepo with three packages:
 
 ```
-ext/      Chrome extension (Plasmo + React + Tailwind)
+ext/      Chrome extension (WXT + React + Tailwind)
 mcp/      MCP server (Node.js + Socket.IO)
 shared/   Shared components and utilities
 ```
@@ -61,7 +61,7 @@ cd ext
 npm run dev
 ```
 
-Then load `ext/build/chrome-mv3-dev` as an unpacked extension in Chrome (`chrome://extensions` → "Load unpacked").
+Then load `ext/.output/chrome-mv3` as an unpacked extension in Chrome (`chrome://extensions` → "Load unpacked").
 
 **Run the MCP server:**
 

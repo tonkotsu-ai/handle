@@ -15,7 +15,7 @@ export enum AnalyticEvent {
 let client: StatsigClient | null = null
 
 export function initStatsig() {
-  const key = process.env.PLASMO_PUBLIC_STATSIG_CLIENT_KEY
+  const key = import.meta.env.VITE_STATSIG_CLIENT_KEY
   if (!key) return
   client = new StatsigClient(key, {})
   client.initializeAsync()

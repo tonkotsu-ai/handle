@@ -1,20 +1,22 @@
 {
-  "extends": "plasmo/templates/tsconfig.base",
-  "exclude": [
-    "node_modules",
-    "vite.config.ts"
-  ],
-  "include": [
-    ".plasmo/index.d.ts",
-    "./**/*.ts",
-    "./**/*.tsx"
-  ],
   "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "paths": {
-      "~*": [
-        "./*"
-      ]
+      "~*": ["./*"]
     },
     "baseUrl": "."
-  }
+  },
+  "exclude": ["node_modules", "vite.config.ts", ".output", ".wxt"],
+  "include": [".wxt/wxt.d.ts", "./**/*.ts", "./**/*.tsx"]
 }

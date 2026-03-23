@@ -35,4 +35,4 @@ This keeps a single source of truth while supporting the injection constraint.
 
 ## No build step
 
-This package has no build script. Consumers compile it directly from `src/index.ts` via their own bundlers (Plasmo for ext/, Vite for handle-app).
+This package has no build script. Consumers compile it directly from `src/index.ts` via their own bundlers (WXT for ext/, Vite for handle-app).
