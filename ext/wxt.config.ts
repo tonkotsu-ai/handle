@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite"
 import path from "path"
 import { defineConfig } from "wxt"
 
@@ -11,6 +12,7 @@ export default defineConfig({
     side_panel: { default_path: "sidepanel.html" }
   },
   vite: () => ({
+    plugins: [tailwindcss()],
     resolve: {
       alias: [{ find: /^~(.+)/, replacement: path.resolve(__dirname, "$1") }]
     }

@@ -1,11 +1,87 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500&family=JetBrains+Mono:wght@400;600&display=swap");
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@source "../shared/src/**/*.tsx";
+
+@theme {
+  --font-sans: "DM Sans", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --animate-fade-in: fade-in 0.2s ease-out;
+
+  --color-softgray: #F5F7FA;
+  --color-softgray-dark: #1E2127;
+
+  --color-juicyorange-50: #FFF7F0;
+  --color-juicyorange-100: #FFEADB;
+  --color-juicyorange-200: #FFD5B6;
+  --color-juicyorange-300: #FFC091;
+  --color-juicyorange-400: #FFAF75;
+  --color-juicyorange-500: #FF9F59;
+  --color-juicyorange-600: #FF8940;
+  --color-juicyorange-700: #FF6D1A;
+  --color-juicyorange-800: #F55800;
+  --color-juicyorange-900: #D14C00;
+  --color-juicyorange-950: #9A3900;
+
+  --color-electricblue-50: #F0F9FF;
+  --color-electricblue-100: #E0F2FF;
+  --color-electricblue-200: #C3E5FF;
+  --color-electricblue-300: #9FD4FF;
+  --color-electricblue-400: #72C0FF;
+  --color-electricblue-500: #4FACFE;
+  --color-electricblue-600: #2D92F0;
+  --color-electricblue-700: #1B79D6;
+  --color-electricblue-800: #1561AF;
+  --color-electricblue-900: #104D87;
+  --color-electricblue-950: #0B325A;
+
+  --color-bubblegumpink-50: #FFF1F5;
+  --color-bubblegumpink-100: #FFE3EC;
+  --color-bubblegumpink-200: #FFC5D8;
+  --color-bubblegumpink-300: #FFA2BE;
+  --color-bubblegumpink-400: #FF84AB;
+  --color-bubblegumpink-500: #FF6B98;
+  --color-bubblegumpink-600: #FF4781;
+  --color-bubblegumpink-700: #FF2069;
+  --color-bubblegumpink-800: #F0005A;
+  --color-bubblegumpink-900: #C8004C;
+  --color-bubblegumpink-950: #950039;
+
+  --color-mintfresh-50: #F0FDF9;
+  --color-mintfresh-100: #DCFCF0;
+  --color-mintfresh-200: #BBF7E2;
+  --color-mintfresh-300: #91F2CD;
+  --color-mintfresh-400: #6DECC0;
+  --color-mintfresh-500: #61E8B3;
+  --color-mintfresh-600: #3DD499;
+  --color-mintfresh-700: #2BB17F;
+  --color-mintfresh-800: #228D66;
+  --color-mintfresh-900: #1C7454;
+  --color-mintfresh-950: #0F4D38;
+
+  --color-limezest: #AEDC46;
+  --color-lavendardream: #A983FF;
+  --color-sunshineyellow: #FFD166;
+  --color-deepnavy: #130E40;
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 @layer base {
-  html, body, #app {
+  html,
+  body,
+  #app {
     @apply bg-white text-slate-900 dark:bg-softgray-dark dark:text-slate-100 h-full;
   }
 }
