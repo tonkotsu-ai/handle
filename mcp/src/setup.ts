@@ -104,7 +104,7 @@ export async function runSetup(opts: { projectRoot?: string } = {}): Promise<voi
   }
 
   const EXTENSION_URL =
-    "https://chromewebstore.google.com/detail/fmhnojgloiknohiednlmbblcjfghbpfe"
+    "https://chromewebstore.google.com/detail/pfcfpjololfdopoglgplmijaohidmopj"
 
   console.log()
   console.log(
