@@ -1,8 +1,8 @@
 # Handle
 
-**Design feedback that speaks your agent's language.**
+**Refine UI Directly in Your Browser Instead of Describing it With Prompts**
 
-Handle bridges the gap between visual design and AI coding agents. Instead of describing UI changes in words, you point directly at elements in the browser — and your agent receives structured, actionable feedback it can act on immediately.
+Handle bridges the gap between visual design and AI coding agents. Built for frontend devs, design engineers, and UX designers. Instead of describing UI changes in words, just point directly at elements in the browser and edit — and your agent receives structured, actionable feedback it can act on immediately.
 
 ## How It Works
 
@@ -10,7 +10,7 @@ Handle bridges the gap between visual design and AI coding agents. Instead of de
 2. Refine directly inside Chrome using the extension
 4. Your coding agent lands your changes into code
 
-No more "make the button a bit more to the right" — just show it.
+No more "on the landing page, in the testimonials unit, in the bottom right corner, make the button a bit more to the right" — just point and do it.
 
 ## Getting Started
 
@@ -24,17 +24,17 @@ Run the setup command to auto-configure your coding agent:
 npx handle-ext@latest init
 ```
 
-Supported agents: **Claude Code**, **Claude Desktop**, **Cursor**, **Windsurf**
+Supported agents: **Claude Code**, **Codex**, **Cursor**, **GitHub Copilot**, **Windsurf**, **Gemini CLI**, **Rovo Dev**
 
 Restart your agent after setup to activate Handle.
 
 **2. Install the Chrome extension**
 
-Download the extension from the [Chrome Web Store](#) and pin it to your toolbar.
+Download the [Handle extension](https://chromewebstore.google.com/detail/pfcfpjololfdopoglgplmijaohidmopj) from the Chrome Web Store and pin it to your toolbar.
 
 **3. Use it**
 
-Type `/handle` in your coding agent. Chrome wil launch. Click on the Handle button to open the side panel. Click any element to inspect and annotate it, then send your feedback.
+Type `/handle` in your coding agent. Chrome will launch. Click on the Handle extension button to open the side panel. Click any element to inspect and annotate it, then send your feedback.
 
 ---
 
