@@ -849,7 +849,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
             </button>
           </div>
           <a
-            href="https://gethandle.design/feedback"
+            href="https://github.com/tonkotsu-ai/handle/discussions/categories/general"
             target="_blank"
             rel="noreferrer"
             title="Share feedback on this extension"
