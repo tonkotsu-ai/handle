@@ -1,10 +1,4 @@
 {
   "private": true,
-  "workspaces": ["ext", "shared", "mcp"],
-  "overrides": {
-    "@plasmohq/consolidate": {
-      "react": "$react",
-      "react-dom": "$react-dom"
-    }
-  }
+  "workspaces": ["ext", "shared", "mcp"]
 }

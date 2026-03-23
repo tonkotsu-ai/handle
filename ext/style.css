@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 @layer base {
-  html, body, #__plasmo {
+  html, body, #app {
     @apply bg-white text-slate-900 dark:bg-softgray-dark dark:text-slate-100 h-full;
   }
 }

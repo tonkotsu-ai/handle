@@ -8,19 +8,19 @@ Handle is a design feedback tool that bridges a Chrome extension with AI coding 
 
 ## Monorepo Structure
 
-- **`ext/`** — Chrome extension (Plasmo + React + Tailwind)
+- **`ext/`** — Chrome extension (WXT + React + Tailwind)
 - **`mcp/`** — MCP server (Node.js + Socket.IO)
 
 ## Commands
 
 ### Extension (`ext/`)
 ```bash
-npm run dev          # Plasmo dev server with hot reload
+npm run dev          # WXT dev server with hot reload
 npm run dev:demo     # Vite demo app (standalone UI testing)
 npm run build        # Production build
-npm run package      # Package for Chrome Web Store
+npm run zip          # Package for Chrome Web Store
 ```
-Load the dev extension from `ext/build/chrome-mv3-dev` in Chrome.
+Load the dev extension from `ext/.output/chrome-mv3` in Chrome.
 
 ### MCP Server (`mcp/`)
 ```bash
@@ -32,8 +32,8 @@ node test-e2e.mjs    # End-to-end test (spawns server, validates Socket.IO + MCP
 ## Architecture
 
 ### Data Flow
-1. Extension content script (`contents/handle.ts`) intercepts DOM clicks, extracts element hierarchy and computed styles
-2. Background script (`background.ts`) enriches elements with React component names via Fiber inspection (`__reactFiber$`)
+1. Extension content script (`entrypoints/contents/handle.ts`) intercepts DOM clicks, extracts element hierarchy and computed styles
+2. Background script (`entrypoints/background.ts`) enriches elements with React component names via Fiber inspection (`__reactFiber$`)
 3. Sidepanel UI (`components/SidePanel.tsx`) displays hierarchy, allows style/text/icon editing, tracks changes
 4. On "Send to Coding Agent", sidepanel sends feedback via Socket.IO to the MCP server
 5. MCP server (`mcp/src/index.ts`) returns feedback to the agent through the `get_design_feedback` tool
@@ -54,7 +54,7 @@ node test-e2e.mjs    # End-to-end test (spawns server, validates Socket.IO + MCP
 
 ### Prettier (ext/)
 - No semicolons, double quotes, 2-space indent, 80 char width
-- Import sorting: builtins → third-party → `@plasmo` → `@plasmohq` → `~/` aliases → relative
+- Import sorting: builtins → third-party → `~/` aliases → relative
 
 ### TypeScript
 - Strict mode in both packages
