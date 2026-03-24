@@ -466,13 +466,21 @@ function SidePanel({ demo = false }: SidePanelProps) {
     }
   }, [])
 
-  const handleCopy = useCallback(() => {
-    const content = generateFeedbackDescription()
+  const handleCopy = useCallback(async () => {
+    let content = generateFeedbackDescription()
+    if (tabId != null) {
+      try {
+        const tab = await chrome.tabs.get(tabId)
+        if (tab.url) {
+          content = `The following feedback is in reference to ${tab.url}\n\n${content}`
+        }
+      } catch {}
+    }
     copyToClipboard(content)
     logEvent(AnalyticEvent.ChangesCopied, undefined, {
       changeCount: String(changeCount),
     })
-  }, [changeCount])
+  }, [changeCount, tabId])
 
   const handleCancel = useCallback(() => {
     const content = "No design feedback was given."
@@ -487,10 +495,19 @@ function SidePanel({ demo = false }: SidePanelProps) {
     logEvent(AnalyticEvent.ChangesCancelled)
   }, [])
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     if (changeCount === 0 || !selectedSession) return
 
-    const content = generateFeedbackDescription()
+    let content = generateFeedbackDescription()
+
+    if (tabId != null) {
+      try {
+        const tab = await chrome.tabs.get(tabId)
+        if (tab.url) {
+          content = `The following feedback is in reference to ${tab.url}\n\n${content}`
+        }
+      } catch {}
+    }
 
     if (callbackRef.current) {
       callbackRef.current({ content })
@@ -748,7 +765,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
   // Listen for element-tree, tab-refreshed, and spa-navigation messages
   useEffect(() => {
     if (demo) return
-    function onMessage(message: any) {
+    async function onMessage(message: any) {
       if (message.type === "element-tree") {
         if (tabId != null && message.tabId !== tabId) return
         const newTree: TreeNode | null = message.tree
@@ -798,8 +815,16 @@ function SidePanel({ demo = false }: SidePanelProps) {
       } else if (message.type === "tab-refreshed") {
         if (tabId != null && message.tabId !== tabId) return
         // Copy queued changes to clipboard before clearing
-        const content = generateFeedbackDescription()
+        let content = generateFeedbackDescription()
         if (content !== "No feedback given") {
+          if (tabId != null) {
+            try {
+              const tab = await chrome.tabs.get(tabId)
+              if (tab.url) {
+                content = `The following feedback is in reference to ${tab.url}\n\n${content}`
+              }
+            } catch {}
+          }
           copyToClipboard(content)
           let count = 0
           for (const [, entry] of editsRef.current) {
