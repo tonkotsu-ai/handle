@@ -22,7 +22,7 @@ export interface ColorPickerProps {
   pageColors?: string[]
   tokens?: TokenEntry[]
   edited?: boolean
-  onChange: (val: string) => void
+  onChange: (val: string, tokenName?: string) => void
 }
 
 function highlightMatch(text: string, query: string) {
@@ -231,7 +231,7 @@ function TokensTab({
 }: {
   value: string
   tokens: TokenEntry[]
-  onChange: (val: string) => void
+  onChange: (val: string, tokenName?: string) => void
   onClose: () => void
 }) {
   const [search, setSearch] = useState("")
@@ -280,7 +280,7 @@ function TokensTab({
             <button
               key={token.name}
               onClick={() => {
-                onChange(hex)
+                onChange(hex, token.name)
                 onClose()
               }}
               className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs w-full ${
@@ -445,7 +445,7 @@ export default function ColorPicker({
               <TokensTab
                 value={value}
                 tokens={tokens}
-                onChange={(val) => onChange(val)}
+                onChange={(val, tokenName) => onChange(val, tokenName)}
                 onClose={() => setOpen(false)}
               />
             )}

@@ -524,9 +524,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
   }, [changeCount, selectedSession])
 
   const handleStyleEdit = useCallback(
-    (elementId: ElementId, prop: string, original: string, value: string) => {
+    (elementId: ElementId, prop: string, original: string, value: string, tokenName?: string) => {
       const nodeId = elementId as string
-      recordEdit(elementId, prop, original, value)
+      recordEdit(elementId, prop, original, value, tokenName)
       if (!demo && tabId) {
         if (prop === "lucideIcon") {
           const svgChildren = getIconSvgChildren(value)
@@ -933,9 +933,12 @@ function SidePanel({ demo = false }: SidePanelProps) {
     >()
     for (const [selectorPath, entry] of editsRef.current) {
       const changedProps: { prop: string; from: string; to: string }[] = []
-      for (const [prop, { original, current }] of entry.props) {
+      for (const [prop, { original, current, tokenName }] of entry.props) {
         if (original !== current) {
-          changedProps.push({ prop, from: original, to: current })
+          const displayValue = tokenName
+            ? (tokenName.startsWith("--") ? `var(${tokenName})` : tokenName)
+            : current
+          changedProps.push({ prop, from: original, to: displayValue })
         }
       }
       if (changedProps.length === 0) continue

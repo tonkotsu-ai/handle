@@ -19,10 +19,10 @@ export interface EditTracker {
   editsRef: React.RefObject<Map<string, EditEntry>>
   changeCount: number
   editRevision: number
-  recordEdit: (elementId: ElementId, prop: string, original: string, value: string) => void
+  recordEdit: (elementId: ElementId, prop: string, original: string, value: string, tokenName?: string) => void
   recomputeChangeCount: () => void
   hasEditsForElement: (elementId: ElementId) => boolean
-  getEditedPropsForElement: (elementId: ElementId) => Map<string, { original: string; current: string }>
+  getEditedPropsForElement: (elementId: ElementId) => Map<string, { original: string; current: string; tokenName?: string }>
   generateFeedbackDescription: () => string
   resetEdits: () => void
 }
@@ -58,14 +58,14 @@ export function useEditTracker(options: UseEditTrackerOptions): EditTracker {
 
   function getEditedPropsForElement(
     elementId: ElementId
-  ): Map<string, { original: string; current: string }> {
+  ): Map<string, { original: string; current: string; tokenName?: string }> {
     const path = resolvePath(elementId)
     if (!path) return new Map()
     const entry = editsRef.current.get(path)
     if (!entry) return new Map()
-    const result = new Map<string, { original: string; current: string }>()
-    for (const [prop, { original, current }] of entry.props) {
-      if (original !== current) result.set(prop, { original, current })
+    const result = new Map<string, { original: string; current: string; tokenName?: string }>()
+    for (const [prop, { original, current, tokenName }] of entry.props) {
+      if (original !== current) result.set(prop, { original, current, tokenName })
     }
     return result
   }
@@ -74,7 +74,8 @@ export function useEditTracker(options: UseEditTrackerOptions): EditTracker {
     elementId: ElementId,
     prop: string,
     originalValue: string,
-    newValue: string
+    newValue: string,
+    tokenName?: string
   ) {
     const selectorPath = resolvePath(elementId)
     const path = selectorPath || `element[${elementId}]`
@@ -89,9 +90,11 @@ export function useEditTracker(options: UseEditTrackerOptions): EditTracker {
     }
     const entry = editsRef.current.get(path)!
     if (!entry.props.has(prop)) {
-      entry.props.set(prop, { original: originalValue, current: newValue })
+      entry.props.set(prop, { original: originalValue, current: newValue, tokenName })
     } else {
-      entry.props.get(prop)!.current = newValue
+      const propEntry = entry.props.get(prop)!
+      propEntry.current = newValue
+      propEntry.tokenName = tokenName
     }
   }
 
@@ -105,9 +108,12 @@ export function useEditTracker(options: UseEditTrackerOptions): EditTracker {
     >()
     for (const [selectorPath, entry] of editsRef.current) {
       const changedProps: { prop: string; from: string; to: string }[] = []
-      for (const [prop, { original, current }] of entry.props) {
+      for (const [prop, { original, current, tokenName }] of entry.props) {
         if (original !== current) {
-          changedProps.push({ prop, from: original, to: current })
+          const displayValue = tokenName
+            ? (tokenName.startsWith("--") ? `var(${tokenName})` : tokenName)
+            : current
+          changedProps.push({ prop, from: original, to: displayValue })
         }
       }
       if (changedProps.length === 0) continue
