@@ -1,26 +1,12 @@
-import { createInterface } from "readline"
+import { intro, outro, multiselect, confirm, spinner, cancel, isCancel, note } from "@clack/prompts"
 import { spawn } from "child_process"
 import { getAgents, getProjectAgents } from "./agents.js"
 
 export async function runSetup(opts: { projectRoot?: string } = {}): Promise<void> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout })
-  let closed = false
-  rl.on("close", () => {
-    closed = true
-  })
-  const ask = (q: string) =>
-    new Promise<string>((resolve, reject) => {
-      if (closed) return reject(new Error("stdin closed"))
-      rl.question(q, resolve)
-    })
-
-  console.log()
-  console.log("  Handle — Design feedback for AI coding agents")
-  console.log()
+  intro("Handle — Design feedback for AI coding agents")
 
   if (opts.projectRoot) {
-    console.log(`  Installing for project: ${opts.projectRoot}`)
-    console.log()
+    note(`Installing for project:\n${opts.projectRoot}`, "Project mode")
   }
 
   const agents = opts.projectRoot
@@ -28,116 +14,87 @@ export async function runSetup(opts: { projectRoot?: string } = {}): Promise<voi
     : getAgents()
 
   // Detect installed agents
+  const s = spinner()
+  s.start("Scanning for coding agents")
   const detected: typeof agents = []
   for (const agent of agents) {
     if (await agent.detect()) {
       detected.push(agent)
     }
   }
+  s.stop(
+    detected.length > 0
+      ? `Found ${detected.length} coding agent${detected.length === 1 ? "" : "s"}`
+      : "No coding agents found"
+  )
 
   if (detected.length === 0) {
-    console.log("  No supported coding agents detected.")
-    console.log(
-      "  Supported: Claude Code, Codex, Cursor, Claude Desktop, GitHub Copilot, Gemini CLI, Rovo Dev, Windsurf"
+    note(
+      "Supported: Claude Code, Codex, Cursor, Claude Desktop,\nGitHub Copilot, Gemini CLI, Rovo Dev, Windsurf",
+      "No agents detected"
     )
-    console.log()
-    rl.close()
+    outro("Install a supported coding agent and try again.")
     return
   }
 
-  console.log("  Detected coding agents:")
-  console.log()
-  detected.forEach((agent, i) => {
-    console.log(`    ${i + 1}. ${agent.name}`)
+  const selection = await multiselect({
+    message: "Which agents should Handle connect to?",
+    options: detected.map((agent) => ({
+      value: agent.id,
+      label: agent.name,
+    })),
+    required: true,
+    initialValues: detected.map((agent) => agent.id),
   })
-  console.log(`    a. All of the above`)
-  console.log()
 
-  let answer: string
-  try {
-    answer = await ask(
-      "  Which agents to configure? (e.g. 1,3 or a for all): "
-    )
-  } catch {
-    console.log()
-    rl.close()
-    return
-  }
-  const trimmed = answer.trim().toLowerCase()
-
-  let selected: typeof agents
-  if (trimmed === "a" || trimmed === "all") {
-    selected = detected
-  } else {
-    const indices = trimmed
-      .split(/[,\s]+/)
-      .map(Number)
-      .filter((n) => !isNaN(n) && n >= 1 && n <= detected.length)
-    selected = indices.map((i) => detected[i - 1])
+  if (isCancel(selection)) {
+    cancel("Setup cancelled.")
+    process.exit(0)
   }
 
-  if (selected.length === 0) {
-    console.log("  No agents selected.")
-    rl.close()
-    return
-  }
+  const selected = detected.filter((agent) => selection.includes(agent.id))
 
-  console.log()
-
+  const configSpinner = spinner()
   for (const agent of selected) {
-    process.stdout.write(`  Configuring ${agent.name}... `)
+    configSpinner.start(`Configuring ${agent.name}`)
     const result = await agent.configure()
-    switch (result.status) {
-      case "created":
-        console.log("done")
-        break
-      case "updated":
-        console.log("updated")
-        break
-      case "already_configured":
-        console.log("already configured")
-        break
-      case "error":
-        console.log(`error: ${result.message}`)
-        break
-    }
+    const statusLabel =
+      result.status === "created"
+        ? "configured"
+        : result.status === "updated"
+          ? "updated"
+          : result.status === "already_configured"
+            ? "already configured"
+            : `error: ${result.message}`
+    configSpinner.stop(`${agent.name} — ${statusLabel}`)
   }
 
   const EXTENSION_URL =
     "https://chromewebstore.google.com/detail/pfcfpjololfdopoglgplmijaohidmopj"
 
-  console.log()
-  console.log(
-    "  Setup complete! Restart your coding agent to activate Handle."
+  note(
+    "Install the Handle Chrome extension to start\nsending design feedback from your browser.",
+    "Last step"
   )
-  console.log()
-  console.log(
-    "  Last step: install the Handle Chrome extension to start sending"
-  )
-  console.log("  design feedback from your browser.")
-  console.log()
 
-  let openAnswer: string
-  try {
-    openAnswer = await ask("  Open the Chrome Web Store page? [Y/n]: ")
-  } catch {
-    console.log()
-    rl.close()
-    return
+  const shouldOpen = await confirm({
+    message: "Open the Chrome Web Store page?",
+    initialValue: true,
+  })
+
+  if (isCancel(shouldOpen)) {
+    cancel("Setup cancelled.")
+    process.exit(0)
   }
 
-  const trimmedOpen = openAnswer.trim().toLowerCase()
-  if (trimmedOpen === "" || trimmedOpen === "y") {
+  if (shouldOpen) {
     const platform = process.platform
     const cmd =
       platform === "win32" ? "start" : platform === "darwin" ? "open" : "xdg-open"
     spawn(cmd, [EXTENSION_URL], { detached: true, stdio: "ignore" }).unref()
   } else {
-    console.log()
-    console.log("  You can install it later at:")
-    console.log(`  ${EXTENSION_URL}`)
+    note(EXTENSION_URL, "Install later at")
   }
 
-  console.log()
-  rl.close()
+  outro("Setup complete! Restart your coding agent to activate Handle.")
 }
