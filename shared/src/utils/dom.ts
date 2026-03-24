@@ -169,6 +169,110 @@ export function visibleElementAtPoint(
 }
 
 /**
+ * Detect the framework component that owns a DOM element.
+ * Supports React, Vue 3, Vue 2, Angular (dev mode), and Svelte (dev mode).
+ * Returns the component name or null.
+ */
+export function detectComponent(el: HTMLElement): string | null {
+  const elAny = el as any
+
+  // React
+  const reactKey = Object.keys(el).find(
+    (k) =>
+      k.startsWith("__reactFiber$") ||
+      k.startsWith("__reactInternalInstance$"),
+  )
+  if (reactKey) {
+    let fiber = elAny[reactKey]?.return
+    while (fiber) {
+      if (typeof fiber.type === "string") break
+      if (
+        typeof fiber.type === "function" ||
+        typeof fiber.type === "object"
+      ) {
+        const name = fiber.type.displayName || fiber.type.name || null
+        if (name) return name
+      }
+      fiber = fiber.return
+    }
+  }
+
+  // Vue 3 — only label the component's root DOM element
+  if (elAny.__vueParentComponent && elAny.__vueParentComponent.subTree?.el === el) {
+    const name =
+      elAny.__vueParentComponent.type?.name ||
+      elAny.__vueParentComponent.type?.__name
+    if (name) return name
+  }
+
+  // Vue 2 — only label the component's root DOM element
+  if (elAny.__vue__ && elAny.__vue__.$el === el) {
+    const name =
+      elAny.__vue__.$options?.name || elAny.__vue__.$options?._componentTag
+    if (name) return name
+  }
+
+  // Angular (dev mode exposes ng global)
+  if (typeof (globalThis as any).ng !== "undefined") {
+    try {
+      const comp = (globalThis as any).ng.getComponent(el)
+      if (comp) {
+        const raw = comp.constructor?.name
+        if (raw && raw !== "Object") {
+          return raw.replace(/^_+/, "")
+        }
+      }
+    } catch {
+      // ng.getComponent may throw for non-component elements
+    }
+  }
+
+  // Svelte (dev mode attaches __svelte_meta to all elements in a component)
+  // Only label the outermost element — skip if the parent belongs to the same file
+  if (elAny.__svelte_meta) {
+    const file = elAny.__svelte_meta.loc?.file
+    if (file) {
+      const parentFile = (el.parentElement as any)?.__svelte_meta?.loc?.file
+      if (parentFile !== file) {
+        const match = file.match(/([^/]+)\.svelte$/)
+        if (match) return match[1]
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Check whether any JS framework has attached metadata to DOM elements.
+ * Scans the first 200 body elements for React, Vue, Angular, or Svelte markers.
+ */
+export function hasFrameworkMarkers(): boolean {
+  const els = document.querySelectorAll("body *")
+  const limit = Math.min(els.length, 200)
+  for (let i = 0; i < limit; i++) {
+    const el = els[i] as any
+    // Vue
+    if (el.__vueParentComponent || el.__vue__) return true
+    // Svelte
+    if (el.__svelte_meta) return true
+    // React / Angular
+    const keys = Object.keys(els[i])
+    for (const k of keys) {
+      if (
+        k.startsWith("__reactFiber$") ||
+        k.startsWith("__reactInternalInstance$")
+      )
+        return true
+      if (k.startsWith("__ngContext__")) return true
+    }
+  }
+  // Angular global
+  if (typeof (globalThis as any).ng !== "undefined") return true
+  return false
+}
+
+/**
  * Plain JS string snippets for injection into string-based content scripts.
  * These mirror the typed functions above for use in handle-app's webview
  * where TypeScript imports are not available at runtime.
@@ -297,6 +401,80 @@ export const buildDomTreeSnippet = `
     _nodeCounter = 0;
     var tree = _buildDomTree(root, 0, nodeMap, isOverlayFn, detectComponentFn);
     return { tree: tree, nodeMap: nodeMap };
+  }
+`
+
+export const detectComponentSnippet = `
+  function detectComponent(el) {
+    // React
+    var reactKey = Object.keys(el).find(function(k) {
+      return k.startsWith("__reactFiber$") || k.startsWith("__reactInternalInstance$");
+    });
+    if (reactKey) {
+      var fiber = el[reactKey] && el[reactKey].return;
+      while (fiber) {
+        if (typeof fiber.type === "string") break;
+        if (typeof fiber.type === "function" || typeof fiber.type === "object") {
+          var name = fiber.type.displayName || fiber.type.name || null;
+          if (name) return name;
+        }
+        fiber = fiber.return;
+      }
+    }
+    // Vue 3 — only label the component's root DOM element
+    if (el.__vueParentComponent && el.__vueParentComponent.subTree && el.__vueParentComponent.subTree.el === el) {
+      var vName = (el.__vueParentComponent.type && el.__vueParentComponent.type.name) ||
+        (el.__vueParentComponent.type && el.__vueParentComponent.type.__name);
+      if (vName) return vName;
+    }
+    // Vue 2 — only label the component's root DOM element
+    if (el.__vue__ && el.__vue__.$el === el) {
+      var v2Name = (el.__vue__.$options && el.__vue__.$options.name) ||
+        (el.__vue__.$options && el.__vue__.$options._componentTag);
+      if (v2Name) return v2Name;
+    }
+    // Angular (dev mode)
+    if (typeof ng !== "undefined" && ng.getComponent) {
+      try {
+        var comp = ng.getComponent(el);
+        if (comp) {
+          var aName = comp.constructor && comp.constructor.name;
+          if (aName && aName !== "Object") return aName.replace(/^_+/, "");
+        }
+      } catch(e) {}
+    }
+    // Svelte (dev mode) — only label outermost element per component
+    if (el.__svelte_meta) {
+      var file = el.__svelte_meta.loc && el.__svelte_meta.loc.file;
+      if (file) {
+        var parentMeta = el.parentElement && el.parentElement.__svelte_meta;
+        var parentFile = parentMeta && parentMeta.loc && parentMeta.loc.file;
+        if (parentFile !== file) {
+          var match = file.match(/([^/]+)\\.svelte$/);
+          if (match) return match[1];
+        }
+      }
+    }
+    return null;
+  }
+`
+
+export const hasFrameworkMarkersSnippet = `
+  function hasFrameworkMarkers() {
+    var els = document.querySelectorAll("body *");
+    var limit = Math.min(els.length, 200);
+    for (var i = 0; i < limit; i++) {
+      var el = els[i];
+      if (el.__vueParentComponent || el.__vue__) return true;
+      if (el.__svelte_meta) return true;
+      var keys = Object.keys(el);
+      for (var j = 0; j < keys.length; j++) {
+        if (keys[j].indexOf("__reactFiber$") === 0 || keys[j].indexOf("__reactInternalInstance$") === 0) return true;
+        if (keys[j].indexOf("__ngContext__") === 0) return true;
+      }
+    }
+    if (typeof ng !== "undefined") return true;
+    return false;
   }
 `
 

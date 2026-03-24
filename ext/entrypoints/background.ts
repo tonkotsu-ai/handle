@@ -68,7 +68,7 @@ export default defineBackground(() => {
       chrome.tabs.sendMessage(tabId, { type })
     }
 
-    if (message.type === "annotate-react") {
+    if (message.type === "annotate-components") {
       const tabId = sender.tab?.id
       if (!tabId) return
       chrome.scripting
@@ -76,40 +76,82 @@ export default defineBackground(() => {
           target: { tabId },
           world: "MAIN",
           func: () => {
-            document
-              .querySelectorAll("[data-handle-component]")
-              .forEach((n) => n.removeAttribute("data-handle-component"))
-
             const target = document.querySelector("[data-handle-target]")
             if (!target) return
             target.removeAttribute("data-handle-target")
 
-            function getComponentRootedAt(el: Element): string | null {
-              const fiberKey = Object.keys(el).find(
+            function detectComponent(el: Element): string | null {
+              // React
+              const reactKey = Object.keys(el).find(
                 (k) =>
                   k.startsWith("__reactFiber$") ||
                   k.startsWith("__reactInternalInstance$")
               )
-              if (!fiberKey) return null
-              let fiber = (el as any)[fiberKey]?.return
-              while (fiber) {
-                if (typeof fiber.type === "string") break
-                if (
-                  typeof fiber.type === "function" ||
-                  typeof fiber.type === "object"
-                ) {
-                  const name =
-                    fiber.type.displayName || fiber.type.name || null
-                  if (name) return name
+              if (reactKey) {
+                let fiber = (el as any)[reactKey]?.return
+                while (fiber) {
+                  if (typeof fiber.type === "string") break
+                  if (
+                    typeof fiber.type === "function" ||
+                    typeof fiber.type === "object"
+                  ) {
+                    const name =
+                      fiber.type.displayName || fiber.type.name || null
+                    if (name) return name
+                  }
+                  fiber = fiber.return
                 }
-                fiber = fiber.return
               }
+
+              const elAny = el as any
+
+              // Vue 3 — only label the component's root DOM element
+              if (elAny.__vueParentComponent && elAny.__vueParentComponent.subTree?.el === el) {
+                const name =
+                  elAny.__vueParentComponent.type?.name ||
+                  elAny.__vueParentComponent.type?.__name
+                if (name) return name
+              }
+
+              // Vue 2 — only label the component's root DOM element
+              if (elAny.__vue__ && elAny.__vue__.$el === el) {
+                const name =
+                  elAny.__vue__.$options?.name ||
+                  elAny.__vue__.$options?._componentTag
+                if (name) return name
+              }
+
+              // Angular (dev mode)
+              if (typeof (globalThis as any).ng !== "undefined") {
+                try {
+                  const comp = (globalThis as any).ng.getComponent(el)
+                  if (comp) {
+                    const raw = comp.constructor?.name
+                    if (raw && raw !== "Object") {
+                      return raw.replace(/^_+/, "")
+                    }
+                  }
+                } catch {}
+              }
+
+              // Svelte (dev mode)
+              if (elAny.__svelte_meta) {
+                const file = elAny.__svelte_meta.loc?.file
+                if (file) {
+                  const parentFile = (el.parentElement as any)?.__svelte_meta?.loc?.file
+                  if (parentFile !== file) {
+                    const match = file.match(/([^/]+)\.svelte$/)
+                    if (match) return match[1]
+                  }
+                }
+              }
+
               return null
             }
 
             let current: Element | null = target
             while (current && current !== document.documentElement) {
-              const component = getComponentRootedAt(current)
+              const component = detectComponent(current)
               if (component) {
                 current.setAttribute("data-handle-component", component)
               }
@@ -118,12 +160,12 @@ export default defineBackground(() => {
           }
         })
         .then(() => {
-          chrome.tabs.sendMessage(tabId, { type: "react-annotated" })
+          chrome.tabs.sendMessage(tabId, { type: "components-annotated" })
         })
       return true
     }
 
-    if (message.type === "annotate-react-tree") {
+    if (message.type === "annotate-component-tree") {
       const tabId = sender.tab?.id
       if (!tabId) return
       chrome.scripting
@@ -136,26 +178,72 @@ export default defineBackground(() => {
               .querySelectorAll("[data-handle-component]")
               .forEach((n) => n.removeAttribute("data-handle-component"))
 
-            function getComponentRootedAt(el: Element): string | null {
-              const fiberKey = Object.keys(el).find(
+            function detectComponent(el: Element): string | null {
+              // React
+              const reactKey = Object.keys(el).find(
                 (k) =>
                   k.startsWith("__reactFiber$") ||
                   k.startsWith("__reactInternalInstance$")
               )
-              if (!fiberKey) return null
-              let fiber = (el as any)[fiberKey]?.return
-              while (fiber) {
-                if (typeof fiber.type === "string") break
-                if (
-                  typeof fiber.type === "function" ||
-                  typeof fiber.type === "object"
-                ) {
-                  const name =
-                    fiber.type.displayName || fiber.type.name || null
-                  if (name) return name
+              if (reactKey) {
+                let fiber = (el as any)[reactKey]?.return
+                while (fiber) {
+                  if (typeof fiber.type === "string") break
+                  if (
+                    typeof fiber.type === "function" ||
+                    typeof fiber.type === "object"
+                  ) {
+                    const name =
+                      fiber.type.displayName || fiber.type.name || null
+                    if (name) return name
+                  }
+                  fiber = fiber.return
                 }
-                fiber = fiber.return
               }
+
+              const elAny = el as any
+
+              // Vue 3 — only label the component's root DOM element
+              if (elAny.__vueParentComponent && elAny.__vueParentComponent.subTree?.el === el) {
+                const name =
+                  elAny.__vueParentComponent.type?.name ||
+                  elAny.__vueParentComponent.type?.__name
+                if (name) return name
+              }
+
+              // Vue 2 — only label the component's root DOM element
+              if (elAny.__vue__ && elAny.__vue__.$el === el) {
+                const name =
+                  elAny.__vue__.$options?.name ||
+                  elAny.__vue__.$options?._componentTag
+                if (name) return name
+              }
+
+              // Angular (dev mode)
+              if (typeof (globalThis as any).ng !== "undefined") {
+                try {
+                  const comp = (globalThis as any).ng.getComponent(el)
+                  if (comp) {
+                    const raw = comp.constructor?.name
+                    if (raw && raw !== "Object") {
+                      return raw.replace(/^_+/, "")
+                    }
+                  }
+                } catch {}
+              }
+
+              // Svelte (dev mode)
+              if (elAny.__svelte_meta) {
+                const file = elAny.__svelte_meta.loc?.file
+                if (file) {
+                  const parentFile = (el.parentElement as any)?.__svelte_meta?.loc?.file
+                  if (parentFile !== file) {
+                    const match = file.match(/([^/]+)\.svelte$/)
+                    if (match) return match[1]
+                  }
+                }
+              }
+
               return null
             }
 
@@ -163,7 +251,7 @@ export default defineBackground(() => {
             const allEls = document.querySelectorAll("body *")
             const limit = Math.min(allEls.length, 3000)
             for (let i = 0; i < limit; i++) {
-              const component = getComponentRootedAt(allEls[i])
+              const component = detectComponent(allEls[i])
               if (component) {
                 allEls[i].setAttribute("data-handle-component", component)
               }
@@ -172,14 +260,14 @@ export default defineBackground(() => {
         })
         .then(() => {
           chrome.tabs
-            .sendMessage(tabId, { type: "react-tree-annotated" })
+            .sendMessage(tabId, { type: "component-tree-annotated" })
             .catch(() => {})
         })
         .catch(() => {
           // Script injection failed (e.g. chrome:// pages) — tell content
           // script to build tree without component data
           chrome.tabs
-            .sendMessage(tabId, { type: "react-tree-annotated" })
+            .sendMessage(tabId, { type: "component-tree-annotated" })
             .catch(() => {})
         })
       return true

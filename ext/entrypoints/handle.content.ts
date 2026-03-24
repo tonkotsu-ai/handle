@@ -1,6 +1,8 @@
 import {
   buildDomTree,
   buildSelectorPath,
+  detectComponent,
+  hasFrameworkMarkers,
   visibleElementAtPoint,
 } from "@handle-ai/handle-shared"
 import type { TreeNode } from "@handle-ai/handle-shared"
@@ -14,7 +16,7 @@ export default defineContentScript({
     let overlay: HTMLDivElement | null = null
     let pendingTarget: HTMLElement | null = null
     let nodeMap = new Map<string, Node>()
-    let reactRetryTimer: ReturnType<typeof setTimeout> | null = null
+    let frameworkRetryTimer: ReturnType<typeof setTimeout> | null = null
     // Cache every element we've seen, keyed by selectorPath, so we can
     // re-select elements from the Changes tab even after the tree changes.
     const elementCache = new Map<string, HTMLElement>()
@@ -51,7 +53,7 @@ export default defineContentScript({
       const result = buildDomTree(document.body, {
         isOverlay: isOverlayEl,
         detectComponent: (el) =>
-          el.getAttribute("data-handle-component") || null,
+          el.getAttribute("data-handle-component") || detectComponent(el),
       })
       nodeMap = result.nodeMap
       // Populate elementCache from nodeMap for selector-based re-selection
@@ -90,22 +92,6 @@ export default defineContentScript({
       return path
     }
 
-    function hasReactFibers(): boolean {
-      const els = document.querySelectorAll("body *")
-      for (let i = 0; i < Math.min(els.length, 200); i++) {
-        const keys = Object.keys(els[i])
-        for (let j = 0; j < keys.length; j++) {
-          if (
-            keys[j].startsWith("__reactFiber$") ||
-            keys[j].startsWith("__reactInternalInstance$")
-          ) {
-            return true
-          }
-        }
-      }
-      return false
-    }
-
     function treeHasComponents(node: TreeNode | null): boolean {
       if (!node) return false
       if (node.component) return true
@@ -119,9 +105,9 @@ export default defineContentScript({
       selectedNodeId?: string | null,
       selectedPath?: string[] | null,
     ) {
-      if (reactRetryTimer) {
-        clearTimeout(reactRetryTimer)
-        reactRetryTimer = null
+      if (frameworkRetryTimer) {
+        clearTimeout(frameworkRetryTimer)
+        frameworkRetryTimer = null
       }
       const tree = rebuildTree()
 
@@ -134,24 +120,24 @@ export default defineContentScript({
         })
         .catch(() => {})
 
-      // If the tree has no React components, React may not have hydrated yet.
-      // Poll briefly and resend the tree once fibers appear.
+      // If the tree has no components, the framework may not have hydrated yet.
+      // Poll briefly and resend the tree once framework markers appear.
       if (tree && !treeHasComponents(tree)) {
         let attempts = 0
         const maxAttempts = 10
-        function retryIfReactAppeared() {
+        function retryIfFrameworkAppeared() {
           attempts++
-          if (hasReactFibers()) {
-            // Request full-tree React annotation, then rebuild
+          if (hasFrameworkMarkers()) {
+            // Request full-tree component annotation, then rebuild
             chrome.runtime
-              .sendMessage({ type: "annotate-react-tree" })
+              .sendMessage({ type: "annotate-component-tree" })
               .catch(() => {})
-            // Tree will be rebuilt when react-tree-annotated comes back
+            // Tree will be rebuilt when component-tree-annotated comes back
           } else if (attempts < maxAttempts) {
-            reactRetryTimer = setTimeout(retryIfReactAppeared, 200)
+            frameworkRetryTimer = setTimeout(retryIfFrameworkAppeared, 200)
           }
         }
-        reactRetryTimer = setTimeout(retryIfReactAppeared, 200)
+        frameworkRetryTimer = setTimeout(retryIfFrameworkAppeared, 200)
       }
     }
 
@@ -251,7 +237,7 @@ export default defineContentScript({
         overlay,
       )
       target.setAttribute("data-handle-target", "")
-      chrome.runtime.sendMessage({ type: "annotate-react" })
+      chrome.runtime.sendMessage({ type: "annotate-components" })
       pendingTarget = target
     }
 
@@ -293,7 +279,7 @@ export default defineContentScript({
         // Rebuild tree immediately, then request annotation for components
         sendTree()
         chrome.runtime
-          .sendMessage({ type: "annotate-react-tree" })
+          .sendMessage({ type: "annotate-component-tree" })
           .catch(() => {})
       }
     }
@@ -317,11 +303,11 @@ export default defineContentScript({
       document.addEventListener("mouseout", onMouseOut, true)
       document.addEventListener("click", onClick, true)
       // Build and send tree immediately (without component annotations).
-      // Then request React annotation — when it completes, sendTree() will
-      // be called again with component data via the react-tree-annotated handler.
+      // Then request component annotation — when it completes, sendTree() will
+      // be called again with component data via the component-tree-annotated handler.
       sendTree()
       chrome.runtime
-        .sendMessage({ type: "annotate-react-tree" })
+        .sendMessage({ type: "annotate-component-tree" })
         .catch(() => {})
     }
 
@@ -393,13 +379,13 @@ export default defineContentScript({
           const el = elementCache.get(message.selectorPath)
           if (el && document.contains(el)) {
             el.setAttribute("data-handle-target", "")
-            chrome.runtime.sendMessage({ type: "annotate-react" })
+            chrome.runtime.sendMessage({ type: "annotate-components" })
             pendingTarget = el
           }
-        } else if (message.type === "react-annotated") {
+        } else if (message.type === "components-annotated") {
           // Single-element annotation done (after click or select-by-selector)
           handlePendingTarget()
-        } else if (message.type === "react-tree-annotated") {
+        } else if (message.type === "component-tree-annotated") {
           // Full-tree annotation done — build and send tree
           sendTree()
         } else if (message.type === "build-tree") {
