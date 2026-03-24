@@ -34,19 +34,19 @@ function createExtensionSimulation() {
         handler({ ...message, tabId: 1 }, {}, () => {})
       }
     }
-    if (message.type === "annotate-react-tree") {
-      // Simulate: annotate, then send react-tree-annotated
-      sentMessages.push({ from: "bg", to: "cs", message: { type: "react-tree-annotated" } })
+    if (message.type === "annotate-component-tree") {
+      // Simulate: annotate, then send component-tree-annotated
+      sentMessages.push({ from: "bg", to: "cs", message: { type: "component-tree-annotated" } })
       for (const handler of csListeners) {
-        handler({ type: "react-tree-annotated" }, {}, () => {})
+        handler({ type: "component-tree-annotated" }, {}, () => {})
       }
       return true
     }
-    if (message.type === "annotate-react") {
-      // Simulate: annotate target's ancestors, then send react-annotated
-      sentMessages.push({ from: "bg", to: "cs", message: { type: "react-annotated" } })
+    if (message.type === "annotate-components") {
+      // Simulate: annotate target's ancestors, then send components-annotated
+      sentMessages.push({ from: "bg", to: "cs", message: { type: "components-annotated" } })
       for (const handler of csListeners) {
-        handler({ type: "react-annotated" }, {}, () => {})
+        handler({ type: "components-annotated" }, {}, () => {})
       }
       return true
     }
@@ -126,10 +126,10 @@ function createExtensionSimulation() {
       if (active) return
       active = true
       sendTree()
-      csSendMessage({ type: "annotate-react-tree" })
-    } else if (message.type === "react-tree-annotated") {
+      csSendMessage({ type: "annotate-component-tree" })
+    } else if (message.type === "component-tree-annotated") {
       sendTree()
-    } else if (message.type === "react-annotated") {
+    } else if (message.type === "components-annotated") {
       handlePendingTarget()
     }
   })
@@ -164,7 +164,7 @@ function createExtensionSimulation() {
     clickElement(el: HTMLElement) {
       el.setAttribute("data-handle-target", "")
       pendingTarget = el
-      csSendMessage({ type: "annotate-react" })
+      csSendMessage({ type: "annotate-components" })
     },
     // State accessors
     get spTree() { return spTree },
@@ -269,7 +269,7 @@ describe("extension message flow", () => {
 
     // Should see at least 2 element-tree messages:
     // 1. From sendTree() called directly in enable()
-    // 2. From sendTree() called in react-tree-annotated handler
+    // 2. From sendTree() called in component-tree-annotated handler
     const treeMsgs = ext.sentMessages.filter(
       (m) => m.message.type === "element-tree",
     )

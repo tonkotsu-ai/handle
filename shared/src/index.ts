@@ -15,11 +15,15 @@ export {
   buildSelectorSegment,
   buildSelectorPath,
   buildDomTree,
+  detectComponent,
+  hasFrameworkMarkers,
   isElementVisible,
   visibleElementAtPoint,
   buildSelectorSegmentSnippet,
   buildSelectorPathSnippet,
   buildDomTreeSnippet,
+  detectComponentSnippet,
+  hasFrameworkMarkersSnippet,
   visibleElementAtPointSnippet,
 } from "./utils/dom"
 export type { BuildDomTreeOptions } from "./utils/dom"
