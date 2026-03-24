@@ -84,10 +84,6 @@ export default defineBackground(() => {
             if (!target) return
             target.removeAttribute("data-handle-target")
 
-            // For a given DOM element, find the component whose outermost
-            // DOM node is this element.  Walk up the fiber's return chain:
-            // if we hit a component fiber before another host (DOM) fiber,
-            // this element is that component's root element.
             function getComponentRootedAt(el: Element): string | null {
               const fiberKey = Object.keys(el).find(
                 (k) =>
@@ -97,8 +93,6 @@ export default defineBackground(() => {
               if (!fiberKey) return null
               let fiber = (el as any)[fiberKey]?.return
               while (fiber) {
-                // Hit another DOM element fiber — this element is not
-                // the outermost element of any component above it
                 if (typeof fiber.type === "string") break
                 if (
                   typeof fiber.type === "function" ||
@@ -129,7 +123,69 @@ export default defineBackground(() => {
       return true
     }
 
-    if (message.type === "element-hierarchy") {
+    if (message.type === "annotate-react-tree") {
+      const tabId = sender.tab?.id
+      if (!tabId) return
+      chrome.scripting
+        .executeScript({
+          target: { tabId },
+          world: "MAIN",
+          func: () => {
+            // Clear stale annotations
+            document
+              .querySelectorAll("[data-handle-component]")
+              .forEach((n) => n.removeAttribute("data-handle-component"))
+
+            function getComponentRootedAt(el: Element): string | null {
+              const fiberKey = Object.keys(el).find(
+                (k) =>
+                  k.startsWith("__reactFiber$") ||
+                  k.startsWith("__reactInternalInstance$")
+              )
+              if (!fiberKey) return null
+              let fiber = (el as any)[fiberKey]?.return
+              while (fiber) {
+                if (typeof fiber.type === "string") break
+                if (
+                  typeof fiber.type === "function" ||
+                  typeof fiber.type === "object"
+                ) {
+                  const name =
+                    fiber.type.displayName || fiber.type.name || null
+                  if (name) return name
+                }
+                fiber = fiber.return
+              }
+              return null
+            }
+
+            // Annotate all body descendants (bounded to prevent perf issues)
+            const allEls = document.querySelectorAll("body *")
+            const limit = Math.min(allEls.length, 3000)
+            for (let i = 0; i < limit; i++) {
+              const component = getComponentRootedAt(allEls[i])
+              if (component) {
+                allEls[i].setAttribute("data-handle-component", component)
+              }
+            }
+          }
+        })
+        .then(() => {
+          chrome.tabs
+            .sendMessage(tabId, { type: "react-tree-annotated" })
+            .catch(() => {})
+        })
+        .catch(() => {
+          // Script injection failed (e.g. chrome:// pages) — tell content
+          // script to build tree without component data
+          chrome.tabs
+            .sendMessage(tabId, { type: "react-tree-annotated" })
+            .catch(() => {})
+        })
+      return true
+    }
+
+    if (message.type === "element-tree") {
       chrome.runtime.sendMessage({
         ...message,
         tabId: sender.tab?.id ?? null

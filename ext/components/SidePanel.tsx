@@ -10,9 +10,9 @@ import {
   getIconSvgChildren,
   useEditTracker,
 } from "@handle-ai/handle-shared"
-import type { ElementId, ElementMeta } from "@handle-ai/handle-shared"
+import type { ElementId, ElementMeta, TreeNode } from "@handle-ai/handle-shared"
 
-import type { HierarchyItem, SessionInfo, StyleData } from "~types"
+import type { SessionInfo, StyleData } from "~types"
 
 import { AnalyticEvent, initStatsig, logEvent } from "~lib/statsig"
 
@@ -36,59 +36,189 @@ function execCopy(text: string) {
   document.body.removeChild(ta)
 }
 
-// Demo hierarchy is stored innermost-first (same order as content script),
-// but rendered root-first via reversal in the tree panel.
-const DEMO_HIERARCHY: HierarchyItem[] = [
-  {
-    tag: "h3",
-    id: "",
-    classes: ".text-lg.font-semibold",
-    component: null,
-    selectorPath:
-      "body > div#app > main.flex.flex-col.items-center.gap-8 > div.card.p-6.rounded-xl.shadow-md > div.flex.flex-col.gap-2 > h3.text-lg.font-semibold"
-  },
-  {
-    tag: "div",
-    id: "",
-    classes: ".flex.flex-col.gap-2",
-    component: null,
-    selectorPath:
-      "body > div#app > main.flex.flex-col.items-center.gap-8 > div.card.p-6.rounded-xl.shadow-md > div.flex.flex-col.gap-2"
-  },
-  {
-    tag: "div",
-    id: "",
-    classes: ".card.p-6.rounded-xl.shadow-md",
-    component: "ProfileCard",
-    selectorPath:
-      "body > div#app > main.flex.flex-col.items-center.gap-8 > div.card.p-6.rounded-xl.shadow-md"
-  },
-  {
-    tag: "main",
-    id: "",
-    classes: ".flex.flex-col.items-center.gap-8",
-    component: null,
-    selectorPath:
-      "body > div#app > main.flex.flex-col.items-center.gap-8"
-  },
-  {
-    tag: "div",
-    id: "app",
-    classes: ".min-h-screen.bg-gray-50",
-    component: "App",
-    selectorPath: "body > div#app"
-  },
-  {
-    tag: "body",
-    id: "",
-    classes: "",
-    component: null,
-    selectorPath: "body"
+function buildParentMap(tree: TreeNode): Map<string, string> {
+  const map = new Map<string, string>()
+  function walk(node: TreeNode) {
+    for (const child of node.children) {
+      map.set(child.nodeId, node.nodeId)
+      walk(child)
+    }
   }
-]
+  walk(tree)
+  return map
+}
 
-const DEMO_STYLES: StyleData[] = [
-  {
+function collectExpandedAtDepth(tree: TreeNode, maxDepth: number): Set<string> {
+  const set = new Set<string>()
+  function walk(node: TreeNode, depth: number) {
+    if (depth <= maxDepth) set.add(node.nodeId)
+    if (depth < maxDepth) {
+      for (const child of node.children) walk(child, depth + 1)
+    }
+  }
+  walk(tree, 0)
+  return set
+}
+
+function findNode(tree: TreeNode, nodeId: string): TreeNode | null {
+  if (tree.nodeId === nodeId) return tree
+  for (const child of tree.children) {
+    const found = findNode(child, nodeId)
+    if (found) return found
+  }
+  return null
+}
+
+function findNearestAncestorComponent(
+  tree: TreeNode,
+  nodeId: string,
+): string | null {
+  const path: TreeNode[] = []
+  function dfs(node: TreeNode): boolean {
+    path.push(node)
+    if (node.nodeId === nodeId) return true
+    for (const child of node.children) {
+      if (dfs(child)) return true
+    }
+    path.pop()
+    return false
+  }
+  dfs(tree)
+  for (let i = path.length - 2; i >= 0; i--) {
+    if (path[i].component) return path[i].component
+  }
+  return null
+}
+
+function getComponentPath(
+  tree: TreeNode,
+  nodeId: string,
+): string | null {
+  const path: TreeNode[] = []
+  function dfs(node: TreeNode): boolean {
+    path.push(node)
+    if (node.nodeId === nodeId) return true
+    for (const child of node.children) {
+      if (dfs(child)) return true
+    }
+    path.pop()
+    return false
+  }
+  if (!dfs(tree)) return null
+
+  // Find the nearest component ancestor (or the node itself)
+  let stopIdx = 0
+  const node = path[path.length - 1]
+  if (node?.component) {
+    stopIdx = path.length - 1
+  } else {
+    for (let i = path.length - 2; i >= 0; i--) {
+      if (path[i].component) {
+        stopIdx = i
+        break
+      }
+    }
+  }
+
+  const parts: string[] = []
+  for (let i = stopIdx; i < path.length; i++) {
+    const p = path[i]
+    parts.push(p.component || `${p.tag}${p.id}${p.classes}`)
+  }
+  return parts.join(" > ")
+}
+
+/** DFS walk returning visible tree nodes with their depth for flat rendering */
+function flattenVisibleTree(
+  tree: TreeNode,
+  expandedNodes: Set<string>,
+): Array<{ node: TreeNode; depth: number }> {
+  const result: Array<{ node: TreeNode; depth: number }> = []
+  function walk(node: TreeNode, depth: number) {
+    result.push({ node, depth })
+    if (expandedNodes.has(node.nodeId)) {
+      for (const child of node.children) {
+        walk(child, depth + 1)
+      }
+    }
+  }
+  walk(tree, 0)
+  return result
+}
+
+// Demo tree structure (matching the old demo hierarchy but as a recursive tree)
+const DEMO_TREE: TreeNode = {
+  nodeId: "5",
+  tag: "body",
+  id: "",
+  classes: "",
+  component: null,
+  childCount: 1,
+  selectorPath: "body",
+  children: [
+    {
+      nodeId: "4",
+      tag: "div",
+      id: "#app",
+      classes: ".min-h-screen.bg-gray-50",
+      component: "App",
+      childCount: 1,
+      selectorPath: "body > div#app",
+      children: [
+        {
+          nodeId: "3",
+          tag: "main",
+          id: "",
+          classes: ".flex.flex-col.items-center.gap-8",
+          component: null,
+          childCount: 1,
+          selectorPath:
+            "body > div#app > main.flex.flex-col.items-center.gap-8",
+          children: [
+            {
+              nodeId: "2",
+              tag: "div",
+              id: "",
+              classes: ".card.p-6.rounded-xl.shadow-md",
+              component: "ProfileCard",
+              childCount: 1,
+              selectorPath:
+                "body > div#app > main.flex.flex-col.items-center.gap-8 > div.card.p-6.rounded-xl.shadow-md",
+              children: [
+                {
+                  nodeId: "1",
+                  tag: "div",
+                  id: "",
+                  classes: ".flex.flex-col.gap-2",
+                  component: null,
+                  childCount: 1,
+                  selectorPath:
+                    "body > div#app > main.flex.flex-col.items-center.gap-8 > div.card.p-6.rounded-xl.shadow-md > div.flex.flex-col.gap-2",
+                  children: [
+                    {
+                      nodeId: "0",
+                      tag: "h3",
+                      id: "",
+                      classes: ".text-lg.font-semibold",
+                      component: null,
+                      childCount: 0,
+                      selectorPath:
+                        "body > div#app > main.flex.flex-col.items-center.gap-8 > div.card.p-6.rounded-xl.shadow-md > div.flex.flex-col.gap-2 > h3.text-lg.font-semibold",
+                      children: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+}
+
+const DEMO_STYLES: Record<string, StyleData> = {
+  "0": {
     display: "block",
     padding: "0px",
     fontFamily: "Inter",
@@ -99,9 +229,9 @@ const DEMO_STYLES: StyleData[] = [
     borderColor: "transparent",
     borderWidth: "0px",
     borderStyle: "none",
-    textContent: "Jane Cooper"
+    textContent: "Jane Cooper",
   },
-  {
+  "1": {
     display: "flex",
     flexDirection: "column",
     gap: "4px",
@@ -114,9 +244,9 @@ const DEMO_STYLES: StyleData[] = [
     borderColor: "transparent",
     borderWidth: "0px",
     borderStyle: "none",
-    alignItems: "center"
+    alignItems: "center",
   },
-  {
+  "2": {
     display: "flex",
     flexDirection: "column",
     gap: "16px",
@@ -129,9 +259,9 @@ const DEMO_STYLES: StyleData[] = [
     borderColor: "#e2e8f0",
     borderWidth: "1px",
     borderStyle: "solid",
-    alignItems: "center"
+    alignItems: "center",
   },
-  {
+  "3": {
     display: "flex",
     flexDirection: "column",
     gap: "32px",
@@ -144,9 +274,9 @@ const DEMO_STYLES: StyleData[] = [
     borderColor: "transparent",
     borderWidth: "0px",
     borderStyle: "none",
-    alignItems: "center"
+    alignItems: "center",
   },
-  {
+  "4": {
     display: "block",
     padding: "0px",
     fontFamily: "Inter",
@@ -156,9 +286,9 @@ const DEMO_STYLES: StyleData[] = [
     backgroundColor: "#f9fafb",
     borderColor: "transparent",
     borderWidth: "0px",
-    borderStyle: "none"
+    borderStyle: "none",
   },
-  {
+  "5": {
     display: "block",
     padding: "0px",
     fontFamily: "Inter",
@@ -168,9 +298,9 @@ const DEMO_STYLES: StyleData[] = [
     backgroundColor: "#ffffff",
     borderColor: "transparent",
     borderWidth: "0px",
-    borderStyle: "none"
-  }
-]
+    borderStyle: "none",
+  },
+}
 
 export interface SidePanelProps {
   demo?: boolean
@@ -185,37 +315,38 @@ function getTabIdFromLocation() {
 }
 
 function SidePanel({ demo = false }: SidePanelProps) {
-  const [hierarchy, setHierarchy] = useState<HierarchyItem[]>(
-    demo ? DEMO_HIERARCHY : []
-  )
+  const [tree, setTree] = useState<TreeNode | null>(demo ? DEMO_TREE : null)
   const [tabId, setTabId] = useState<number | null>(() =>
-    demo ? null : getTabIdFromLocation()
+    demo ? null : getTabIdFromLocation(),
   )
   const [selectionMode, setSelectionMode] = useState(true)
   const [selectionKey, setSelectionKey] = useState(0)
   const [availableSessions, setAvailableSessions] = useState<SessionInfo[]>([])
   const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(
-    null
+    null,
   )
-  const demoDefault = demo ? DEMO_HIERARCHY.length - 1 : null
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(demoDefault)
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
+    demo ? "0" : null,
+  )
   const [selectedStyles, setSelectedStyles] = useState<StyleData | null>(
-    demo ? DEMO_STYLES[DEMO_HIERARCHY.length - 1] : null
+    demo ? DEMO_STYLES["0"] : null,
   )
-  const [collapsedNodes, setCollapsedNodes] = useState<Set<number>>(new Set())
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(
+    demo ? collectExpandedAtDepth(DEMO_TREE, 1) : new Set(),
+  )
   const [pageTokens, setPageTokens] = useState<
     Array<{ name: string; value: string }>
   >([])
   const [pageColors, setPageColors] = useState<string[]>([])
   const [toast, setToast] = useState<string | null>(null)
 
-  const hierarchyRef = useRef<HierarchyItem[]>(demo ? DEMO_HIERARCHY : [])
-  // Maps index (in ancestors array) → item for all entries including hidden siblings and text children
-  const allItemsRef = useRef<Map<number, HierarchyItem>>(new Map())
+  const treeRef = useRef<TreeNode | null>(demo ? DEMO_TREE : null)
+  const parentMapRef = useRef<Map<string, string>>(new Map())
+  const selectorPathCacheRef = useRef<Map<string, string>>(new Map())
   const styleRequestIdRef = useRef(0)
   const socketRef = useRef<Socket | null>(null)
   const callbackRef = useRef<((response: { content: string }) => void) | null>(
-    null
+    null,
   )
   const [agentName, setAgentName] = useState<string | null>(null)
 
@@ -231,46 +362,30 @@ function SidePanel({ demo = false }: SidePanelProps) {
     resetEdits,
   } = useEditTracker({
     resolvePath: (elementId: ElementId) => {
-      const index = elementId as number
-      const item = allItemsRef.current.get(index) ?? hierarchyRef.current[index]
-      return item?.selectorPath
+      const nodeId = elementId as string
+      const t = treeRef.current
+      if (!t) return undefined
+      const node = findNode(t, nodeId)
+      return node?.selectorPath
     },
     resolveElementMeta: (elementId: ElementId): ElementMeta => {
-      const index = elementId as number
-      const item = allItemsRef.current.get(index) ?? hierarchyRef.current[index]
-      const selector = item
-        ? `${item.tag}${item.id}${item.classes}`
-        : `element[${index}]`
-      let component: string | null = null
-      let componentPath: string | null = null
-      if (item?.component) {
-        component = item.component
-      } else {
-        for (let i = index + 1; i < hierarchyRef.current.length; i++) {
-          if (hierarchyRef.current[i]?.component) {
-            component = hierarchyRef.current[i].component
-            break
-          }
+      const nodeId = elementId as string
+      const t = treeRef.current
+      if (!t) {
+        return {
+          selector: `element[${nodeId}]`,
+          component: null,
+          componentPath: null,
         }
       }
-      {
-        const parts: string[] = []
-        const hier = hierarchyRef.current
-        const stopIdx = item?.component
-          ? index
-          : (() => {
-              for (let i = index + 1; i < hier.length; i++) {
-                if (hier[i]?.component) return i
-              }
-              return hier.length - 1
-            })()
-        for (let i = hier.length - 1; i >= stopIdx; i--) {
-          const h = hier[i]
-          if (!h) continue
-          parts.push(h.component || `${h.tag}${h.id}${h.classes}`)
-        }
-        componentPath = parts.join(" > ")
-      }
+      const node = findNode(t, nodeId)
+      const selector = node
+        ? `${node.tag}${node.id}${node.classes}`
+        : `element[${nodeId}]`
+      const component = node?.component
+        ? node.component
+        : findNearestAncestorComponent(t, nodeId)
+      const componentPath = getComponentPath(t, nodeId)
       return { selector, component, componentPath }
     },
   })
@@ -296,11 +411,11 @@ function SidePanel({ demo = false }: SidePanelProps) {
         chrome.runtime.sendMessage({
           type: "toggle-design-mode",
           enabled,
-          tabId
+          tabId,
         })
       }
     },
-    [demo, tabId]
+    [demo, tabId],
   )
 
   // Enable/disable design mode based on selectionMode and panel lifecycle
@@ -355,7 +470,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
     const content = generateFeedbackDescription()
     copyToClipboard(content)
     logEvent(AnalyticEvent.ChangesCopied, undefined, {
-      changeCount: String(changeCount)
+      changeCount: String(changeCount),
     })
   }, [changeCount])
 
@@ -385,7 +500,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
     }
 
     logEvent(AnalyticEvent.ChangesSent, undefined, {
-      changeCount: String(changeCount)
+      changeCount: String(changeCount),
     })
 
     resetEdits()
@@ -393,48 +508,50 @@ function SidePanel({ demo = false }: SidePanelProps) {
 
   const handleStyleEdit = useCallback(
     (elementId: ElementId, prop: string, original: string, value: string) => {
-      const index = elementId as number
+      const nodeId = elementId as string
       recordEdit(elementId, prop, original, value)
       if (!demo && tabId) {
         if (prop === "lucideIcon") {
           const svgChildren = getIconSvgChildren(value)
           chrome.tabs.sendMessage(tabId, {
             type: "set-icon",
-            index,
+            nodeId,
             name: value,
-            svgChildren
+            svgChildren,
           })
         } else {
           chrome.tabs.sendMessage(tabId, {
             type: "set-style",
-            index,
+            nodeId,
             prop,
-            value
+            value,
           })
         }
       }
       recomputeChangeCount()
     },
-    [demo, tabId]
+    [demo, tabId],
   )
 
   const handleTextEdit = useCallback(
     (elementId: ElementId, original: string, value: string) => {
-      const index = elementId as number
+      const nodeId = elementId as string
       recordEdit(elementId, "textContent", original, value)
       if (!demo && tabId) {
-        chrome.tabs.sendMessage(tabId, { type: "set-text", index, value })
+        chrome.tabs.sendMessage(tabId, { type: "set-text", nodeId, value })
       }
       recomputeChangeCount()
     },
-    [demo, tabId]
+    [demo, tabId],
   )
 
   const handleUndo = useCallback(
     (elementId: ElementId, props: string[]) => {
-      const index = elementId as number
-      const item = allItemsRef.current.get(index) ?? hierarchyRef.current[index]
-      const path = item?.selectorPath
+      const nodeId = elementId as string
+      const t = treeRef.current
+      if (!t) return
+      const node = findNode(t, nodeId)
+      const path = node?.selectorPath
       if (!path) return
       const entry = editsRef.current.get(path)
       if (!entry) return
@@ -445,23 +562,23 @@ function SidePanel({ demo = false }: SidePanelProps) {
           if (prop === "textContent") {
             chrome.tabs.sendMessage(tabId, {
               type: "set-text",
-              index,
-              value: edit.original
+              nodeId,
+              value: edit.original,
             })
           } else if (prop === "lucideIcon") {
             const svgChildren = getIconSvgChildren(edit.original)
             chrome.tabs.sendMessage(tabId, {
               type: "set-icon",
-              index,
+              nodeId,
               name: edit.original,
-              svgChildren
+              svgChildren,
             })
           } else {
             chrome.tabs.sendMessage(tabId, {
               type: "set-style",
-              index,
+              nodeId,
               prop,
-              value: edit.original
+              value: edit.original,
             })
           }
         }
@@ -472,71 +589,80 @@ function SidePanel({ demo = false }: SidePanelProps) {
       }
       recomputeChangeCount()
     },
-    [demo, tabId]
+    [demo, tabId],
   )
 
   // Select an element and fetch its styles
   const handleSelect = useCallback(
-    async (index: number) => {
-      if (selectedIndex === index) return
-      setSelectedIndex(index)
+    async (nodeId: string) => {
+      if (selectedNodeId === nodeId) return
+      setSelectedNodeId(nodeId)
       setSelectedStyles(null)
       if (!demo && tabId) {
         chrome.tabs.sendMessage(tabId, {
           type: "highlight-element",
-          index
+          nodeId,
         })
       }
       const reqId = ++styleRequestIdRef.current
       const result = demo
-        ? DEMO_STYLES[index] ?? null
+        ? DEMO_STYLES[nodeId] ?? null
         : await chrome.tabs.sendMessage(tabId!, {
             type: "get-styles",
-            index
+            nodeId,
           })
       if (result && reqId === styleRequestIdRef.current) {
-        setSelectedStyles(result as StyleData)
+        if (demo) {
+          setSelectedStyles(result as StyleData)
+        } else {
+          const { styles, selectorPath } = result as {
+            styles: StyleData
+            selectorPath: string
+          }
+          selectorPathCacheRef.current.set(nodeId, selectorPath)
+          setSelectedStyles(styles)
+        }
       }
     },
-    [demo, tabId, selectedIndex]
+    [demo, tabId, selectedNodeId],
   )
 
-  const handleToggleExpand = useCallback((index: number) => {
-    setCollapsedNodes((prev) => {
+  const handleToggleExpand = useCallback((nodeId: string) => {
+    setExpandedNodes((prev) => {
       const next = new Set(prev)
-      if (next.has(index)) {
-        next.delete(index)
+      if (next.has(nodeId)) {
+        next.delete(nodeId)
       } else {
-        next.add(index)
+        next.add(nodeId)
       }
       return next
     })
   }, [])
 
   const handleMouseEnter = useCallback(
-    (index: number) => {
+    (nodeId: string) => {
       if (!demo && tabId) {
         chrome.tabs.sendMessage(tabId, {
           type: "highlight-element",
-          index
+          nodeId,
         })
       }
     },
-    [demo, tabId]
+    [demo, tabId],
   )
 
   const handleMouseLeave = useCallback(() => {
     if (!demo && tabId) {
-      if (selectedIndex != null) {
+      if (selectedNodeId != null) {
         chrome.tabs.sendMessage(tabId, {
           type: "highlight-element",
-          index: selectedIndex
+          nodeId: selectedNodeId,
         })
       } else {
         chrome.tabs.sendMessage(tabId, { type: "clear-highlight" })
       }
     }
-  }, [demo, tabId, selectedIndex])
+  }, [demo, tabId, selectedNodeId])
 
   // Poll discovery endpoint for available sessions (continuous)
   useEffect(() => {
@@ -592,13 +718,13 @@ function SidePanel({ demo = false }: SidePanelProps) {
     }
 
     const socket = io(`http://localhost:${selectedSession.port}`, {
-      auth: { sessionId: selectedSession.id }
+      auth: { sessionId: selectedSession.id },
     })
     socketRef.current = socket
 
     logEvent(AnalyticEvent.SessionActive, undefined, {
       repo: selectedSession.repo,
-      sessionCount: String(availableSessions.length)
+      sessionCount: String(availableSessions.length),
     })
 
     socket.on("collect_feedback", (data, callback) => {
@@ -619,52 +745,54 @@ function SidePanel({ demo = false }: SidePanelProps) {
     }
   }, [demo, selectedSession?.id, selectedSession?.port])
 
-  // Listen for element-hierarchy messages from content script
+  // Listen for element-tree, tab-refreshed, and spa-navigation messages
   useEffect(() => {
     if (demo) return
     function onMessage(message: any) {
-      if (message.type === "element-hierarchy") {
+      if (message.type === "element-tree") {
         if (tabId != null && message.tabId !== tabId) return
-        const h: HierarchyItem[] = message.hierarchy
-        hierarchyRef.current = h
-        // Build allItemsRef with hierarchy items + hidden siblings + text children
-        const allItems = new Map<number, HierarchyItem>()
-        for (let i = 0; i < h.length; i++) {
-          allItems.set(i, h[i])
-        }
-        // The innermost element (index 0) may have hidden siblings and text children
-        const innermost = h[0]
-        let nextIdx = h.length
-        if (innermost?.hiddenSiblings) {
-          for (const sib of innermost.hiddenSiblings) {
-            allItems.set(nextIdx++, sib)
-          }
-        }
-        if (innermost?.textChildren) {
-          for (const tc of innermost.textChildren) {
-            allItems.set(nextIdx++, tc)
-          }
-        }
-        allItemsRef.current = allItems
-        setHierarchy(h)
+        const newTree: TreeNode | null = message.tree
+        const hadTree = treeRef.current != null
+        treeRef.current = newTree
+        setTree(newTree)
         setSelectionKey((k) => k + 1)
-        setCollapsedNodes(new Set())
-        // Auto-select the clicked element (index 0 = innermost) and fetch styles
-        if (h.length > 0) {
-          setSelectedIndex(0)
+
+        if (newTree) {
+          parentMapRef.current = buildParentMap(newTree)
+          if (message.selectedPath) {
+            const expanded = collectExpandedAtDepth(newTree, 1)
+            for (const nid of message.selectedPath) expanded.add(nid)
+            setExpandedNodes(expanded)
+          } else if (!hadTree) {
+            setExpandedNodes(collectExpandedAtDepth(newTree, 1))
+          }
+        } else {
+          parentMapRef.current = new Map()
+          setExpandedNodes(new Set())
+        }
+
+        if (message.selectedNodeId && newTree) {
+          const nid = message.selectedNodeId
+          setSelectedNodeId(nid)
           chrome.tabs.sendMessage(tabId!, {
             type: "highlight-element",
-            index: 0
+            nodeId: nid,
           })
           const reqId = ++styleRequestIdRef.current
           chrome.tabs
-            .sendMessage(tabId!, { type: "get-styles", index: 0 })
+            .sendMessage(tabId!, { type: "get-styles", nodeId: nid })
             .then((result) => {
-              if (result && reqId === styleRequestIdRef.current)
-                setSelectedStyles(result as StyleData)
+              if (result && reqId === styleRequestIdRef.current) {
+                const { styles, selectorPath } = result as {
+                  styles: StyleData
+                  selectorPath: string
+                }
+                selectorPathCacheRef.current.set(nid, selectorPath)
+                setSelectedStyles(styles)
+              }
             })
-        } else {
-          setSelectedIndex(null)
+        } else if (!newTree) {
+          setSelectedNodeId(null)
           setSelectedStyles(null)
         }
       } else if (message.type === "tab-refreshed") {
@@ -680,21 +808,22 @@ function SidePanel({ demo = false }: SidePanelProps) {
             }
           }
           logEvent(AnalyticEvent.PageRefreshed, undefined, {
-            unsavedChangeCount: String(count)
+            unsavedChangeCount: String(count),
           })
           setToast(
-            `Page refreshed — ${count} unsaved change${count === 1 ? "" : "s"} copied to clipboard`
+            `Page refreshed — ${count} unsaved change${count === 1 ? "" : "s"} copied to clipboard`,
           )
           setTimeout(() => setToast(null), 4000)
         }
         // Clear all queued changes and reset UI state
         resetEdits()
-        hierarchyRef.current = []
-        allItemsRef.current = new Map()
-        setHierarchy([])
-        setSelectedIndex(null)
+        treeRef.current = null
+        parentMapRef.current = new Map()
+        selectorPathCacheRef.current = new Map()
+        setTree(null)
+        setSelectedNodeId(null)
         setSelectedStyles(null)
-        setCollapsedNodes(new Set())
+        setExpandedNodes(new Set())
         setSelectionMode(true)
         // Re-fetch page tokens and colors from the refreshed page
         chrome.tabs
@@ -711,12 +840,13 @@ function SidePanel({ demo = false }: SidePanelProps) {
           .catch(() => {})
       } else if (message.type === "spa-navigation") {
         // SPA navigation: clear stale element tree but keep selection mode
-        hierarchyRef.current = []
-        allItemsRef.current = new Map()
-        setHierarchy([])
-        setSelectedIndex(null)
+        treeRef.current = null
+        parentMapRef.current = new Map()
+        selectorPathCacheRef.current = new Map()
+        setTree(null)
+        setSelectedNodeId(null)
         setSelectedStyles(null)
-        setCollapsedNodes(new Set())
+        setExpandedNodes(new Set())
       }
     }
     chrome.runtime.onMessage.addListener(onMessage)
@@ -726,8 +856,8 @@ function SidePanel({ demo = false }: SidePanelProps) {
   }, [demo, tabId])
 
   const selectedItem =
-    selectedIndex != null
-      ? (hierarchy[selectedIndex] ?? allItemsRef.current.get(selectedIndex) ?? null)
+    selectedNodeId != null && tree
+      ? findNode(tree, selectedNodeId)
       : null
 
   const [activeTab, setActiveTab] = useState<"design" | "changes">("design")
@@ -742,7 +872,10 @@ function SidePanel({ demo = false }: SidePanelProps) {
     const onMouseMove = (e: MouseEvent) => {
       if (!dragRef.current) return
       const delta = e.clientY - dragRef.current.startY
-      const newH = Math.max(80, Math.min(dragRef.current.startHeight + delta, 600))
+      const newH = Math.max(
+        80,
+        Math.min(dragRef.current.startHeight + delta, 600),
+      )
       setTreeHeight(newH)
     }
     const onMouseUp = () => {
@@ -785,12 +918,16 @@ function SidePanel({ demo = false }: SidePanelProps) {
       if (!groups.has(key))
         groups.set(key, {
           componentPath: entry.componentPath,
-          elements: []
+          elements: [],
         })
       const lastSegment = selectorPath.split(" > ").pop() || entry.selector
       groups
         .get(key)!
-        .elements.push({ selector: lastSegment, selectorPath, changes: changedProps })
+        .elements.push({
+          selector: lastSegment,
+          selectorPath,
+          changes: changedProps,
+        })
     }
     return groups
   }
@@ -799,15 +936,24 @@ function SidePanel({ demo = false }: SidePanelProps) {
     <div
       className={`relative flex flex-col h-full ${demo ? "w-96 mx-auto mt-8 border border-slate-300 dark:border-slate-700 rounded-3xl overflow-hidden max-h-[calc(100vh-64px)]" : ""}`}>
       {/* Tab bar */}
-      <div className="shrink-0 bg-softgray dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700" style={{ padding: "8px 32px" }}>
+      <div
+        className="shrink-0 bg-softgray dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700"
+        style={{ padding: "8px 32px" }}>
         <div className="flex items-center gap-2 w-full">
           <button
             onClick={() => {
               const next = !selectionMode
               setSelectionMode(next)
-              logEvent(AnalyticEvent.SelectionModeToggled, next ? "on" : "off")
+              logEvent(
+                AnalyticEvent.SelectionModeToggled,
+                next ? "on" : "off",
+              )
             }}
-            title={selectionMode ? "Turn off selection mode" : "Turn on selection mode to select an element from the page"}
+            title={
+              selectionMode
+                ? "Turn off selection mode"
+                : "Turn on selection mode to select an element from the page"
+            }
             className={`shrink-0 flex items-center justify-center rounded-md p-1.5 transition-colors ${
               selectionMode
                 ? "bg-electricblue-600 text-white"
@@ -815,7 +961,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
             }`}>
             <MousePointer2 size={14} />
           </button>
-          <div className="flex flex-1 rounded-lg bg-slate-200 dark:bg-slate-700" style={{ padding: "2px" }}>
+          <div
+            className="flex flex-1 rounded-lg bg-slate-200 dark:bg-slate-700"
+            style={{ padding: "2px" }}>
             <button
               className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 transition-colors ${
                 activeTab === "design"
@@ -866,101 +1014,31 @@ function SidePanel({ demo = false }: SidePanelProps) {
             className="shrink-0 overflow-y-auto"
             style={{ height: treeHeight }}>
             <div className="flex flex-col p-2">
-              {hierarchy.length === 0 && (
+              {!tree && (
                 <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
                   Select an element on the page
                 </div>
               )}
-              {/* Hierarchy is innermost-first; render reversed so root is at top */}
-              {(() => {
-                const reversed = [...hierarchy].reverse()
-                const rows: React.ReactNode[] = []
-                let hiddenBelowDepth: number | null = null
-                for (let displayIdx = 0; displayIdx < reversed.length; displayIdx++) {
-                  const item = reversed[displayIdx]
-                  const index = hierarchy.length - 1 - displayIdx
-                  const depth = displayIdx
-                  const isLastInChain = displayIdx === reversed.length - 1
-                  const hasTextChildren = isLastInChain && item.textChildren && item.textChildren.length > 0
-                  const isLeaf = isLastInChain && !hasTextChildren
-
-                  // Skip nodes hidden by a collapsed ancestor
-                  if (hiddenBelowDepth != null && depth > hiddenBelowDepth) continue
-                  hiddenBelowDepth = null
-
-                  const isExpanded = !collapsedNodes.has(index)
-                  if (!isExpanded) hiddenBelowDepth = depth
-
-                  rows.push(
+              {tree &&
+                flattenVisibleTree(tree, expandedNodes).map(
+                  ({ node, depth }) => (
                     <ElementRow
-                      key={`${selectionKey}-${index}`}
-                      item={item}
-                      elementId={index}
+                      key={`${selectionKey}-${node.nodeId}`}
+                      item={node}
+                      elementId={node.nodeId}
                       depth={depth}
-                      isLeaf={isLeaf}
-                      isExpanded={isExpanded}
-                      isEdited={hasEditsForElement(index)}
-                      isSelected={selectedIndex === index}
-                      onSelect={(id) => handleSelect(id as number)}
-                      onToggleExpand={(id) => handleToggleExpand(id as number)}
-                      onMouseEnter={() => handleMouseEnter(index)}
+                      isLeaf={node.children.length === 0}
+                      isExpanded={expandedNodes.has(node.nodeId)}
+                      isEdited={hasEditsForElement(node.nodeId)}
+                      isSelected={selectedNodeId === node.nodeId}
+                      isHidden={node.hidden}
+                      onSelect={(id) => handleSelect(id as string)}
+                      onToggleExpand={(id) => handleToggleExpand(id as string)}
+                      onMouseEnter={() => handleMouseEnter(node.nodeId)}
                       onMouseLeave={handleMouseLeave}
                     />
-                  )
-                  // Render hidden siblings after the innermost element
-                  if (isLastInChain && item.hiddenSiblings) {
-                    for (let si = 0; si < item.hiddenSiblings.length; si++) {
-                      const sibItem = item.hiddenSiblings[si]
-                      // Hidden siblings are appended to ancestors after the
-                      // normal hierarchy, so their index starts at hierarchy.length
-                      const sibIndex = hierarchy.length + si
-                      rows.push(
-                        <ElementRow
-                          key={`${selectionKey}-hidden-${si}`}
-                          item={sibItem}
-                          elementId={sibIndex}
-                          depth={depth}
-                          isLeaf={true}
-                          isExpanded={false}
-                          isEdited={hasEditsForElement(sibIndex)}
-                          isSelected={selectedIndex === sibIndex}
-                          isHidden={true}
-                          onSelect={(id) => handleSelect(id as number)}
-                          onToggleExpand={() => {}}
-                          onMouseEnter={() => handleMouseEnter(sibIndex)}
-                          onMouseLeave={handleMouseLeave}
-                        />
-                      )
-                    }
-                  }
-                  // Render text node children after the innermost element
-                  if (isLastInChain && isExpanded && item.textChildren) {
-                    const hiddenCount = item.hiddenSiblings?.length ?? 0
-                    for (let ti = 0; ti < item.textChildren.length; ti++) {
-                      const textItem = item.textChildren[ti]
-                      // Text children are appended to ancestors after hidden siblings
-                      const textIndex = hierarchy.length + hiddenCount + ti
-                      rows.push(
-                        <ElementRow
-                          key={`${selectionKey}-text-${ti}`}
-                          item={textItem}
-                          elementId={textIndex}
-                          depth={depth + 1}
-                          isLeaf={true}
-                          isExpanded={false}
-                          isEdited={hasEditsForElement(textIndex)}
-                          isSelected={selectedIndex === textIndex}
-                          onSelect={(id) => handleSelect(id as number)}
-                          onToggleExpand={() => {}}
-                          onMouseEnter={() => handleMouseEnter(textIndex)}
-                          onMouseLeave={handleMouseLeave}
-                        />
-                      )
-                    }
-                  }
-                }
-                return rows
-              })()}
+                  ),
+                )}
             </div>
           </div>
 
@@ -971,27 +1049,30 @@ function SidePanel({ demo = false }: SidePanelProps) {
               e.preventDefault()
               dragRef.current = {
                 startY: e.clientY,
-                startHeight: treeHeight
+                startHeight: treeHeight,
               }
               document.body.style.cursor = "row-resize"
               document.body.style.userSelect = "none"
             }}>
-            <GripHorizontal size={10} className="text-slate-400 dark:text-slate-500" />
+            <GripHorizontal
+              size={10}
+              className="text-slate-400 dark:text-slate-500"
+            />
           </div>
 
           {/* Style editor panel */}
           <div className="flex-1 min-h-0 overflow-y-auto">
-            {selectedIndex != null && selectedStyles ? (
+            {selectedNodeId != null && selectedStyles ? (
               <div className="px-3">
                 <StyleEditor
-                  key={`${selectionKey}-${selectedIndex}`}
+                  key={`${selectionKey}-${selectedNodeId}`}
                   styles={selectedStyles}
-                  elementId={selectedIndex}
-                  editedProps={getEditedPropsForElement(selectedIndex)}
+                  elementId={selectedNodeId}
+                  editedProps={getEditedPropsForElement(selectedNodeId)}
                   lucideIconName={
                     selectedItem?.classes.includes(".lucide")
                       ? (selectedItem.classes.match(
-                          /\.lucide-([a-z0-9-]+)/
+                          /\.lucide-([a-z0-9-]+)/,
                         )?.[1] ?? null)
                       : null
                   }
@@ -1005,9 +1086,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
               </div>
             ) : (
               <div className="flex items-center justify-center h-full text-sm text-slate-400 dark:text-slate-500">
-                {hierarchy.length > 0
-                  ? "Select an element to edit styles"
-                  : ""}
+                {tree ? "Select an element to edit styles" : ""}
               </div>
             )}
           </div>
@@ -1031,7 +1110,9 @@ function SidePanel({ demo = false }: SidePanelProps) {
                     <div
                       className="text-xs font-bold dark:text-white"
                       title={group.componentPath || undefined}>
-                      {component === "(no component)" ? "Unowned Elements" : component}
+                      {component === "(no component)"
+                        ? "Unowned Elements"
+                        : component}
                     </div>
                     {group.elements.map((el, elIdx) => (
                       <div
@@ -1040,38 +1121,50 @@ function SidePanel({ demo = false }: SidePanelProps) {
                         onClick={() => {
                           setActiveTab("design")
                           if (!tabId) return
-                          let idx = hierarchyRef.current.findIndex(
-                            (h) => h.selectorPath === el.selectorPath
-                          )
-                          // Also search extended items (hidden siblings, text children)
-                          if (idx === -1) {
-                            for (const [key, val] of allItemsRef.current) {
-                              if (val.selectorPath === el.selectorPath) {
-                                idx = key
-                                break
-                              }
+                          // Try to find the node in the current tree by selectorPath
+                          function findBySelectorPath(
+                            node: TreeNode,
+                          ): string | null {
+                            if (node.selectorPath === el.selectorPath)
+                              return node.nodeId
+                            for (const child of node.children) {
+                              const found = findBySelectorPath(child)
+                              if (found) return found
                             }
+                            return null
                           }
-                          if (idx !== -1) {
-                            setSelectedIndex(idx)
+                          const foundNodeId = tree
+                            ? findBySelectorPath(tree)
+                            : null
+                          if (foundNodeId) {
+                            setSelectedNodeId(foundNodeId)
                             setSelectedStyles(null)
                             chrome.tabs.sendMessage(tabId, {
                               type: "highlight-element",
-                              index: idx
+                              nodeId: foundNodeId,
                             })
                             chrome.tabs
                               .sendMessage(tabId, {
                                 type: "get-styles",
-                                index: idx
+                                nodeId: foundNodeId,
                               })
                               .then((result) => {
-                                if (result)
-                                  setSelectedStyles(result as StyleData)
+                                if (result) {
+                                  const { styles, selectorPath } = result as {
+                                    styles: StyleData
+                                    selectorPath: string
+                                  }
+                                  selectorPathCacheRef.current.set(
+                                    foundNodeId,
+                                    selectorPath,
+                                  )
+                                  setSelectedStyles(styles)
+                                }
                               })
                           } else {
                             chrome.tabs.sendMessage(tabId, {
                               type: "select-by-selector",
-                              selectorPath: el.selectorPath
+                              selectorPath: el.selectorPath,
                             })
                           }
                         }}>
@@ -1083,10 +1176,16 @@ function SidePanel({ demo = false }: SidePanelProps) {
                             key={ch.prop}
                             className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                             <span className="inline-block h-2 w-2 rounded-full bg-juicyorange-500 shrink-0" />
-                            <span className="font-medium text-slate-700 dark:text-slate-200">{ch.prop}</span>
-                            <span className="text-slate-400 dark:text-slate-500 line-through">{ch.from}</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-200">
+                              {ch.prop}
+                            </span>
+                            <span className="text-slate-400 dark:text-slate-500 line-through">
+                              {ch.from}
+                            </span>
                             <span>&rarr;</span>
-                            <span className="text-slate-700 dark:text-slate-200">{ch.to}</span>
+                            <span className="text-slate-700 dark:text-slate-200">
+                              {ch.to}
+                            </span>
                           </div>
                         ))}
                       </div>

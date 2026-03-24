@@ -5,16 +5,24 @@ export type {
   StyleData,
   EditEntry,
   ElementItem,
+  TreeNode,
   TokenEntry,
   RefineTransport,
 } from "./types"
 
 // DOM utilities
 export {
+  buildSelectorSegment,
+  buildSelectorPath,
+  buildDomTree,
   isElementVisible,
   visibleElementAtPoint,
+  buildSelectorSegmentSnippet,
+  buildSelectorPathSnippet,
+  buildDomTreeSnippet,
   visibleElementAtPointSnippet,
 } from "./utils/dom"
+export type { BuildDomTreeOptions } from "./utils/dom"
 
 // Color utilities
 export {
