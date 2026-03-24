@@ -46,6 +46,19 @@ export interface ElementItem {
   textContent?: string
 }
 
+export interface TreeNode {
+  nodeId: string
+  tag: string
+  id: string
+  classes: string
+  component: string | null
+  childCount: number
+  children: TreeNode[]
+  selectorPath?: string
+  hidden?: boolean
+  textContent?: string
+}
+
 export interface TokenEntry {
   name: string
   value: string

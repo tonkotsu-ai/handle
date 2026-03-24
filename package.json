@@ -1,4 +1,14 @@
 {
   "private": true,
-  "workspaces": ["ext", "shared", "mcp"]
+  "workspaces": [
+    "ext",
+    "shared",
+    "mcp"
+  ],
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "jsdom": "^29.0.1",
+    "vitest": "^4.1.1"
+  }
 }

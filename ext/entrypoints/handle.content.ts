@@ -1,7 +1,9 @@
 import {
-  isElementVisible,
-  visibleElementAtPoint
+  buildDomTree,
+  buildSelectorPath,
+  visibleElementAtPoint,
 } from "@handle-ai/handle-shared"
+import type { TreeNode } from "@handle-ai/handle-shared"
 
 export default defineContentScript({
   matches: ["<all_urls>"],
@@ -9,11 +11,12 @@ export default defineContentScript({
   main() {
     let active = false
     let hoveredEl: HTMLElement | null = null
-    let ancestors: (HTMLElement | Text)[] = []
     let overlay: HTMLDivElement | null = null
     let pendingTarget: HTMLElement | null = null
+    let nodeMap = new Map<string, Node>()
+    let reactRetryTimer: ReturnType<typeof setTimeout> | null = null
     // Cache every element we've seen, keyed by selectorPath, so we can
-    // re-select elements from the Changes tab even after the hierarchy changes.
+    // re-select elements from the Changes tab even after the tree changes.
     const elementCache = new Map<string, HTMLElement>()
 
     function getOverlay() {
@@ -40,168 +43,148 @@ export default defineContentScript({
       if (overlay) overlay.style.display = "none"
     }
 
-    function buildSelectorSegment(el: HTMLElement): string {
-      const tag = el.tagName.toLowerCase()
-      const id = el.id ? `#${el.id}` : ""
-      const classes = el.classList.length
-        ? `.${[...el.classList].join(".")}`
-        : ""
-      const base = `${tag}${id}${classes}`
-      if (el.id) return base
-      const parent = el.parentElement
-      if (!parent) return base
-      const siblings = Array.from(parent.children) as HTMLElement[]
-      const matching = siblings.filter((sib) => {
-        const sTag = sib.tagName.toLowerCase()
-        const sId = sib.id ? `#${sib.id}` : ""
-        const sClasses = sib.classList.length
-          ? `.${[...sib.classList].join(".")}`
-          : ""
-        return `${sTag}${sId}${sClasses}` === base
+    function isOverlayEl(el: HTMLElement): boolean {
+      return el === overlay || (overlay != null && overlay.contains(el))
+    }
+
+    function rebuildTree(): TreeNode | null {
+      const result = buildDomTree(document.body, {
+        isOverlay: isOverlayEl,
+        detectComponent: (el) =>
+          el.getAttribute("data-handle-component") || null,
       })
-      if (matching.length <= 1) return base
-      const childIndex = siblings.indexOf(el) + 1
-      return `${base}:nth-child(${childIndex})`
+      nodeMap = result.nodeMap
+      // Populate elementCache from nodeMap for selector-based re-selection
+      for (const [, node] of nodeMap) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const el = node as HTMLElement
+          const sp = buildSelectorPath(el)
+          elementCache.set(sp, el)
+        }
+      }
+      return result.tree
     }
 
-    function buildHierarchyItem(
-      el: HTMLElement,
-      parentSegments: string[]
-    ) {
-      const tag = el.tagName.toLowerCase()
-      const id = el.id ? `#${el.id}` : ""
-      const classes = el.classList.length
-        ? `.${[...el.classList].join(".")}`
-        : ""
-      const component = el.getAttribute("data-handle-component") || null
-      const segment = buildSelectorSegment(el)
-      const selectorPath = [...parentSegments, segment].reverse().join(" > ")
-      elementCache.set(selectorPath, el)
-      return { tag, id, classes, component, selectorPath }
+    function findNodeIdForElement(el: Node): string | null {
+      for (const [nodeId, mappedEl] of nodeMap) {
+        if (mappedEl === el) return nodeId
+      }
+      return null
     }
 
-    function buildHierarchy(el: HTMLElement) {
-      ancestors = []
-      const hierarchy: Array<{
-        tag: string
-        id: string
-        classes: string
-        component: string | null
-        selectorPath: string
-        hidden?: boolean
-        textContent?: string
-        hiddenSiblings?: Array<{
-          tag: string
-          id: string
-          classes: string
-          component: string | null
-          selectorPath: string
-          hidden: boolean
-        }>
-        textChildren?: Array<{
-          tag: string
-          id: string
-          classes: string
-          component: string | null
-          selectorPath: string
-          textContent: string
-        }>
-      }> = []
-      const segments: string[] = []
-      let current: HTMLElement | null = el
-      let isFirst = true
-      // Collect hidden sibling DOM elements to append after the main hierarchy
-      const hiddenSiblingEls: HTMLElement[] = []
-      // Collect text node children to append after hidden siblings
-      const textChildNodes: Text[] = []
+    function getAncestorPath(el: Node): string[] {
+      const path: string[] = []
+      let current: Node | null = el
       while (current && current !== document.documentElement) {
-        ancestors.push(current)
-        segments.push(buildSelectorSegment(current))
-        const item = buildHierarchyItem(current, [...segments])
-        // For the selected (innermost) element, find hidden siblings and text children
-        if (isFirst && current.parentElement) {
-          isFirst = false
-          const hiddenSiblings: typeof hierarchy[number]["hiddenSiblings"] =
-            []
-          const siblings = Array.from(
-            current.parentElement.children
-          ) as HTMLElement[]
-          for (const sib of siblings) {
-            if (sib === current) continue
-            if (!isElementVisible(sib)) {
-              const sibSegments = [
-                ...segments.slice(0, -1),
-                buildSelectorSegment(sib)
-              ]
-              const sibItem = buildHierarchyItem(sib, [...sibSegments])
-              hiddenSiblings.push({ ...sibItem, hidden: true })
-              hiddenSiblingEls.push(sib)
-            }
-          }
-          if (hiddenSiblings.length > 0) {
-            ;(item as any).hiddenSiblings = hiddenSiblings
-          }
-          // Find text node children of the innermost element
-          const textChildren: typeof hierarchy[number]["textChildren"] = []
-          const childNodes = Array.from(current.childNodes)
-          for (const child of childNodes) {
-            if (child.nodeType === Node.TEXT_NODE) {
-              const text = (child.textContent || "").trim()
-              if (text.length > 0) {
-                const parentSelectorPath = item.selectorPath
-                const textIdx = childNodes.indexOf(child)
-                textChildren.push({
-                  tag: "#text",
-                  id: "",
-                  classes: "",
-                  component: null,
-                  selectorPath: `${parentSelectorPath}/#text(${textIdx})`,
-                  textContent: text
-                })
-                textChildNodes.push(child as Text)
-              }
-            }
-          }
-          if (textChildren.length > 0) {
-            ;(item as any).textChildren = textChildren
+        for (const [nodeId, mappedEl] of nodeMap) {
+          if (mappedEl === current) {
+            path.unshift(nodeId)
+            break
           }
         }
-        hierarchy.push(item)
-        current = current.parentElement
+        current =
+          current.nodeType === Node.ELEMENT_NODE
+            ? (current as HTMLElement).parentElement
+            : current.parentNode
       }
-      // Append hidden siblings after the main hierarchy so their indices
-      // match what SidePanel expects (hierarchy.length + si)
-      for (const sib of hiddenSiblingEls) {
-        ancestors.push(sib)
-      }
-      // Append text children after hidden siblings
-      for (const textNode of textChildNodes) {
-        ancestors.push(textNode)
-      }
-      return hierarchy
+      return path
     }
 
-    function getStyles(index: number) {
-      const node = ancestors[index]
+    function hasReactFibers(): boolean {
+      const els = document.querySelectorAll("body *")
+      for (let i = 0; i < Math.min(els.length, 200); i++) {
+        const keys = Object.keys(els[i])
+        for (let j = 0; j < keys.length; j++) {
+          if (
+            keys[j].startsWith("__reactFiber$") ||
+            keys[j].startsWith("__reactInternalInstance$")
+          ) {
+            return true
+          }
+        }
+      }
+      return false
+    }
+
+    function treeHasComponents(node: TreeNode | null): boolean {
+      if (!node) return false
+      if (node.component) return true
+      for (const child of node.children) {
+        if (treeHasComponents(child)) return true
+      }
+      return false
+    }
+
+    function sendTree(
+      selectedNodeId?: string | null,
+      selectedPath?: string[] | null,
+    ) {
+      if (reactRetryTimer) {
+        clearTimeout(reactRetryTimer)
+        reactRetryTimer = null
+      }
+      const tree = rebuildTree()
+
+      chrome.runtime
+        .sendMessage({
+          type: "element-tree",
+          tree,
+          selectedNodeId: selectedNodeId || null,
+          selectedPath: selectedPath || null,
+        })
+        .catch(() => {})
+
+      // If the tree has no React components, React may not have hydrated yet.
+      // Poll briefly and resend the tree once fibers appear.
+      if (tree && !treeHasComponents(tree)) {
+        let attempts = 0
+        const maxAttempts = 10
+        function retryIfReactAppeared() {
+          attempts++
+          if (hasReactFibers()) {
+            // Request full-tree React annotation, then rebuild
+            chrome.runtime
+              .sendMessage({ type: "annotate-react-tree" })
+              .catch(() => {})
+            // Tree will be rebuilt when react-tree-annotated comes back
+          } else if (attempts < maxAttempts) {
+            reactRetryTimer = setTimeout(retryIfReactAppeared, 200)
+          }
+        }
+        reactRetryTimer = setTimeout(retryIfReactAppeared, 200)
+      }
+    }
+
+    function getStyles(nodeId: string) {
+      const node = nodeMap.get(nodeId)
       if (!node) return null
       // Text node: return minimal styles with just textContent
       if (node.nodeType === Node.TEXT_NODE) {
         const parentEl = node.parentElement
         const parentCs = parentEl ? getComputedStyle(parentEl) : null
+        const textSelectorPath = parentEl
+          ? buildSelectorPath(parentEl) +
+            "/#text(" +
+            Array.from(parentEl.childNodes).indexOf(node as ChildNode) +
+            ")"
+          : ""
         return {
-          fontFamily: parentCs ? parentCs.fontFamily : "",
-          fontWeight: parentCs ? parentCs.fontWeight : "",
-          fontSize: parentCs ? parentCs.fontSize : "",
-          color: parentCs ? parentCs.color : "",
-          padding: "0px",
-          display: "inline",
-          borderRadius: "0px",
-          opacity: "1",
-          backgroundColor: "rgba(0, 0, 0, 0)",
-          borderColor: "rgba(0, 0, 0, 0)",
-          borderWidth: "0px",
-          borderStyle: "none",
-          textContent: node.textContent || ""
+          styles: {
+            fontFamily: parentCs ? parentCs.fontFamily : "",
+            fontWeight: parentCs ? parentCs.fontWeight : "",
+            fontSize: parentCs ? parentCs.fontSize : "",
+            color: parentCs ? parentCs.color : "",
+            padding: "0px",
+            display: "inline",
+            borderRadius: "0px",
+            opacity: "1",
+            backgroundColor: "rgba(0, 0, 0, 0)",
+            borderColor: "rgba(0, 0, 0, 0)",
+            borderWidth: "0px",
+            borderStyle: "none",
+            textContent: node.textContent || "",
+          },
+          selectorPath: textSelectorPath,
         }
       }
       const el = node as HTMLElement
@@ -212,7 +195,7 @@ export default defineContentScript({
         fontSize: cs.fontSize,
         color: cs.color,
         padding: cs.padding,
-        display: cs.display
+        display: cs.display,
       }
       if (cs.display === "flex" || cs.display === "inline-flex") {
         styles.flexDirection = cs.flexDirection
@@ -237,7 +220,8 @@ export default defineContentScript({
       if (isTextOnly) {
         styles.textContent = el.textContent || ""
       }
-      return styles
+      const selectorPath = buildSelectorPath(el)
+      return { styles, selectorPath }
     }
 
     function onMouseOver(e: MouseEvent) {
@@ -246,7 +230,7 @@ export default defineContentScript({
         e.clientX,
         e.clientY,
         e.target as HTMLElement,
-        overlay
+        overlay,
       )
       hoveredEl.style.outline = "2px solid #4A90D9"
     }
@@ -264,18 +248,35 @@ export default defineContentScript({
         e.clientX,
         e.clientY,
         e.target as HTMLElement,
-        overlay
+        overlay,
       )
       target.setAttribute("data-handle-target", "")
       chrome.runtime.sendMessage({ type: "annotate-react" })
       pendingTarget = target
     }
 
+    function handlePendingTarget() {
+      if (!pendingTarget) return
+      const el = pendingTarget
+      pendingTarget = null
+      const tree = rebuildTree()
+      const selectedNodeId = findNodeIdForElement(el)
+      const selectedPath = selectedNodeId ? getAncestorPath(el) : null
+      chrome.runtime
+        .sendMessage({
+          type: "element-tree",
+          tree,
+          selectedNodeId,
+          selectedPath,
+        })
+        .catch(() => {})
+    }
+
     function clearElementState() {
       if (hoveredEl) hoveredEl.style.outline = ""
       hideOverlay()
       pendingTarget = null
-      ancestors = []
+      nodeMap.clear()
       elementCache.clear()
     }
 
@@ -288,6 +289,11 @@ export default defineContentScript({
         clearElementState()
         chrome.runtime
           .sendMessage({ type: "spa-navigation" })
+          .catch(() => {})
+        // Rebuild tree immediately, then request annotation for components
+        sendTree()
+        chrome.runtime
+          .sendMessage({ type: "annotate-react-tree" })
           .catch(() => {})
       }
     }
@@ -310,6 +316,13 @@ export default defineContentScript({
       document.addEventListener("mouseover", onMouseOver, true)
       document.addEventListener("mouseout", onMouseOut, true)
       document.addEventListener("click", onClick, true)
+      // Build and send tree immediately (without component annotations).
+      // Then request React annotation — when it completes, sendTree() will
+      // be called again with component data via the react-tree-annotated handler.
+      sendTree()
+      chrome.runtime
+        .sendMessage({ type: "annotate-react-tree" })
+        .catch(() => {})
     }
 
     function disable() {
@@ -326,7 +339,7 @@ export default defineContentScript({
         n.removeAttribute("data-handle-component")
       })
       pendingTarget = null
-      ancestors = []
+      nodeMap.clear()
       elementCache.clear()
     }
 
@@ -337,7 +350,7 @@ export default defineContentScript({
         } else if (message.type === "disable-design-mode") {
           disable()
         } else if (message.type === "highlight-element") {
-          const node = ancestors[message.index]
+          const node = nodeMap.get(message.nodeId)
           if (node) {
             if (node.nodeType === Node.TEXT_NODE) {
               if (node.parentElement) showOverlay(node.parentElement)
@@ -348,28 +361,27 @@ export default defineContentScript({
         } else if (message.type === "clear-highlight") {
           hideOverlay()
         } else if (message.type === "get-styles") {
-          sendResponse(getStyles(message.index))
+          sendResponse(getStyles(message.nodeId))
           return true
         } else if (message.type === "set-style") {
-          const node = ancestors[message.index]
+          const node = nodeMap.get(message.nodeId)
           if (node && node.nodeType === Node.ELEMENT_NODE) {
             ;(node as HTMLElement).style[message.prop as any] = message.value
           }
         } else if (message.type === "set-icon") {
-          const el = ancestors[message.index]
-          if (el && message.svgChildren != null) {
-            // Update SVG innerHTML with new icon paths
+          const node = nodeMap.get(message.nodeId)
+          if (node && node.nodeType === Node.ELEMENT_NODE && message.svgChildren != null) {
+            const el = node as HTMLElement
             el.innerHTML = message.svgChildren
-            // Swap lucide-{old} class to lucide-{new}
             const classes = [...el.classList]
             const oldLucideClass = classes.find((c) =>
-              c.startsWith("lucide-")
+              c.startsWith("lucide-"),
             )
             if (oldLucideClass)
               el.classList.replace(oldLucideClass, `lucide-${message.name}`)
           }
         } else if (message.type === "set-text") {
-          const node = ancestors[message.index]
+          const node = nodeMap.get(message.nodeId)
           if (node) {
             if (node.nodeType === Node.TEXT_NODE) {
               node.nodeValue = message.value
@@ -385,15 +397,13 @@ export default defineContentScript({
             pendingTarget = el
           }
         } else if (message.type === "react-annotated") {
-          if (pendingTarget) {
-            const el = pendingTarget
-            pendingTarget = null
-            const hierarchy = buildHierarchy(el)
-            chrome.runtime.sendMessage({
-              type: "element-hierarchy",
-              hierarchy
-            })
-          }
+          // Single-element annotation done (after click or select-by-selector)
+          handlePendingTarget()
+        } else if (message.type === "react-tree-annotated") {
+          // Full-tree annotation done — build and send tree
+          sendTree()
+        } else if (message.type === "build-tree") {
+          sendTree()
         } else if (message.type === "get-page-colors") {
           const colors = new Set<string>()
           const elements = document.querySelectorAll("*")
@@ -423,11 +433,9 @@ export default defineContentScript({
           const utilityClasses = new Map<string, string>()
           const utilityRe = /^\.(bg|text)-([\w-]+)$/
 
-          // Collect custom property names and utility classes from all stylesheets
           function scanRules(rules: CSSRuleList) {
             for (const rule of rules) {
               if (rule instanceof CSSStyleRule) {
-                // Collect CSS custom properties
                 for (let i = 0; i < rule.style.length; i++) {
                   const prop = rule.style[i]
                   if (prop.startsWith("--") && !seen.has(prop)) {
@@ -436,13 +444,11 @@ export default defineContentScript({
                   }
                 }
 
-                // Collect Tailwind utility classes (bg-*, text-*)
                 const m = utilityRe.exec(rule.selectorText)
                 if (m) {
                   const prefix = m[1]
                   const colorProp =
                     prefix === "bg" ? "background-color" : "color"
-                  // Only include if every property is the color prop or a --tw-* var
                   let valid = false
                   for (let i = 0; i < rule.style.length; i++) {
                     const p = rule.style[i]
@@ -453,7 +459,7 @@ export default defineContentScript({
                     }
                   }
                   if (valid) {
-                    const colorName = "color-" + m[2] // bg-xyz / text-xyz → color-xyz
+                    const colorName = "color-" + m[2]
                     const value = rule.style.getPropertyValue(colorProp).trim()
                     if (value && !utilityClasses.has(colorName)) {
                       utilityClasses.set(colorName, value)
@@ -482,7 +488,6 @@ export default defineContentScript({
             // styleSheets access failed
           }
 
-          // Resolve a CSS color string to the browser's canonical rgb() form
           const probe = document.createElement("span")
           probe.style.display = "none"
           document.body.appendChild(probe)
@@ -493,7 +498,6 @@ export default defineContentScript({
             return getComputedStyle(probe).color
           }
 
-          // Resolve CSS variable tokens
           const rootCs = getComputedStyle(document.documentElement)
           const isColor =
             /^#|^rgba?\(|^hsla?\(|^oklch\(|^oklab\(|^lch\(|^lab\(|^color\(/
@@ -509,11 +513,9 @@ export default defineContentScript({
             }
           }
 
-          // Merge utility class tokens, skipping duplicates of CSS variable values
           for (const [name, raw] of utilityClasses) {
-            // Resolve var() references (e.g. rgba(10,20,30, var(--tw-bg-opacity)))
             const withVars = raw.replace(/var\((--[\w-]+)\)/g, (_, v) =>
-              rootCs.getPropertyValue(v).trim() || "1"
+              rootCs.getPropertyValue(v).trim() || "1",
             )
             if (!isColor.test(withVars)) continue
             const resolved = resolveColor(withVars)
@@ -528,7 +530,7 @@ export default defineContentScript({
           sendResponse(tokens.slice(0, 100))
           return true
         }
-      }
+      },
     )
-  }
+  },
 })

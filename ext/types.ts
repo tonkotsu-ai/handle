@@ -1,17 +1,6 @@
 import type { EditEntry, StyleData } from "@handle-ai/handle-shared"
 export type { EditEntry, StyleData }
-
-export interface HierarchyItem {
-  tag: string
-  id: string
-  classes: string
-  component: string | null
-  selectorPath: string
-  hidden?: boolean
-  hiddenSiblings?: HierarchyItem[]
-  textContent?: string
-  textChildren?: HierarchyItem[]
-}
+export type { TreeNode } from "@handle-ai/handle-shared"
 
 export interface SessionInfo {
   id: string
