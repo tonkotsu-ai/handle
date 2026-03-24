@@ -23,12 +23,12 @@ import IconPicker from "./IconPicker"
 export interface StyleEditorProps {
   styles: StyleData
   elementId: ElementId
-  editedProps: Map<string, { original: string; current: string }>
+  editedProps: Map<string, { original: string; current: string; tokenName?: string }>
   lucideIconName?: string | null
   pageTokens?: TokenEntry[]
   pageColors?: string[]
   isTextNode?: boolean
-  onStyleEdit: (elementId: ElementId, prop: string, original: string, value: string) => void
+  onStyleEdit: (elementId: ElementId, prop: string, original: string, value: string, tokenName?: string) => void
   onTextEdit: (elementId: ElementId, original: string, value: string) => void
   onUndo: (elementId: ElementId, props: string[]) => void
 }
@@ -204,7 +204,7 @@ function AlignmentGrid({
   styles: StyleData
   elementId: ElementId
   flowMode: string | null
-  editedProps: Map<string, { original: string; current: string }>
+  editedProps: Map<string, { original: string; current: string; tokenName?: string }>
   edited: boolean
   onFlowChange: (mode: string) => void
   onStyleEdit: StyleEditorProps["onStyleEdit"]
@@ -333,7 +333,7 @@ function hasAny(editedProps: Map<string, any>, ...keys: string[]) {
   return keys.some((k) => editedProps.has(k))
 }
 
-function effective(editedProps: Map<string, { original: string; current: string }>, prop: string, fallback: string): string {
+function effective(editedProps: Map<string, { original: string; current: string; tokenName?: string }>, prop: string, fallback: string): string {
   return editedProps.get(prop)?.current ?? fallback
 }
 
@@ -491,12 +491,13 @@ export default function StyleEditor({
             tokens={pageTokens}
             pageColors={pageColors}
             edited={editedProps.has("backgroundColor")}
-            onChange={(val) =>
+            onChange={(val, tokenName) =>
               onStyleEdit(
                 elementId,
                 "backgroundColor",
                 styles.backgroundColor || "transparent",
-                val
+                val,
+                tokenName
               )
             }
           />
@@ -515,12 +516,13 @@ export default function StyleEditor({
             tokens={pageTokens}
             pageColors={pageColors}
             edited={editedProps.has("borderColor")}
-            onChange={(val) =>
+            onChange={(val, tokenName) =>
               onStyleEdit(
                 elementId,
                 "borderColor",
                 styles.borderColor || "none",
-                val
+                val,
+                tokenName
               )
             }
           />
@@ -600,8 +602,8 @@ export default function StyleEditor({
             tokens={pageTokens}
             pageColors={pageColors}
             edited={editedProps.has("color")}
-            onChange={(val) =>
-              onStyleEdit(elementId, "color", styles.color || "transparent", val)
+            onChange={(val, tokenName) =>
+              onStyleEdit(elementId, "color", styles.color || "transparent", val, tokenName)
             }
           />
         </div>
