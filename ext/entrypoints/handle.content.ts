@@ -109,7 +109,13 @@ export default defineContentScript({
         clearTimeout(frameworkRetryTimer)
         frameworkRetryTimer = null
       }
-      const tree = rebuildTree()
+      let tree: ReturnType<typeof rebuildTree>
+      try {
+        tree = rebuildTree()
+      } catch (e) {
+        console.error("[handle] rebuildTree error:", e)
+        tree = null
+      }
 
       chrome.runtime
         .sendMessage({
