@@ -187,8 +187,9 @@ export function detectComponent(el: HTMLElement): string | null {
     while (fiber) {
       if (typeof fiber.type === "string") break
       if (
-        typeof fiber.type === "function" ||
-        typeof fiber.type === "object"
+        fiber.type != null &&
+        (typeof fiber.type === "function" ||
+        typeof fiber.type === "object")
       ) {
         const name = fiber.type.displayName || fiber.type.name || null
         if (name) return name
@@ -414,7 +415,7 @@ export const detectComponentSnippet = `
       var fiber = el[reactKey] && el[reactKey].return;
       while (fiber) {
         if (typeof fiber.type === "string") break;
-        if (typeof fiber.type === "function" || typeof fiber.type === "object") {
+        if (fiber.type != null && (typeof fiber.type === "function" || typeof fiber.type === "object")) {
           var name = fiber.type.displayName || fiber.type.name || null;
           if (name) return name;
         }
