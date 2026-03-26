@@ -188,6 +188,10 @@ export default defineContentScript({
         color: cs.color,
         padding: cs.padding,
         display: cs.display,
+        width: el.style.width || "",
+        height: el.style.height || "",
+        widthComputed: cs.width,
+        heightComputed: cs.height,
       }
       if (cs.display === "flex" || cs.display === "inline-flex") {
         styles.flexDirection = cs.flexDirection

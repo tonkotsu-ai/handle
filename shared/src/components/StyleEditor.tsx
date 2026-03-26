@@ -337,6 +337,95 @@ function effective(editedProps: Map<string, { original: string; current: string;
   return editedProps.get(prop)?.current ?? fallback
 }
 
+type SizeMode = "hug" | "fill" | "fixed"
+
+function parseSizeMode(authored: string, computedPx: string): { mode: SizeMode; px: number } {
+  if (authored === "auto" || authored === "fit-content") {
+    return { mode: "hug", px: parseInt(computedPx) || 0 }
+  }
+  if (authored === "100%") {
+    return { mode: "fill", px: parseInt(computedPx) || 0 }
+  }
+  if (authored) {
+    return { mode: "fixed", px: parseInt(authored) || 0 }
+  }
+  // No inline style set — default to fixed with computed value
+  return { mode: "fixed", px: parseInt(computedPx) || 0 }
+}
+
+function sizeModeToCSS(mode: SizeMode, px: number): string {
+  if (mode === "hug") return "auto"
+  if (mode === "fill") return "100%"
+  return px + "px"
+}
+
+function SizeDimensionControl({
+  label,
+  prop,
+  styles,
+  elementId,
+  editedProps,
+  onStyleEdit,
+  onUndo
+}: {
+  label: string
+  prop: "width" | "height"
+  styles: StyleData
+  elementId: ElementId
+  editedProps: Map<string, { original: string; current: string; tokenName?: string }>
+  onStyleEdit: StyleEditorProps["onStyleEdit"]
+  onUndo: () => void
+}) {
+  const computedProp = prop === "width" ? "widthComputed" : "heightComputed"
+  const authored = effective(editedProps, prop, styles[prop] || "")
+  const computedPx = styles[computedProp] || "0px"
+  const { mode, px } = parseSizeMode(authored, computedPx)
+  const edited = editedProps.has(prop)
+
+  const modes: { value: SizeMode; label: string }[] = [
+    { value: "hug", label: "Hug" },
+    { value: "fill", label: "Fill" },
+    { value: "fixed", label: "Fixed" }
+  ]
+
+  return (
+    <div className="flex flex-col gap-1">
+      <FieldLabel edited={edited} onUndo={onUndo}>{label}</FieldLabel>
+      <div className="flex items-center gap-1.5">
+        <div className={`flex shrink-0 rounded-lg ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-800"}`} style={{ padding: "2px" }}>
+          {modes.map((m) => (
+            <button
+              key={m.value}
+              className={`px-1.5 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
+                mode === m.value
+                  ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+              }`}
+              onClick={() => {
+                const original = styles[prop] || ""
+                const newVal = sizeModeToCSS(m.value, m.value === "fixed" ? px || 100 : 0)
+                onStyleEdit(elementId, prop, original, newVal)
+              }}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+        {mode === "fixed" && (
+          <NumericInput
+            key={authored || computedPx}
+            edited={edited}
+            value={px}
+            onChange={(val) => {
+              const v = val.match(/[a-z%]/) ? val : val + "px"
+              onStyleEdit(elementId, prop, styles[prop] || "", v)
+            }}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function StyleEditor({
   styles,
   elementId,
@@ -363,6 +452,9 @@ export default function StyleEditor({
 
   const [flowMode, setFlowMode] = useState<string | null>(initialFlowMode)
 
+  const effectiveDisplay = effective(editedProps, "display", display)
+  const supportsSize = effectiveDisplay !== "inline" && effectiveDisplay !== "contents"
+
   const padParts = (styles.padding || "0px").split(/\s+/)
   const padTop = parseInt(padParts[0]) || 0
   const padRight = parseInt(padParts[1] ?? padParts[0]) || 0
@@ -387,6 +479,28 @@ export default function StyleEditor({
             setFlowMode(initialFlowMode)
           }}
         />
+        {supportsSize && (
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+            <SizeDimensionControl
+              label="Width"
+              prop="width"
+              styles={styles}
+              elementId={elementId}
+              editedProps={editedProps}
+              onStyleEdit={onStyleEdit}
+              onUndo={() => onUndo(elementId, ["width"])}
+            />
+            <SizeDimensionControl
+              label="Height"
+              prop="height"
+              styles={styles}
+              elementId={elementId}
+              editedProps={editedProps}
+              onStyleEdit={onStyleEdit}
+              onUndo={() => onUndo(elementId, ["height"])}
+            />
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
           <AlignmentGrid
             styles={styles}
