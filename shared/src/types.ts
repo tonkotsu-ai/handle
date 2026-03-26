@@ -24,6 +24,10 @@ export interface StyleData {
   borderColor: string
   borderWidth: string
   borderStyle: string
+  width?: string
+  height?: string
+  widthComputed?: string
+  heightComputed?: string
   textContent?: string
   [key: string]: string | undefined
 }
