@@ -68,7 +68,7 @@ function FieldInput({
   return (
     <input
       type="text"
-      className={`w-full rounded border-0 px-2 py-1 text-xs outline-none focus:border-electricblue-500 ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-800"}`}
+      className={`w-full rounded border-0 px-2 py-1 text-xs outline-none focus:border-electricblue-500 ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`}
       value={current}
       onChange={(e) => setCurrent(e.target.value)}
       onBlur={() => {
@@ -95,7 +95,7 @@ function NumericInput({
   const strVal = String(value)
   const [current, setCurrent] = useState(strVal)
 
-  const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-800"
+  const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"
 
   const input = (
     <input
@@ -158,7 +158,7 @@ function FlowControls({
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>Flow</FieldLabel>
-      <div className={`flex w-full rounded-lg ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-800"}`} style={{ padding: "2px" }}>
+      <div className={`flex w-full rounded-lg ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
         {flows.map((f) => (
           <button
             key={f.mode}
@@ -258,7 +258,7 @@ function AlignmentGrid({
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>Alignment</FieldLabel>
-      <div className={`grid grid-cols-3 gap-px rounded overflow-hidden w-full p-0.5 ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-800"}`}>
+      <div className={`grid grid-cols-3 gap-px rounded overflow-hidden w-full p-0.5 ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`}>
         {Array.from({ length: 9 }).map((_, i) => {
           const r = Math.floor(i / 3)
           const c = i % 3
@@ -392,7 +392,7 @@ function SizeDimensionControl({
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>{label}</FieldLabel>
       <div className="flex items-center gap-1.5">
-        <div className={`flex shrink-0 rounded-lg ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-800"}`} style={{ padding: "2px" }}>
+        <div className={`flex shrink-0 rounded-lg ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
           {modes.map((m) => (
             <button
               key={m.value}
@@ -644,7 +644,7 @@ export default function StyleEditor({
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
             <FieldLabel edited={editedProps.has("borderStyle")} onUndo={() => onUndo(elementId, ["borderStyle"])}>Position</FieldLabel>
-            <div className={`flex w-full rounded-lg ${editedProps.has("borderStyle") ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-800"}`} style={{ padding: "2px" }}>
+            <div className={`flex w-full rounded-lg ${editedProps.has("borderStyle") ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
               {[
                 { value: "inside", label: "Inside" },
                 { value: "outside", label: "Outside" }
