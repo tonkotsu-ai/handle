@@ -29,7 +29,7 @@ const MCP_ENTRY_COPILOT_CLI = {
   args: ["-y", "handle-ext@latest"],
 }
 
-const HANDLE_COMMAND = `Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes.
+const HANDLE_COMMAND = `Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes. While the tool is running, tell the user to go to Chrome, navigate to their project, and click on the Handle Extension in Chrome to give feedback.
 `
 
 const HANDLE_COPILOT_SKILL_MD = `---
@@ -50,7 +50,7 @@ const HANDLE_CODEX_OPENAI_YAML = `policy:
 `
 
 const HANDLE_GEMINI_COMMAND = `description = "Receive visual design feedback from the browser extension and implement the requested changes."
-prompt = "Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes."
+prompt = "Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes. While the tool is running, tell the user to go to Chrome, navigate to their project, and click on the Handle Extension in Chrome to give feedback."
 `
 
 const HANDLE_ROVODEV_PROMPT_ENTRY = `- name: handle
