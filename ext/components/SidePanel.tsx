@@ -418,12 +418,10 @@ function SidePanel({ demo = false }: SidePanelProps) {
     [demo, tabId],
   )
 
-  // Enable/disable design mode based on selectionMode and panel lifecycle
-  useEffect(() => {
-    if (demo || tabId == null) return
-    setDesignMode(selectionMode)
-    return () => setDesignMode(false)
-  }, [demo, tabId, setDesignMode, selectionMode])
+  // NOTE: Design mode is enabled AFTER the onMessage listener is registered
+  // (in the combined effect below at line ~765) to avoid a race where the
+  // element-tree response arrives before the listener exists. Do NOT add a
+  // separate useEffect here to call setDesignMode.
 
   // Log panel open/close analytics
   useEffect(() => {
@@ -875,10 +873,19 @@ function SidePanel({ demo = false }: SidePanelProps) {
       }
     }
     chrome.runtime.onMessage.addListener(onMessage)
+
+    // Enable design mode AFTER the listener is registered so the element-tree
+    // response can be received. This fixes a race where setDesignMode ran in a
+    // separate earlier useEffect and the tree arrived before this listener existed.
+    if (tabId != null && selectionMode) {
+      setDesignMode(true)
+    }
+
     return () => {
       chrome.runtime.onMessage.removeListener(onMessage)
+      if (tabId != null) setDesignMode(false)
     }
-  }, [demo, tabId])
+  }, [demo, tabId, selectionMode, setDesignMode])
 
   const selectedItem =
     selectedNodeId != null && tree

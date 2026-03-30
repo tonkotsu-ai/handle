@@ -3,6 +3,23 @@ export default defineBackground(() => {
 
   const activePanelTabs = new Set<number>()
 
+  /** Retry sending a message to a tab, waiting for the content script to load */
+  async function tabsSendWithRetry(
+    tabId: number,
+    message: any,
+    attempts = 5,
+    delay = 200,
+  ) {
+    for (let i = 0; i < attempts; i++) {
+      try {
+        await chrome.tabs.sendMessage(tabId, message)
+        return
+      } catch {
+        if (i < attempts - 1) await new Promise((r) => setTimeout(r, delay))
+      }
+    }
+  }
+
   function openSidePanel(tabId: number) {
     chrome.sidePanel.setOptions({
       tabId,
@@ -19,12 +36,27 @@ export default defineBackground(() => {
     openSidePanel(tab.id)
   })
 
-  chrome.runtime.onInstalled.addListener(() => {
+  chrome.runtime.onInstalled.addListener(async () => {
     chrome.contextMenus.create({
       id: "open-handle",
       title: "Design with Handle",
-      contexts: ["all"]
+      contexts: ["all"],
     })
+
+    // Inject content script into tabs that were open before the extension
+    // loaded. Chrome only auto-injects declarative content scripts on new
+    // page loads, so pre-existing tabs would have no listener.
+    const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] })
+    for (const tab of tabs) {
+      if (tab.id) {
+        chrome.scripting
+          .executeScript({
+            target: { tabId: tab.id },
+            files: ["content-scripts/handle.js"],
+          })
+          .catch(() => {})
+      }
+    }
   })
 
   chrome.contextMenus.onClicked.addListener((info, tab) => {
@@ -50,9 +82,7 @@ export default defineBackground(() => {
   // Re-enable design mode after page refresh when sidepanel is open
   chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (changeInfo.status === "complete" && activePanelTabs.has(tabId)) {
-      chrome.tabs
-        .sendMessage(tabId, { type: "enable-design-mode" })
-        .catch(() => {})
+      tabsSendWithRetry(tabId, { type: "enable-design-mode" })
       chrome.runtime
         .sendMessage({ type: "tab-refreshed", tabId })
         .catch(() => {})
@@ -65,7 +95,7 @@ export default defineBackground(() => {
       const type = message.enabled
         ? "enable-design-mode"
         : "disable-design-mode"
-      chrome.tabs.sendMessage(tabId, { type })
+      tabsSendWithRetry(tabId, { type })
     }
 
     if (message.type === "annotate-components") {
@@ -277,7 +307,7 @@ export default defineBackground(() => {
       chrome.runtime.sendMessage({
         ...message,
         tabId: sender.tab?.id ?? null
-      })
+      }).catch(() => {})
     }
   })
 })
