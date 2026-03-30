@@ -1,8 +1,10 @@
 # Handle
 
+https://github.com/user-attachments/assets/a106cb0c-ec3b-4429-b4f1-91d909383b30
+
 **Refine UI Directly in Your Browser Instead of Describing it With Prompts**
 
-Handle bridges the gap between visual design and AI coding agents. Built for frontend devs, design engineers, and UX designers. Instead of describing UI changes in words, just point directly at elements in the browser and edit — and your agent receives structured, actionable feedback it can act on immediately.
+Handle bridges the gap between visual design and AI coding agents. Built for frontend devs, design engineers, and UX designers. Instead of endlessly reprompting your agent for UI tweaks, just point directly at elements in the browser and edit — and your agent receives structured, actionable feedback it can act on immediately.
 
 ## How It Works
 
