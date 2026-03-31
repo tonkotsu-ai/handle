@@ -339,24 +339,20 @@ function effective(editedProps: Map<string, { original: string; current: string;
 
 type SizeMode = "hug" | "fill" | "fixed"
 
-function parseSizeMode(authored: string, computedPx: string): { mode: SizeMode; px: number } {
-  if (authored === "auto" || authored === "fit-content") {
-    return { mode: "hug", px: parseInt(computedPx) || 0 }
+function parseSizeMode(authored: string, computedPx: string): { mode: SizeMode; value: string } {
+  if (authored === "auto" || authored === "fit-content" || !authored) {
+    return { mode: "hug", value: (parseInt(computedPx) || 0) + "px" }
   }
   if (authored === "100%") {
-    return { mode: "fill", px: parseInt(computedPx) || 0 }
+    return { mode: "fill", value: (parseInt(computedPx) || 0) + "px" }
   }
-  if (authored) {
-    return { mode: "fixed", px: parseInt(authored) || 0 }
-  }
-  // No inline style set — default to fixed with computed value
-  return { mode: "fixed", px: parseInt(computedPx) || 0 }
+  return { mode: "fixed", value: authored }
 }
 
-function sizeModeToCSS(mode: SizeMode, px: number): string {
+function sizeModeToCSS(mode: SizeMode, value: string): string {
   if (mode === "hug") return "auto"
   if (mode === "fill") return "100%"
-  return px + "px"
+  return value
 }
 
 function SizeDimensionControl({
@@ -379,7 +375,7 @@ function SizeDimensionControl({
   const computedProp = prop === "width" ? "widthComputed" : "heightComputed"
   const authored = effective(editedProps, prop, styles[prop] || "")
   const computedPx = styles[computedProp] || "0px"
-  const { mode, px } = parseSizeMode(authored, computedPx)
+  const { mode, value } = parseSizeMode(authored, computedPx)
   const edited = editedProps.has(prop)
 
   const modes: { value: SizeMode; label: string }[] = [
@@ -403,7 +399,7 @@ function SizeDimensionControl({
               }`}
               onClick={() => {
                 const original = styles[prop] || ""
-                const newVal = sizeModeToCSS(m.value, m.value === "fixed" ? px || 100 : 0)
+                const newVal = sizeModeToCSS(m.value, m.value === "fixed" ? value || "100px" : value)
                 onStyleEdit(elementId, prop, original, newVal)
               }}>
               {m.label}
@@ -414,7 +410,7 @@ function SizeDimensionControl({
           <NumericInput
             key={authored || computedPx}
             edited={edited}
-            value={px}
+            value={value}
             onChange={(val) => {
               const v = val.match(/[a-z%]/) ? val : val + "px"
               onStyleEdit(elementId, prop, styles[prop] || "", v)

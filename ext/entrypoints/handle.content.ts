@@ -17,9 +17,32 @@ export default defineContentScript({
     let pendingTarget: HTMLElement | null = null
     let nodeMap = new Map<string, Node>()
     let frameworkRetryTimer: ReturnType<typeof setTimeout> | null = null
+    let highlightedEl: HTMLElement | null = null
     // Cache every element we've seen, keyed by selectorPath, so we can
     // re-select elements from the Changes tab even after the tree changes.
     const elementCache = new Map<string, HTMLElement>()
+
+    function getSpecifiedStyle(el: HTMLElement, prop: string): string {
+      if ((el.style as any)[prop]) return (el.style as any)[prop]
+      let value = ""
+      try {
+        for (let i = 0; i < document.styleSheets.length; i++) {
+          let rules: CSSRuleList
+          try {
+            rules = document.styleSheets[i].cssRules
+          } catch {
+            continue
+          }
+          for (let j = 0; j < rules.length; j++) {
+            const rule = rules[j] as CSSStyleRule
+            if (rule.style && rule.style.getPropertyValue(prop) && el.matches(rule.selectorText)) {
+              value = rule.style.getPropertyValue(prop)
+            }
+          }
+        }
+      } catch {}
+      return value
+    }
 
     function getOverlay() {
       if (!overlay) {
@@ -32,6 +55,7 @@ export default defineContentScript({
     }
 
     function showOverlay(el: HTMLElement) {
+      highlightedEl = el
       const rect = el.getBoundingClientRect()
       const o = getOverlay()
       o.style.top = rect.top + "px"
@@ -42,8 +66,17 @@ export default defineContentScript({
     }
 
     function hideOverlay() {
+      highlightedEl = null
       if (overlay) overlay.style.display = "none"
     }
+
+    window.addEventListener("resize", () => {
+      if (highlightedEl) showOverlay(highlightedEl)
+    })
+
+    window.addEventListener("scroll", () => {
+      if (highlightedEl) showOverlay(highlightedEl)
+    }, true)
 
     function isOverlayEl(el: HTMLElement): boolean {
       return el === overlay || (overlay != null && overlay.contains(el))
@@ -188,8 +221,8 @@ export default defineContentScript({
         color: cs.color,
         padding: cs.padding,
         display: cs.display,
-        width: el.style.width || "",
-        height: el.style.height || "",
+        width: getSpecifiedStyle(el, "width"),
+        height: getSpecifiedStyle(el, "height"),
         widthComputed: cs.width,
         heightComputed: cs.height,
       }
