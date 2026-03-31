@@ -73,7 +73,7 @@ export default function ElementRow({
       {item.component && (
         <Puzzle
           size={13}
-          className="shrink-0 text-electricblue-500 dark:text-electricblue-400"
+          className="shrink-0 text-slate-800 dark:text-slate-200"
         />
       )}
       <div className="flex items-center gap-0.5 font-sans text-xs truncate min-w-0">
@@ -84,7 +84,7 @@ export default function ElementRow({
               : item.textContent}&quot;
           </span>
         ) : item.component ? (
-          <span className="font-bold text-electricblue-500 dark:text-electricblue-400 truncate">
+          <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
             {item.component}
           </span>
         ) : (
@@ -93,10 +93,10 @@ export default function ElementRow({
               {item.tag}
             </span>
             {item.id && (
-              <span className="text-lavendardream">{item.id}</span>
+              <span className="text-purple-600 dark:text-purple-400">{item.id}</span>
             )}
             {item.classes && (
-              <span className="text-electricblue-500 dark:text-electricblue-400 truncate">
+              <span className="text-emerald-600 dark:text-emerald-400 truncate">
                 {item.classes}
               </span>
             )}
