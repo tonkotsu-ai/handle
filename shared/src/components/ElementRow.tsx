@@ -43,7 +43,7 @@ export default function ElementRow({
   return (
     <div
       ref={rowRef}
-      className={`flex items-center gap-1 px-2 py-1 cursor-pointer rounded ${
+      className={`flex items-center gap-1 px-2 py-1.5 cursor-pointer rounded ${
         isSelected
           ? "bg-electricblue-100 dark:bg-electricblue-900/40"
           : "hover:bg-slate-100 dark:hover:bg-slate-800"

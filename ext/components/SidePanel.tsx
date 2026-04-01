@@ -1048,7 +1048,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
           <div
             className="shrink-0 overflow-y-auto"
             style={{ height: treeHeight }}>
-            <div className="flex flex-col p-2">
+            <div className="flex flex-col p-1.5">
               {!tree && (
                 <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
                   Select an element on the page
