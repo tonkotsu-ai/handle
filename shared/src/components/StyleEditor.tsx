@@ -13,7 +13,7 @@ import {
   Scan,
   Undo2
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 
 import type { ElementId, StyleData, TokenEntry } from "../types"
 
@@ -337,22 +337,12 @@ function effective(editedProps: Map<string, { original: string; current: string;
   return editedProps.get(prop)?.current ?? fallback
 }
 
-type SizeMode = "hug" | "fill" | "fixed"
+const CSS_LENGTH_RE = /^-?[\d.]+\s*(px|em|rem|%|vw|vh|vmin|vmax|ch|ex|cap|lh|svw|svh|lvw|lvh|dvw|dvh|cqw|cqh|cm|mm|in|pt|pc)$/
 
-function parseSizeMode(authored: string, computedPx: string): { mode: SizeMode; value: string } {
-  if (authored === "auto" || authored === "fit-content" || !authored) {
-    return { mode: "hug", value: (parseInt(computedPx) || 0) + "px" }
-  }
-  if (authored === "100%") {
-    return { mode: "fill", value: (parseInt(computedPx) || 0) + "px" }
-  }
-  return { mode: "fixed", value: authored }
-}
-
-function sizeModeToCSS(mode: SizeMode, value: string): string {
-  if (mode === "hug") return "auto"
-  if (mode === "fill") return "100%"
-  return value
+function sizeDisplayValue(authored: string): { display: string; isCustom: boolean } {
+  if (!authored || authored === "auto") return { display: "", isCustom: false }
+  if (CSS_LENGTH_RE.test(authored.trim())) return { display: authored.trim(), isCustom: false }
+  return { display: "custom", isCustom: true }
 }
 
 function SizeDimensionControl({
@@ -372,52 +362,43 @@ function SizeDimensionControl({
   onStyleEdit: StyleEditorProps["onStyleEdit"]
   onUndo: () => void
 }) {
-  const computedProp = prop === "width" ? "widthComputed" : "heightComputed"
   const authored = effective(editedProps, prop, styles[prop] || "")
-  const computedPx = styles[computedProp] || "0px"
-  const { mode, value } = parseSizeMode(authored, computedPx)
+  const { display, isCustom } = sizeDisplayValue(authored)
   const edited = editedProps.has(prop)
+  const [current, setCurrent] = useState(display)
 
-  const modes: { value: SizeMode; label: string }[] = [
-    { value: "hug", label: "Hug" },
-    { value: "fill", label: "Fill" },
-    { value: "fixed", label: "Fixed" }
-  ]
+  const prevDisplay = useRef(display)
+  if (prevDisplay.current !== display) {
+    prevDisplay.current = display
+    setCurrent(display)
+  }
+
+  const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"
+
+  const commit = (val: string) => {
+    const trimmed = val.trim()
+    if (trimmed === "" || trimmed === "auto") {
+      const newVal = "auto"
+      if (authored !== newVal && authored !== "") onStyleEdit(elementId, prop, styles[prop] || "", newVal)
+      setCurrent("")
+    } else if (trimmed !== "custom") {
+      const v = trimmed.match(/[a-z%]/) ? trimmed : trimmed + "px"
+      onStyleEdit(elementId, prop, styles[prop] || "", v)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>{label}</FieldLabel>
-      <div className="flex items-center gap-1.5">
-        <div className={`flex shrink-0 rounded-lg ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
-          {modes.map((m) => (
-            <button
-              key={m.value}
-              className={`px-1.5 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
-                mode === m.value
-                  ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
-                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-              }`}
-              onClick={() => {
-                const original = styles[prop] || ""
-                const newVal = sizeModeToCSS(m.value, m.value === "fixed" ? value || "100px" : value)
-                onStyleEdit(elementId, prop, original, newVal)
-              }}>
-              {m.label}
-            </button>
-          ))}
-        </div>
-        {mode === "fixed" && (
-          <NumericInput
-            key={authored || computedPx}
-            edited={edited}
-            value={value}
-            onChange={(val) => {
-              const v = val.match(/[a-z%]/) ? val : val + "px"
-              onStyleEdit(elementId, prop, styles[prop] || "", v)
-            }}
-          />
-        )}
-      </div>
+      <input
+        type="text"
+        placeholder="auto"
+        className={`w-full rounded border-0 ${bg} px-2 py-1 text-xs outline-none focus:border-electricblue-500`}
+        value={current}
+        onChange={(e) => setCurrent(e.target.value)}
+        onBlur={() => commit(current)}
+        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur() }}
+      />
     </div>
   )
 }
