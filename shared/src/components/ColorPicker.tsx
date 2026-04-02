@@ -403,7 +403,7 @@ export default function ColorPicker({
           <span className="truncate">
             <span className="font-bold text-slate-800 dark:text-slate-200">{matchingToken.name.replace(/^--/, "")}</span>
             {" "}
-            <span className="text-slate-500 dark:text-slate-400">{displayHex}</span>
+            <span className="text-slate-500 dark:text-slate-300">{displayHex}</span>
           </span>
         ) : (
           <span className="truncate text-slate-600 dark:text-slate-300">
