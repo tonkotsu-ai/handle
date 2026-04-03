@@ -12,6 +12,7 @@ export interface StyleData {
   fontWeight: string
   fontSize: string
   padding: string
+  margin: string
   display: string
   flexDirection?: string
   justifyContent?: string

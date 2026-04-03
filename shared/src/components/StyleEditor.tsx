@@ -463,6 +463,12 @@ export default function StyleEditor({
   const padBottomRaw = padParts[2] ?? padParts[0]
   const padLeftRaw = padParts[3] ?? padParts[1] ?? padParts[0]
 
+  const marginParts = (styles.margin || "0px").split(/\s+/)
+  const marginTopRaw = marginParts[0]
+  const marginRightRaw = marginParts[1] ?? marginParts[0]
+  const marginBottomRaw = marginParts[2] ?? marginParts[0]
+  const marginLeftRaw = marginParts[3] ?? marginParts[1] ?? marginParts[0]
+
   return (
     <div className="flex flex-col gap-4 py-3">
       {!isTextNode && <>
@@ -566,6 +572,47 @@ export default function StyleEditor({
               value={displayCssLength(effective(editedProps, "paddingRight", padRightRaw))}
               onChange={(val) => {
                 onStyleEdit(elementId, "paddingRight", padRightRaw, normalizeCssInput(val))
+              }}
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <FieldLabel edited={hasAny(editedProps, "marginLeft", "marginRight", "marginTop", "marginBottom")} onUndo={() => onUndo(elementId, ["marginLeft", "marginRight", "marginTop", "marginBottom"])}>Margin</FieldLabel>
+          <div className="grid grid-cols-4 gap-x-2">
+            <NumericInput
+              key={`${elementId}-mt-${effective(editedProps, "marginTop", marginTopRaw)}`}
+              icon={<ArrowUpFromLine size={14} />}
+              edited={editedProps.has("marginTop")}
+              value={displayCssLength(effective(editedProps, "marginTop", marginTopRaw))}
+              onChange={(val) => {
+                onStyleEdit(elementId, "marginTop", marginTopRaw, normalizeCssInput(val))
+              }}
+            />
+            <NumericInput
+              key={`${elementId}-mb-${effective(editedProps, "marginBottom", marginBottomRaw)}`}
+              icon={<ArrowDownFromLine size={14} />}
+              edited={editedProps.has("marginBottom")}
+              value={displayCssLength(effective(editedProps, "marginBottom", marginBottomRaw))}
+              onChange={(val) => {
+                onStyleEdit(elementId, "marginBottom", marginBottomRaw, normalizeCssInput(val))
+              }}
+            />
+            <NumericInput
+              key={`${elementId}-ml-${effective(editedProps, "marginLeft", marginLeftRaw)}`}
+              icon={<ArrowLeftFromLine size={14} />}
+              edited={editedProps.has("marginLeft")}
+              value={displayCssLength(effective(editedProps, "marginLeft", marginLeftRaw))}
+              onChange={(val) => {
+                onStyleEdit(elementId, "marginLeft", marginLeftRaw, normalizeCssInput(val))
+              }}
+            />
+            <NumericInput
+              key={`${elementId}-mr-${effective(editedProps, "marginRight", marginRightRaw)}`}
+              icon={<ArrowRightFromLine size={14} />}
+              edited={editedProps.has("marginRight")}
+              value={displayCssLength(effective(editedProps, "marginRight", marginRightRaw))}
+              onChange={(val) => {
+                onStyleEdit(elementId, "marginRight", marginRightRaw, normalizeCssInput(val))
               }}
             />
           </div>

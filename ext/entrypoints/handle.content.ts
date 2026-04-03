@@ -220,6 +220,7 @@ export default defineContentScript({
         fontSize: cs.fontSize,
         color: cs.color,
         padding: cs.padding,
+        margin: cs.margin,
         display: cs.display,
         width: getSpecifiedStyle(el, "width"),
         height: getSpecifiedStyle(el, "height"),
