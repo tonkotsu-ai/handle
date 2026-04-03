@@ -31,6 +31,10 @@ export interface StyleData {
   alignItems?: string
   justifyItems?: string
   gap?: string
+  columnGap?: string
+  rowGap?: string
+  gridTemplateColumns?: string
+  gridTemplateRows?: string
   flexWrap?: string
   borderRadius: string
   backgroundColor: string

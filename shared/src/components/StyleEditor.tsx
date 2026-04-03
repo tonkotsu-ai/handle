@@ -1,15 +1,20 @@
 import {
   AlignCenter,
+  AlignHorizontalSpaceAround,
   AlignHorizontalSpaceBetween,
   AlignLeft,
   AlignRight,
+  AlignVerticalSpaceAround,
+  AlignVerticalSpaceBetween,
   ArrowDownFromLine,
   ArrowLeftFromLine,
   ArrowRightFromLine,
   ArrowUpFromLine,
   Blend,
+  Columns,
   Dot,
   LayoutGrid,
+  Rows,
   Scan,
   Undo2
 } from "lucide-react"
@@ -173,11 +178,27 @@ function FlowControls({
               if (flowMode === f.mode) {
                 onStyleEdit(elementId, "display", display, "block")
                 onStyleEdit(elementId, "flexDirection", styles.flexDirection || "", "")
+                if (flowMode === "grid") {
+                  onStyleEdit(elementId, "gridTemplateColumns", styles.gridTemplateColumns || "", "")
+                  onStyleEdit(elementId, "gridTemplateRows", styles.gridTemplateRows || "", "")
+                  onStyleEdit(elementId, "columnGap", styles.columnGap || "", "")
+                  onStyleEdit(elementId, "rowGap", styles.rowGap || "", "")
+                }
                 onFlowChange(null)
               } else if (f.mode === "grid") {
+                if (flowMode !== "grid") {
+                  onStyleEdit(elementId, "flexDirection", styles.flexDirection || "", "")
+                }
                 onStyleEdit(elementId, "display", display, "grid")
+                onStyleEdit(elementId, "gridTemplateColumns", styles.gridTemplateColumns || "", "repeat(3, 1fr)")
                 onFlowChange("grid")
               } else {
+                if (flowMode === "grid") {
+                  onStyleEdit(elementId, "gridTemplateColumns", styles.gridTemplateColumns || "", "")
+                  onStyleEdit(elementId, "gridTemplateRows", styles.gridTemplateRows || "", "")
+                  onStyleEdit(elementId, "columnGap", styles.columnGap || "", "")
+                  onStyleEdit(elementId, "rowGap", styles.rowGap || "", "")
+                }
                 onStyleEdit(elementId, "display", display, "flex")
                 onStyleEdit(elementId, "flexDirection", styles.flexDirection || "", f.mode)
                 onFlowChange(f.mode)
@@ -324,6 +345,85 @@ function AlignmentGrid({
             </button>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+function parseRepeatCount(val: string): number | null {
+  const m = val.match(/^repeat\((\d+),\s*1fr\)$/)
+  return m ? parseInt(m[1]) : null
+}
+
+function GridTemplateControls({
+  styles,
+  elementId,
+  editedProps,
+  onStyleEdit,
+  onUndo
+}: {
+  styles: StyleData
+  elementId: ElementId
+  editedProps: Map<string, { original: string; current: string; tokenName?: string }>
+  onStyleEdit: StyleEditorProps["onStyleEdit"]
+  onUndo: (elementId: ElementId, props: string[]) => void
+}) {
+  const cols = effective(editedProps, "gridTemplateColumns", styles.gridTemplateColumns || "none")
+  const rows = effective(editedProps, "gridTemplateRows", styles.gridTemplateRows || "none")
+  const initialDir = (rows !== "none" && rows !== "" && (cols === "none" || cols === "")) ? "rows" : "columns"
+  const [templateDir, setTemplateDir] = useState<"columns" | "rows">(initialDir)
+
+  const activeProp = templateDir === "columns" ? "gridTemplateColumns" : "gridTemplateRows"
+  const inactiveProp = templateDir === "columns" ? "gridTemplateRows" : "gridTemplateColumns"
+  const activeValue = effective(editedProps, activeProp, styles[activeProp] || "none")
+  const count = parseRepeatCount(activeValue)
+
+  const edited = hasAny(editedProps, "gridTemplateColumns", "gridTemplateRows")
+
+  return (
+    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+      <div className="flex flex-col gap-1">
+        <FieldLabel edited={edited} onUndo={() => onUndo(elementId, ["gridTemplateColumns", "gridTemplateRows"])}>Template</FieldLabel>
+        <div className={`flex w-full rounded-lg ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
+          {([{ dir: "columns" as const, icon: <Columns size={14} />, title: "Columns" }, { dir: "rows" as const, icon: <Rows size={14} />, title: "Rows" }]).map((t) => (
+            <button
+              key={t.dir}
+              title={t.title}
+              className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
+                templateDir === t.dir
+                  ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+              }`}
+              onClick={() => {
+                if (templateDir !== t.dir) {
+                  setTemplateDir(t.dir)
+                  const currentActiveProp = t.dir === "columns" ? "gridTemplateColumns" : "gridTemplateRows"
+                  const currentInactiveProp = t.dir === "columns" ? "gridTemplateRows" : "gridTemplateColumns"
+                  const currentCount = parseRepeatCount(effective(editedProps, currentActiveProp, styles[currentActiveProp] || "none"))
+                  if (!currentCount) {
+                    onStyleEdit(elementId, currentActiveProp, styles[currentActiveProp] || "", "repeat(3, 1fr)")
+                  }
+                  onStyleEdit(elementId, currentInactiveProp, styles[currentInactiveProp] || "", "")
+                }
+              }}>
+              {t.icon}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col gap-1">
+        <FieldLabel edited={editedProps.has(activeProp)} onUndo={() => onUndo(elementId, [activeProp])}>{templateDir === "columns" ? "Columns" : "Rows"}</FieldLabel>
+        <NumericInput
+          key={activeValue}
+          edited={editedProps.has(activeProp)}
+          value={count ?? ""}
+          onChange={(val) => {
+            const n = parseInt(val)
+            if (n > 0) {
+              onStyleEdit(elementId, activeProp, styles[activeProp] || "", `repeat(${n}, 1fr)`)
+            }
+          }}
+        />
       </div>
     </div>
   )
@@ -481,7 +581,7 @@ export default function StyleEditor({
           onFlowChange={setFlowMode}
           onStyleEdit={onStyleEdit}
           onUndo={() => {
-            onUndo(elementId, ["display", "flexDirection"])
+            onUndo(elementId, ["display", "flexDirection", "gridTemplateColumns", "gridTemplateRows", "columnGap", "rowGap"])
             setFlowMode(initialFlowMode)
           }}
         />
@@ -507,6 +607,15 @@ export default function StyleEditor({
             />
           </div>
         )}
+        {flowMode === "grid" && (
+          <GridTemplateControls
+            styles={styles}
+            elementId={elementId}
+            editedProps={editedProps}
+            onStyleEdit={onStyleEdit}
+            onUndo={onUndo}
+          />
+        )}
         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
           <AlignmentGrid
             styles={styles}
@@ -518,20 +627,55 @@ export default function StyleEditor({
             onStyleEdit={onStyleEdit}
             onUndo={() => onUndo(elementId, ["justifyContent", "alignItems", "justifyItems"])}
           />
-          <div className="flex flex-col gap-1">
-            <FieldLabel edited={editedProps.has("gap")} onUndo={() => onUndo(elementId, ["gap"])}>Gap</FieldLabel>
-            <NumericInput
-              key={effective(editedProps, "gap", styles.gap || "")}
-              icon={<AlignHorizontalSpaceBetween size={14} />}
-              edited={editedProps.has("gap")}
-              value={(isFlex || isGrid) ? (parseInt(effective(editedProps, "gap", styles.gap || "")) || 0) : ""}
-              onChange={(val) => {
-                const v = val.match(/\d/) ? val : "0"
-                const gapVal = v.match(/[a-z%]/) ? v : v + "px"
-                onStyleEdit(elementId, "gap", styles.gap || "", gapVal)
-              }}
-            />
-          </div>
+          {flowMode === "grid" ? (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
+                <FieldLabel edited={editedProps.has("columnGap")} onUndo={() => onUndo(elementId, ["columnGap"])}>Column gap</FieldLabel>
+                <NumericInput
+                  key={effective(editedProps, "columnGap", styles.columnGap || styles.gap || "")}
+                  icon={<AlignHorizontalSpaceBetween size={14} />}
+                  edited={editedProps.has("columnGap")}
+                  value={parseInt(effective(editedProps, "columnGap", styles.columnGap || styles.gap || "")) || 0}
+                  onChange={(val) => {
+                    const v = val.match(/\d/) ? val : "0"
+                    const gapVal = v.match(/[a-z%]/) ? v : v + "px"
+                    onStyleEdit(elementId, "columnGap", styles.columnGap || "", gapVal)
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <FieldLabel edited={editedProps.has("rowGap")} onUndo={() => onUndo(elementId, ["rowGap"])}>Row gap</FieldLabel>
+                <NumericInput
+                  key={effective(editedProps, "rowGap", styles.rowGap || styles.gap || "")}
+                  icon={<AlignVerticalSpaceBetween size={14} />}
+                  edited={editedProps.has("rowGap")}
+                  value={parseInt(effective(editedProps, "rowGap", styles.rowGap || styles.gap || "")) || 0}
+                  onChange={(val) => {
+                    const v = val.match(/\d/) ? val : "0"
+                    const gapVal = v.match(/[a-z%]/) ? v : v + "px"
+                    onStyleEdit(elementId, "rowGap", styles.rowGap || "", gapVal)
+                  }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1">
+              <FieldLabel edited={editedProps.has("gap")} onUndo={() => onUndo(elementId, ["gap"])}>
+                {flowMode === "column" ? "Vertical gap" : flowMode === "row" ? "Horizontal gap" : "Gap"}
+              </FieldLabel>
+              <NumericInput
+                key={effective(editedProps, "gap", styles.gap || "")}
+                icon={flowMode === "column" ? <AlignVerticalSpaceBetween size={14} /> : <AlignHorizontalSpaceBetween size={14} />}
+                edited={editedProps.has("gap")}
+                value={(isFlex || isGrid) ? (parseInt(effective(editedProps, "gap", styles.gap || "")) || 0) : ""}
+                onChange={(val) => {
+                  const v = val.match(/\d/) ? val : "0"
+                  const gapVal = v.match(/[a-z%]/) ? v : v + "px"
+                  onStyleEdit(elementId, "gap", styles.gap || "", gapVal)
+                }}
+              />
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-1">
           <FieldLabel edited={hasAny(editedProps, "paddingLeft", "paddingRight", "paddingTop", "paddingBottom")} onUndo={() => onUndo(elementId, ["paddingLeft", "paddingRight", "paddingTop", "paddingBottom"])}>Padding</FieldLabel>

@@ -267,6 +267,10 @@ export default defineContentScript({
         styles.justifyItems = cs.justifyItems
         styles.alignItems = cs.alignItems
         styles.gap = cs.gap
+        styles.gridTemplateColumns = cs.gridTemplateColumns
+        styles.gridTemplateRows = cs.gridTemplateRows
+        styles.columnGap = cs.columnGap
+        styles.rowGap = cs.rowGap
       }
       styles.borderRadius = cs.borderRadius
       styles.opacity = cs.opacity
