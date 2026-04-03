@@ -6,7 +6,9 @@ import {
   AlignRight,
   AlignVerticalSpaceAround,
   ArrowDownFromLine,
+  ArrowLeftFromLine,
   ArrowRightFromLine,
+  ArrowUpFromLine,
   Blend,
   Dot,
   LayoutGrid,
@@ -339,9 +341,32 @@ function effective(editedProps: Map<string, { original: string; current: string;
 
 const CSS_LENGTH_RE = /^-?[\d.]+\s*(px|em|rem|%|vw|vh|vmin|vmax|ch|ex|cap|lh|svw|svh|lvw|lvh|dvw|dvh|cqw|cqh|cm|mm|in|pt|pc)$/
 
+/** Parse a CSS length into its numeric part and unit. Bare numbers default to "px". */
+function parseCssLength(val: string): { num: number; unit: string } {
+  const match = val.trim().match(/^(-?[\d.]+)\s*([a-z%]*)$/)
+  if (!match) return { num: 0, unit: "px" }
+  return { num: parseFloat(match[1]) || 0, unit: match[2] || "px" }
+}
+
+/** Display a CSS length value, omitting the "px" unit. */
+function displayCssLength(val: string): string {
+  const { num, unit } = parseCssLength(val)
+  return unit === "px" ? String(num) : `${num}${unit}`
+}
+
+/** Normalize user input to a CSS length. Bare numbers become px. */
+function normalizeCssInput(val: string): string {
+  const trimmed = val.trim()
+  if (!trimmed) return "0px"
+  return trimmed.match(/[a-z%]/) ? trimmed : trimmed + "px"
+}
+
 function sizeDisplayValue(authored: string): { display: string; isCustom: boolean } {
   if (!authored || authored === "auto") return { display: "", isCustom: false }
-  if (CSS_LENGTH_RE.test(authored.trim())) return { display: authored.trim(), isCustom: false }
+  if (CSS_LENGTH_RE.test(authored.trim())) {
+    const { num, unit } = parseCssLength(authored)
+    return { display: unit === "px" ? String(num) : authored.trim(), isCustom: false }
+  }
   return { display: "custom", isCustom: true }
 }
 
@@ -433,10 +458,10 @@ export default function StyleEditor({
   const supportsSize = effectiveDisplay !== "inline" && effectiveDisplay !== "contents"
 
   const padParts = (styles.padding || "0px").split(/\s+/)
-  const padTop = parseInt(padParts[0]) || 0
-  const padRight = parseInt(padParts[1] ?? padParts[0]) || 0
-  const padBottom = parseInt(padParts[2] ?? padParts[0]) || 0
-  const padLeft = parseInt(padParts[3] ?? padParts[1] ?? padParts[0]) || 0
+  const padTopRaw = padParts[0]
+  const padRightRaw = padParts[1] ?? padParts[0]
+  const padBottomRaw = padParts[2] ?? padParts[0]
+  const padLeftRaw = padParts[3] ?? padParts[1] ?? padParts[0]
 
   return (
     <div className="flex flex-col gap-4 py-3">
@@ -504,32 +529,43 @@ export default function StyleEditor({
             />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-x-4">
-          <div className="flex flex-col gap-1">
-            <FieldLabel edited={hasAny(editedProps, "paddingLeft", "paddingRight", "paddingTop", "paddingBottom")} onUndo={() => onUndo(elementId, ["paddingLeft", "paddingRight", "paddingTop", "paddingBottom"])}>Padding</FieldLabel>
+        <div className="flex flex-col gap-1">
+          <FieldLabel edited={hasAny(editedProps, "paddingLeft", "paddingRight", "paddingTop", "paddingBottom")} onUndo={() => onUndo(elementId, ["paddingLeft", "paddingRight", "paddingTop", "paddingBottom"])}>Padding</FieldLabel>
+          <div className="grid grid-cols-4 gap-x-2">
             <NumericInput
-              key={effective(editedProps, "paddingLeft", padLeft + "px")}
-              icon={<AlignHorizontalSpaceAround size={14} />}
-              edited={hasAny(editedProps, "paddingLeft", "paddingRight")}
-              value={parseInt(effective(editedProps, "paddingLeft", padLeft + "px")) || 0}
+              key={`${elementId}-pt-${effective(editedProps, "paddingTop", padTopRaw)}`}
+              icon={<ArrowUpFromLine size={14} />}
+              edited={editedProps.has("paddingTop")}
+              value={displayCssLength(effective(editedProps, "paddingTop", padTopRaw))}
               onChange={(val) => {
-                const v = (parseInt(val) || 0) + "px"
-                onStyleEdit(elementId, "paddingLeft", padLeft + "px", v)
-                onStyleEdit(elementId, "paddingRight", padRight + "px", v)
+                onStyleEdit(elementId, "paddingTop", padTopRaw, normalizeCssInput(val))
               }}
             />
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="text-xs">&nbsp;</div>
             <NumericInput
-              key={effective(editedProps, "paddingTop", padTop + "px")}
-              icon={<AlignVerticalSpaceAround size={14} />}
-              edited={hasAny(editedProps, "paddingTop", "paddingBottom")}
-              value={parseInt(effective(editedProps, "paddingTop", padTop + "px")) || 0}
+              key={`${elementId}-pb-${effective(editedProps, "paddingBottom", padBottomRaw)}`}
+              icon={<ArrowDownFromLine size={14} />}
+              edited={editedProps.has("paddingBottom")}
+              value={displayCssLength(effective(editedProps, "paddingBottom", padBottomRaw))}
               onChange={(val) => {
-                const v = (parseInt(val) || 0) + "px"
-                onStyleEdit(elementId, "paddingTop", padTop + "px", v)
-                onStyleEdit(elementId, "paddingBottom", padBottom + "px", v)
+                onStyleEdit(elementId, "paddingBottom", padBottomRaw, normalizeCssInput(val))
+              }}
+            />
+            <NumericInput
+              key={`${elementId}-pl-${effective(editedProps, "paddingLeft", padLeftRaw)}`}
+              icon={<ArrowLeftFromLine size={14} />}
+              edited={editedProps.has("paddingLeft")}
+              value={displayCssLength(effective(editedProps, "paddingLeft", padLeftRaw))}
+              onChange={(val) => {
+                onStyleEdit(elementId, "paddingLeft", padLeftRaw, normalizeCssInput(val))
+              }}
+            />
+            <NumericInput
+              key={`${elementId}-pr-${effective(editedProps, "paddingRight", padRightRaw)}`}
+              icon={<ArrowRightFromLine size={14} />}
+              edited={editedProps.has("paddingRight")}
+              value={displayCssLength(effective(editedProps, "paddingRight", padRightRaw))}
+              onChange={(val) => {
+                onStyleEdit(elementId, "paddingRight", padRightRaw, normalizeCssInput(val))
               }}
             />
           </div>
