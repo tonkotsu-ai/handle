@@ -273,6 +273,130 @@ export function hasFrameworkMarkers(): boolean {
   return false
 }
 
+// ── Measurement overlay rendering ──────────────────────────────────
+
+const PADDING_COLOR = "rgba(166, 207, 152, 0.55)"
+const MARGIN_COLOR = "rgba(246, 178, 107, 0.55)"
+const GAP_COLOR = "rgba(195, 141, 209, 0.55)"
+const LABEL_STYLE =
+  "position:absolute;font:10px/1 monospace;color:#333;background:rgba(255,255,255,0.85);padding:1px 4px;border-radius:2px;white-space:nowrap;pointer-events:none;z-index:1;"
+
+function createRegionDiv(
+  container: HTMLElement,
+  color: string,
+  top: number,
+  left: number,
+  width: number,
+  height: number,
+  label: string,
+): void {
+  if (width <= 0 || height <= 0) return
+  const div = document.createElement("div")
+  div.className = "__handle-measure"
+  div.style.cssText = `position:fixed;pointer-events:none;z-index:2147483646;background:${color};top:${top}px;left:${left}px;width:${width}px;height:${height}px;overflow:visible;`
+  if (label && label !== "0") {
+    const lbl = document.createElement("div")
+    lbl.style.cssText =
+      LABEL_STYLE +
+      `top:50%;left:50%;transform:translate(-50%,-50%);`
+    lbl.textContent = label
+    div.appendChild(lbl)
+  }
+  container.appendChild(div)
+}
+
+/** Show padding, margin, and gap measurement overlays for an element */
+export function createMeasurementOverlays(
+  el: HTMLElement,
+  container: HTMLElement,
+): void {
+  clearMeasurementOverlays(container)
+  const rect = el.getBoundingClientRect()
+  const cs = getComputedStyle(el)
+
+  const pt = parseFloat(cs.paddingTop) || 0
+  const pr = parseFloat(cs.paddingRight) || 0
+  const pb = parseFloat(cs.paddingBottom) || 0
+  const pl = parseFloat(cs.paddingLeft) || 0
+  const bt = parseFloat(cs.borderTopWidth) || 0
+  const br = parseFloat(cs.borderRightWidth) || 0
+  const bb = parseFloat(cs.borderBottomWidth) || 0
+  const bl = parseFloat(cs.borderLeftWidth) || 0
+  const mt = parseFloat(cs.marginTop) || 0
+  const mr = parseFloat(cs.marginRight) || 0
+  const mb = parseFloat(cs.marginBottom) || 0
+  const ml = parseFloat(cs.marginLeft) || 0
+
+  // Padding regions (inside border)
+  const contentTop = rect.top + bt
+  const contentLeft = rect.left + bl
+  const contentWidth = rect.width - bl - br
+  const contentHeight = rect.height - bt - bb
+
+  // Top padding
+  createRegionDiv(container, PADDING_COLOR, contentTop, contentLeft, contentWidth, pt, Math.round(pt) + "")
+  // Bottom padding
+  createRegionDiv(container, PADDING_COLOR, contentTop + contentHeight - pb, contentLeft, contentWidth, pb, Math.round(pb) + "")
+  // Left padding
+  createRegionDiv(container, PADDING_COLOR, contentTop + pt, contentLeft, pl, contentHeight - pt - pb, Math.round(pl) + "")
+  // Right padding
+  createRegionDiv(container, PADDING_COLOR, contentTop + pt, contentLeft + contentWidth - pr, pr, contentHeight - pt - pb, Math.round(pr) + "")
+
+  // Margin regions (outside border)
+  // Top margin
+  createRegionDiv(container, MARGIN_COLOR, rect.top - mt, rect.left, rect.width, mt, Math.round(mt) + "")
+  // Bottom margin
+  createRegionDiv(container, MARGIN_COLOR, rect.bottom, rect.left, rect.width, mb, Math.round(mb) + "")
+  // Left margin — spans full margin-box height (including top+bottom margins)
+  createRegionDiv(container, MARGIN_COLOR, rect.top - mt, rect.left - ml, ml, rect.height + mt + mb, Math.round(ml) + "")
+  // Right margin
+  createRegionDiv(container, MARGIN_COLOR, rect.top - mt, rect.right, mr, rect.height + mt + mb, Math.round(mr) + "")
+
+  // Gap regions (for flex/grid containers)
+  const display = cs.display
+  const gap = parseFloat(cs.gap) || 0
+  if (gap > 0 && (display === "flex" || display === "inline-flex" || display === "grid" || display === "inline-grid")) {
+    const isRow = display.includes("grid") || cs.flexDirection === "row" || cs.flexDirection === "row-reverse"
+    const children = Array.from(el.children).filter((c) => {
+      const ccs = getComputedStyle(c)
+      return ccs.display !== "none" && ccs.position !== "absolute" && ccs.position !== "fixed"
+    }) as HTMLElement[]
+
+    for (let i = 0; i < children.length - 1; i++) {
+      const r1 = children[i].getBoundingClientRect()
+      const r2 = children[i + 1].getBoundingClientRect()
+      if (isRow) {
+        const gapLeft = r1.right
+        const gapWidth = r2.left - r1.right
+        if (gapWidth > 0) {
+          createRegionDiv(container, GAP_COLOR, Math.min(r1.top, r2.top), gapLeft, gapWidth, Math.max(r1.height, r2.height), Math.round(gapWidth) + "")
+        }
+      } else {
+        const gapTop = r1.bottom
+        const gapHeight = r2.top - r1.bottom
+        if (gapHeight > 0) {
+          createRegionDiv(container, GAP_COLOR, gapTop, Math.min(r1.left, r2.left), Math.max(r1.width, r2.width), gapHeight, Math.round(gapHeight) + "")
+        }
+      }
+    }
+  }
+}
+
+/** Update measurement overlay positions for an element (recreates them) */
+export function updateMeasurementPositions(
+  el: HTMLElement,
+  container: HTMLElement,
+): void {
+  createMeasurementOverlays(el, container)
+}
+
+/** Remove all measurement overlays */
+export function clearMeasurementOverlays(container: HTMLElement): void {
+  while (container.firstChild) {
+    container.removeChild(container.firstChild)
+  }
+}
+
 /**
  * Plain JS string snippets for injection into string-based content scripts.
  * These mirror the typed functions above for use in handle-app's webview
@@ -476,6 +600,87 @@ export const hasFrameworkMarkersSnippet = `
     }
     if (typeof ng !== "undefined") return true;
     return false;
+  }
+`
+
+export const measurementOverlaySnippet = `
+  var __PADDING_COLOR = "rgba(166, 207, 152, 0.55)";
+  var __MARGIN_COLOR = "rgba(246, 178, 107, 0.55)";
+  var __GAP_COLOR = "rgba(195, 141, 209, 0.55)";
+  var __LABEL_STYLE = "position:absolute;font:10px/1 monospace;color:#333;background:rgba(255,255,255,0.85);padding:1px 4px;border-radius:2px;white-space:nowrap;pointer-events:none;z-index:1;";
+
+  function __createRegionDiv(container, color, top, left, width, height, label) {
+    if (width <= 0 || height <= 0) return;
+    var div = document.createElement("div");
+    div.className = "__handle-measure";
+    div.style.cssText = "position:fixed;pointer-events:none;z-index:2147483646;background:" + color + ";top:" + top + "px;left:" + left + "px;width:" + width + "px;height:" + height + "px;overflow:visible;";
+    if (label && label !== "0") {
+      var lbl = document.createElement("div");
+      lbl.style.cssText = __LABEL_STYLE + "top:50%;left:50%;transform:translate(-50%,-50%);";
+      lbl.textContent = label;
+      div.appendChild(lbl);
+    }
+    container.appendChild(div);
+  }
+
+  function createMeasurementOverlays(el, container) {
+    clearMeasurementOverlays(container);
+    var rect = el.getBoundingClientRect();
+    var cs = getComputedStyle(el);
+    var pt = parseFloat(cs.paddingTop) || 0;
+    var pr = parseFloat(cs.paddingRight) || 0;
+    var pb = parseFloat(cs.paddingBottom) || 0;
+    var pl = parseFloat(cs.paddingLeft) || 0;
+    var bt = parseFloat(cs.borderTopWidth) || 0;
+    var br = parseFloat(cs.borderRightWidth) || 0;
+    var bb = parseFloat(cs.borderBottomWidth) || 0;
+    var bl = parseFloat(cs.borderLeftWidth) || 0;
+    var mt = parseFloat(cs.marginTop) || 0;
+    var mr = parseFloat(cs.marginRight) || 0;
+    var mb = parseFloat(cs.marginBottom) || 0;
+    var ml = parseFloat(cs.marginLeft) || 0;
+
+    var contentTop = rect.top + bt;
+    var contentLeft = rect.left + bl;
+    var contentWidth = rect.width - bl - br;
+    var contentHeight = rect.height - bt - bb;
+
+    __createRegionDiv(container, __PADDING_COLOR, contentTop, contentLeft, contentWidth, pt, Math.round(pt) + "");
+    __createRegionDiv(container, __PADDING_COLOR, contentTop + contentHeight - pb, contentLeft, contentWidth, pb, Math.round(pb) + "");
+    __createRegionDiv(container, __PADDING_COLOR, contentTop + pt, contentLeft, pl, contentHeight - pt - pb, Math.round(pl) + "");
+    __createRegionDiv(container, __PADDING_COLOR, contentTop + pt, contentLeft + contentWidth - pr, pr, contentHeight - pt - pb, Math.round(pr) + "");
+
+    __createRegionDiv(container, __MARGIN_COLOR, rect.top - mt, rect.left, rect.width, mt, Math.round(mt) + "");
+    __createRegionDiv(container, __MARGIN_COLOR, rect.bottom, rect.left, rect.width, mb, Math.round(mb) + "");
+    __createRegionDiv(container, __MARGIN_COLOR, rect.top - mt, rect.left - ml, ml, rect.height + mt + mb, Math.round(ml) + "");
+    __createRegionDiv(container, __MARGIN_COLOR, rect.top - mt, rect.right, mr, rect.height + mt + mb, Math.round(mr) + "");
+
+    var display = cs.display;
+    var gap = parseFloat(cs.gap) || 0;
+    if (gap > 0 && (display === "flex" || display === "inline-flex" || display === "grid" || display === "inline-grid")) {
+      var isRow = display.indexOf("grid") >= 0 || cs.flexDirection === "row" || cs.flexDirection === "row-reverse";
+      var children = Array.from(el.children).filter(function(c) {
+        var ccs = getComputedStyle(c);
+        return ccs.display !== "none" && ccs.position !== "absolute" && ccs.position !== "fixed";
+      });
+      for (var i = 0; i < children.length - 1; i++) {
+        var r1 = children[i].getBoundingClientRect();
+        var r2 = children[i + 1].getBoundingClientRect();
+        if (isRow) {
+          var gapLeft = r1.right;
+          var gapWidth = r2.left - r1.right;
+          if (gapWidth > 0) __createRegionDiv(container, __GAP_COLOR, Math.min(r1.top, r2.top), gapLeft, gapWidth, Math.max(r1.height, r2.height), Math.round(gapWidth) + "");
+        } else {
+          var gapTop = r1.bottom;
+          var gapHeight = r2.top - r1.bottom;
+          if (gapHeight > 0) __createRegionDiv(container, __GAP_COLOR, gapTop, Math.min(r1.left, r2.left), Math.max(r1.width, r2.width), gapHeight, Math.round(gapHeight) + "");
+        }
+      }
+    }
+  }
+
+  function clearMeasurementOverlays(container) {
+    while (container.firstChild) container.removeChild(container.firstChild);
   }
 `
 

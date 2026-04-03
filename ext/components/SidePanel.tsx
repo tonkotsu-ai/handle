@@ -618,6 +618,10 @@ function SidePanel({ demo = false }: SidePanelProps) {
           type: "highlight-element",
           nodeId,
         })
+        chrome.tabs.sendMessage(tabId, {
+          type: "show-measurements",
+          nodeId,
+        })
       }
       const reqId = ++styleRequestIdRef.current
       const result = demo

@@ -13,6 +13,18 @@ export interface StyleData {
   fontSize: string
   padding: string
   margin: string
+  paddingTop?: string
+  paddingRight?: string
+  paddingBottom?: string
+  paddingLeft?: string
+  marginTop?: string
+  marginRight?: string
+  marginBottom?: string
+  marginLeft?: string
+  borderTopWidth?: string
+  borderRightWidth?: string
+  borderBottomWidth?: string
+  borderLeftWidth?: string
   display: string
   flexDirection?: string
   justifyContent?: string

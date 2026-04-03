@@ -1,6 +1,8 @@
 import {
   buildDomTree,
   buildSelectorPath,
+  createMeasurementOverlays,
+  clearMeasurementOverlays,
   detectComponent,
   hasFrameworkMarkers,
   visibleElementAtPoint,
@@ -18,6 +20,9 @@ export default defineContentScript({
     let nodeMap = new Map<string, Node>()
     let frameworkRetryTimer: ReturnType<typeof setTimeout> | null = null
     let highlightedEl: HTMLElement | null = null
+    let measureContainer: HTMLDivElement | null = null
+    let measuredEl: HTMLElement | null = null
+    let selectedMeasuredEl: HTMLElement | null = null
     // Cache every element we've seen, keyed by selectorPath, so we can
     // re-select elements from the Changes tab even after the tree changes.
     const elementCache = new Map<string, HTMLElement>()
@@ -72,14 +77,39 @@ export default defineContentScript({
 
     window.addEventListener("resize", () => {
       if (highlightedEl) showOverlay(highlightedEl)
+      if (measuredEl) showMeasurementsForEl(measuredEl)
+      else if (selectedMeasuredEl) showMeasurementsForEl(selectedMeasuredEl)
     })
 
     window.addEventListener("scroll", () => {
       if (highlightedEl) showOverlay(highlightedEl)
+      if (measuredEl) showMeasurementsForEl(measuredEl)
+      else if (selectedMeasuredEl) showMeasurementsForEl(selectedMeasuredEl)
     }, true)
+
+    function getMeasureContainer() {
+      if (!measureContainer) {
+        measureContainer = document.createElement("div")
+        measureContainer.style.cssText =
+          "position:fixed;top:0;left:0;width:0;height:0;pointer-events:none;z-index:2147483646;"
+        document.documentElement.appendChild(measureContainer)
+      }
+      return measureContainer
+    }
+
+    function showMeasurementsForEl(el: HTMLElement) {
+      measuredEl = el
+      createMeasurementOverlays(el, getMeasureContainer())
+    }
+
+    function hideMeasurements() {
+      measuredEl = null
+      if (measureContainer) clearMeasurementOverlays(measureContainer)
+    }
 
     function isOverlayEl(el: HTMLElement): boolean {
       return el === overlay || (overlay != null && overlay.contains(el))
+        || el === measureContainer || (measureContainer != null && measureContainer.contains(el))
     }
 
     function rebuildTree(): TreeNode | null {
@@ -244,6 +274,18 @@ export default defineContentScript({
       styles.borderColor = cs.borderColor
       styles.borderWidth = cs.borderWidth
       styles.borderStyle = cs.borderStyle
+      styles.paddingTop = cs.paddingTop
+      styles.paddingRight = cs.paddingRight
+      styles.paddingBottom = cs.paddingBottom
+      styles.paddingLeft = cs.paddingLeft
+      styles.marginTop = cs.marginTop
+      styles.marginRight = cs.marginRight
+      styles.marginBottom = cs.marginBottom
+      styles.marginLeft = cs.marginLeft
+      styles.borderTopWidth = cs.borderTopWidth
+      styles.borderRightWidth = cs.borderRightWidth
+      styles.borderBottomWidth = cs.borderBottomWidth
+      styles.borderLeftWidth = cs.borderLeftWidth
       const isTextOnly =
         el.childNodes.length > 0 &&
         [...el.childNodes].every((n) => n.nodeType === Node.TEXT_NODE)
@@ -262,11 +304,19 @@ export default defineContentScript({
         e.target as HTMLElement,
         overlay,
       )
+      if (isOverlayEl(hoveredEl)) return
       hoveredEl.style.outline = "2px solid #4A90D9"
+      showMeasurementsForEl(hoveredEl)
     }
 
     function onMouseOut(e: MouseEvent) {
       ;(e.target as HTMLElement).style.outline = ""
+      // Restore selection measurements if we have a selected element, otherwise hide
+      if (selectedMeasuredEl) {
+        showMeasurementsForEl(selectedMeasuredEl)
+      } else {
+        hideMeasurements()
+      }
     }
 
     function onClick(e: MouseEvent) {
@@ -363,8 +413,12 @@ export default defineContentScript({
       document.removeEventListener("click", onClick, true)
       if (hoveredEl) hoveredEl.style.outline = ""
       hideOverlay()
+      hideMeasurements()
+      selectedMeasuredEl = null
       if (overlay) overlay.remove()
       overlay = null
+      if (measureContainer) measureContainer.remove()
+      measureContainer = null
       document.querySelectorAll("[data-handle-component]").forEach((n) => {
         n.removeAttribute("data-handle-component")
       })
@@ -434,6 +488,18 @@ export default defineContentScript({
           sendTree()
         } else if (message.type === "build-tree") {
           sendTree()
+        } else if (message.type === "show-measurements") {
+          const mNode = nodeMap.get(message.nodeId)
+          if (mNode) {
+            const mEl = mNode.nodeType === Node.TEXT_NODE ? (mNode as Text).parentElement : mNode as HTMLElement
+            if (mEl) {
+              selectedMeasuredEl = mEl
+              showMeasurementsForEl(mEl)
+            }
+          }
+        } else if (message.type === "hide-measurements") {
+          selectedMeasuredEl = null
+          hideMeasurements()
         } else if (message.type === "get-page-colors") {
           const colors = new Set<string>()
           const elements = document.querySelectorAll("*")
