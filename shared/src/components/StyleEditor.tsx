@@ -370,7 +370,11 @@ function GridTemplateControls({
 }) {
   const cols = effective(editedProps, "gridTemplateColumns", styles.gridTemplateColumns || "none")
   const rows = effective(editedProps, "gridTemplateRows", styles.gridTemplateRows || "none")
-  const initialDir = (rows !== "none" && rows !== "" && (cols === "none" || cols === "")) ? "rows" : "columns"
+  // Computed grid-template values are always resolved to actual track sizes
+  // (e.g. "960px" or "100px 50px 50px ..."), so we can't use "none" checks.
+  // Instead, detect explicit user-authored templates by looking for repeat()/fr patterns.
+  const isExplicitTemplate = (val: string) => /repeat\(/.test(val) || /\dfr/.test(val)
+  const initialDir = isExplicitTemplate(cols) ? "columns" : isExplicitTemplate(rows) ? "rows" : "rows"
   const [templateDir, setTemplateDir] = useState<"columns" | "rows">(initialDir)
 
   const activeProp = templateDir === "columns" ? "gridTemplateColumns" : "gridTemplateRows"
