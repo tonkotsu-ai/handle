@@ -3,6 +3,9 @@ import {
   buildSelectorSegment,
   buildSelectorPath,
   buildDomTree,
+  detectComponent,
+  hasFrameworkMarkers,
+  isElementVisible,
 } from "./dom"
 
 describe("buildSelectorSegment", () => {
@@ -218,5 +221,285 @@ describe("buildDomTree", () => {
     // Look up p DOM element via nodeMap
     const pElement = nodeMap.get(p.nodeId)
     expect(pElement).toBe(document.querySelector("p"))
+  })
+})
+
+describe("detectComponent", () => {
+  beforeEach(() => {
+    document.body.innerHTML = ""
+    delete (globalThis as any).ng
+  })
+
+  it("returns null for element with no framework markers", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as HTMLElement
+    expect(detectComponent(el)).toBeNull()
+  })
+
+  it("detects React component via __reactFiber$", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as any
+    function MyComponent() {}
+    MyComponent.displayName = "MyComponent"
+    el["__reactFiber$abc123"] = {
+      return: {
+        type: MyComponent,
+        return: null,
+      },
+    }
+    expect(detectComponent(el)).toBe("MyComponent")
+  })
+
+  it("walks React fiber tree to find named component", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as any
+    function Inner() {}
+    // No name on inner — walks up to parent
+    function Outer() {}
+    Outer.displayName = "Outer"
+    el["__reactFiber$abc123"] = {
+      return: {
+        type: Inner,
+        return: {
+          type: Outer,
+          return: null,
+        },
+      },
+    }
+    // Inner has name "Inner" from function.name, so it's returned first
+    expect(detectComponent(el)).toBe("Inner")
+  })
+
+  it("stops walking fiber when type is a string (host element)", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as any
+    function App() {}
+    App.displayName = "App"
+    el["__reactFiber$abc123"] = {
+      return: {
+        type: "div", // host element — stop here
+        return: {
+          type: App,
+          return: null,
+        },
+      },
+    }
+    expect(detectComponent(el)).toBeNull()
+  })
+
+  it("detects React component via __reactInternalInstance$", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as any
+    function LegacyComponent() {}
+    el["__reactInternalInstance$xyz"] = {
+      return: {
+        type: LegacyComponent,
+        return: null,
+      },
+    }
+    expect(detectComponent(el)).toBe("LegacyComponent")
+  })
+
+  it("detects Vue 3 component on root element", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as any
+    el.__vueParentComponent = {
+      type: { name: "VueApp" },
+      subTree: { el: el },
+    }
+    expect(detectComponent(el)).toBe("VueApp")
+  })
+
+  it("returns null for Vue 3 non-root element", () => {
+    document.body.innerHTML = "<div><span></span></div>"
+    const div = document.querySelector("div") as any
+    const span = document.querySelector("span") as any
+    span.__vueParentComponent = {
+      type: { name: "VueApp" },
+      subTree: { el: div }, // root is div, not span
+    }
+    expect(detectComponent(span)).toBeNull()
+  })
+
+  it("detects Vue 3 component via __name", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as any
+    el.__vueParentComponent = {
+      type: { __name: "ScriptSetupComponent" },
+      subTree: { el: el },
+    }
+    expect(detectComponent(el)).toBe("ScriptSetupComponent")
+  })
+
+  it("detects Vue 2 component on root element", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as any
+    el.__vue__ = {
+      $el: el,
+      $options: { name: "Vue2Component" },
+    }
+    expect(detectComponent(el)).toBe("Vue2Component")
+  })
+
+  it("returns null for Vue 2 non-root element", () => {
+    document.body.innerHTML = "<div><span></span></div>"
+    const div = document.querySelector("div") as any
+    const span = document.querySelector("span") as any
+    span.__vue__ = {
+      $el: div,
+      $options: { name: "Vue2Component" },
+    }
+    expect(detectComponent(span)).toBeNull()
+  })
+
+  it("detects Angular component via ng global", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as HTMLElement
+    class AppComponent {}
+    ;(globalThis as any).ng = {
+      getComponent: (target: HTMLElement) =>
+        target === el ? new AppComponent() : null,
+    }
+    expect(detectComponent(el)).toBe("AppComponent")
+  })
+
+  it("strips leading underscores from Angular name", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as HTMLElement
+    class __PrivateComponent {}
+    ;(globalThis as any).ng = {
+      getComponent: () => new __PrivateComponent(),
+    }
+    expect(detectComponent(el)).toBe("PrivateComponent")
+  })
+
+  it("returns null when Angular ng.getComponent throws", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as HTMLElement
+    ;(globalThis as any).ng = {
+      getComponent: () => {
+        throw new Error("not a component")
+      },
+    }
+    expect(detectComponent(el)).toBeNull()
+  })
+
+  it("detects Svelte component from __svelte_meta", () => {
+    document.body.innerHTML = "<div><span></span></div>"
+    const div = document.querySelector("div") as any
+    const span = document.querySelector("span") as any
+    div.__svelte_meta = { loc: { file: "/src/App.svelte" } }
+    // span is inside div but different file — div is outermost for App.svelte
+    span.__svelte_meta = { loc: { file: "/src/Child.svelte" } }
+    expect(detectComponent(div)).toBe("App")
+    expect(detectComponent(span)).toBe("Child")
+  })
+
+  it("skips Svelte inner elements with same file as parent", () => {
+    document.body.innerHTML = "<div><span></span></div>"
+    const div = document.querySelector("div") as any
+    const span = document.querySelector("span") as any
+    div.__svelte_meta = { loc: { file: "/src/App.svelte" } }
+    span.__svelte_meta = { loc: { file: "/src/App.svelte" } }
+    // div is outermost, span shares same file so should be null
+    expect(detectComponent(div)).toBe("App")
+    expect(detectComponent(span)).toBeNull()
+  })
+})
+
+describe("hasFrameworkMarkers", () => {
+  beforeEach(() => {
+    document.body.innerHTML = ""
+    delete (globalThis as any).ng
+  })
+
+  it("returns false for plain HTML", () => {
+    document.body.innerHTML = "<div><p>hello</p></div>"
+    expect(hasFrameworkMarkers()).toBe(false)
+  })
+
+  it("detects React fiber marker", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as any
+    el["__reactFiber$test"] = {}
+    expect(hasFrameworkMarkers()).toBe(true)
+  })
+
+  it("detects Vue 3 marker", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as any
+    el.__vueParentComponent = {}
+    expect(hasFrameworkMarkers()).toBe(true)
+  })
+
+  it("detects Vue 2 marker", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as any
+    el.__vue__ = {}
+    expect(hasFrameworkMarkers()).toBe(true)
+  })
+
+  it("detects Svelte marker", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as any
+    el.__svelte_meta = {}
+    expect(hasFrameworkMarkers()).toBe(true)
+  })
+
+  it("detects Angular via ng global", () => {
+    ;(globalThis as any).ng = {}
+    document.body.innerHTML = "<div></div>"
+    expect(hasFrameworkMarkers()).toBe(true)
+  })
+
+  it("detects Angular __ngContext__ key", () => {
+    document.body.innerHTML = "<div></div>"
+    const el = document.querySelector("div") as any
+    el["__ngContext__"] = []
+    expect(hasFrameworkMarkers()).toBe(true)
+  })
+})
+
+describe("isElementVisible", () => {
+  beforeEach(() => {
+    document.body.innerHTML = ""
+  })
+
+  it("returns true for normal element", () => {
+    document.body.innerHTML = "<div>visible</div>"
+    const el = document.querySelector("div") as HTMLElement
+    expect(isElementVisible(el)).toBe(true)
+  })
+
+  it("returns false for aria-hidden=true", () => {
+    document.body.innerHTML = '<div aria-hidden="true">hidden</div>'
+    const el = document.querySelector("div") as HTMLElement
+    expect(isElementVisible(el)).toBe(false)
+  })
+
+  it("returns true for aria-hidden=false", () => {
+    document.body.innerHTML = '<div aria-hidden="false">visible</div>'
+    const el = document.querySelector("div") as HTMLElement
+    expect(isElementVisible(el)).toBe(true)
+  })
+
+  // Note: jsdom's getComputedStyle doesn't fully process stylesheets,
+  // but inline styles do work for these checks
+  it("returns false for inline display:none", () => {
+    document.body.innerHTML = '<div style="display:none">hidden</div>'
+    const el = document.querySelector("div") as HTMLElement
+    expect(isElementVisible(el)).toBe(false)
+  })
+
+  it("returns false for inline visibility:hidden", () => {
+    document.body.innerHTML = '<div style="visibility:hidden">hidden</div>'
+    const el = document.querySelector("div") as HTMLElement
+    expect(isElementVisible(el)).toBe(false)
+  })
+
+  it("returns false for inline opacity:0", () => {
+    document.body.innerHTML = '<div style="opacity:0">hidden</div>'
+    const el = document.querySelector("div") as HTMLElement
+    expect(isElementVisible(el)).toBe(false)
   })
 })
