@@ -617,6 +617,36 @@ export default function StyleEditor({
             />
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-x-4">
+          <div className="flex flex-col gap-1">
+            <FieldLabel edited={hasAny(editedProps, "marginLeft", "marginRight", "marginTop", "marginBottom")} onUndo={() => onUndo(elementId, ["marginLeft", "marginRight", "marginTop", "marginBottom"])}>Margin</FieldLabel>
+            <NumericInput
+              key={effective(editedProps, "marginLeft", styles.marginLeft || "0px")}
+              icon={<AlignHorizontalSpaceAround size={14} />}
+              edited={hasAny(editedProps, "marginLeft", "marginRight")}
+              value={parseInt(effective(editedProps, "marginLeft", styles.marginLeft || "0px")) || 0}
+              onChange={(val) => {
+                const v = (parseInt(val) || 0) + "px"
+                onStyleEdit(elementId, "marginLeft", styles.marginLeft || "0px", v)
+                onStyleEdit(elementId, "marginRight", styles.marginRight || "0px", v)
+              }}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="text-xs">&nbsp;</div>
+            <NumericInput
+              key={effective(editedProps, "marginTop", styles.marginTop || "0px")}
+              icon={<AlignVerticalSpaceAround size={14} />}
+              edited={hasAny(editedProps, "marginTop", "marginBottom")}
+              value={parseInt(effective(editedProps, "marginTop", styles.marginTop || "0px")) || 0}
+              onChange={(val) => {
+                const v = (parseInt(val) || 0) + "px"
+                onStyleEdit(elementId, "marginTop", styles.marginTop || "0px", v)
+                onStyleEdit(elementId, "marginBottom", styles.marginBottom || "0px", v)
+              }}
+            />
+          </div>
+        </div>
       </div>
 
       <hr className="border-slate-200 dark:border-slate-700 -mx-3" />

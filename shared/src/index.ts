@@ -19,12 +19,16 @@ export {
   hasFrameworkMarkers,
   isElementVisible,
   visibleElementAtPoint,
+  createMeasurementOverlays,
+  updateMeasurementPositions,
+  clearMeasurementOverlays,
   buildSelectorSegmentSnippet,
   buildSelectorPathSnippet,
   buildDomTreeSnippet,
   detectComponentSnippet,
   hasFrameworkMarkersSnippet,
   visibleElementAtPointSnippet,
+  measurementOverlaySnippet,
 } from "./utils/dom"
 export type { BuildDomTreeOptions } from "./utils/dom"
 
