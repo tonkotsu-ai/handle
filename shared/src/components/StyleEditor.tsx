@@ -190,7 +190,6 @@ function FlowControls({
                   onStyleEdit(elementId, "flexDirection", styles.flexDirection || "", "")
                 }
                 onStyleEdit(elementId, "display", display, "grid")
-                onStyleEdit(elementId, "gridTemplateColumns", styles.gridTemplateColumns || "", "repeat(3, 1fr)")
                 onFlowChange("grid")
               } else {
                 if (flowMode === "grid") {
@@ -401,13 +400,15 @@ function GridTemplateControls({
               onClick={() => {
                 if (templateDir !== t.dir) {
                   setTemplateDir(t.dir)
-                  const currentActiveProp = t.dir === "columns" ? "gridTemplateColumns" : "gridTemplateRows"
-                  const currentInactiveProp = t.dir === "columns" ? "gridTemplateRows" : "gridTemplateColumns"
-                  const currentCount = parseRepeatCount(effective(editedProps, currentActiveProp, styles[currentActiveProp] || "none"))
-                  if (!currentCount) {
-                    onStyleEdit(elementId, currentActiveProp, styles[currentActiveProp] || "", "repeat(3, 1fr)")
+                  const newActiveProp = t.dir === "columns" ? "gridTemplateColumns" : "gridTemplateRows"
+                  const oldActiveProp = t.dir === "columns" ? "gridTemplateRows" : "gridTemplateColumns"
+                  // Transfer any existing count from the old direction to the new one
+                  const oldValue = effective(editedProps, oldActiveProp, styles[oldActiveProp] || "")
+                  const oldCount = parseRepeatCount(oldValue)
+                  if (oldCount) {
+                    onStyleEdit(elementId, newActiveProp, styles[newActiveProp] || "", `repeat(${oldCount}, 1fr)`)
                   }
-                  onStyleEdit(elementId, currentInactiveProp, styles[currentInactiveProp] || "", "")
+                  onStyleEdit(elementId, oldActiveProp, styles[oldActiveProp] || "", "")
                 }
               }}>
               {t.icon}
