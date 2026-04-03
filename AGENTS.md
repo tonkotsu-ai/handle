@@ -22,6 +22,20 @@ npm run zip          # Package for Chrome Web Store
 ```
 Load the dev extension from `ext/.output/chrome-mv3` in Chrome.
 
+### Tests (run from `handle/`)
+```bash
+npx vitest run                    # Run all unit tests (shared + ext)
+npx vitest run shared/            # Run shared/ tests only
+npx vitest run --watch            # Watch mode
+```
+
+Vitest config at `vitest.config.ts` — jsdom environment, includes `shared/src/**/*.test.{ts,tsx}` and `ext/__tests__/**/*.test.{ts,tsx}`.
+
+Key test files:
+- `shared/src/utils/color.test.ts` — color parsing, conversion, opacity helpers
+- `shared/src/utils/dom.test.ts` — buildDomTree, selectorPath, detectComponent, hasFrameworkMarkers, isElementVisible
+- `shared/src/hooks/useEditTracker.test.ts` — edit tracking hook (recordEdit, changeCount, feedback description)
+
 ### MCP Server (`mcp/`)
 ```bash
 npm run build        # Compile TypeScript to dist/
