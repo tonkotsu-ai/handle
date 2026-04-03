@@ -1,10 +1,8 @@
 import {
   AlignCenter,
   AlignHorizontalSpaceBetween,
-  AlignHorizontalSpaceAround,
   AlignLeft,
   AlignRight,
-  AlignVerticalSpaceAround,
   ArrowDownFromLine,
   ArrowLeftFromLine,
   ArrowRightFromLine,
