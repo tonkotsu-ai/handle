@@ -1,5 +1,6 @@
 import { ChevronDown, Search } from "lucide-react"
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -9,11 +10,17 @@ import {
 import { createPortal } from "react-dom"
 
 import type { TokenEntry } from "../types"
+import type { HSV } from "../utils/color"
 import {
   formatColor,
   getOpacity,
+  hsvToRgba,
   normalizeToHex,
+  normalizeToHex6,
   parseColor,
+  rgbaToHex6,
+  rgbaToHsv,
+  rgbaToString,
   withOpacity,
 } from "../utils/color"
 
@@ -79,6 +86,198 @@ function Swatch({
   )
 }
 
+function SaturationValueArea({
+  hue,
+  saturation,
+  value,
+  onChange,
+}: {
+  hue: number
+  saturation: number
+  value: number
+  onChange: (s: number, v: number) => void
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const dragging = useRef(false)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+    const dpr = window.devicePixelRatio || 1
+    const w = canvas.clientWidth
+    const h = canvas.clientHeight
+    canvas.width = w * dpr
+    canvas.height = h * dpr
+    ctx.scale(dpr, dpr)
+
+    // Fill with the pure hue
+    ctx.fillStyle = `hsl(${hue}, 100%, 50%)`
+    ctx.fillRect(0, 0, w, h)
+
+    // White gradient left to right
+    const whiteGrad = ctx.createLinearGradient(0, 0, w, 0)
+    whiteGrad.addColorStop(0, "rgba(255,255,255,1)")
+    whiteGrad.addColorStop(1, "rgba(255,255,255,0)")
+    ctx.fillStyle = whiteGrad
+    ctx.fillRect(0, 0, w, h)
+
+    // Black gradient top to bottom
+    const blackGrad = ctx.createLinearGradient(0, 0, 0, h)
+    blackGrad.addColorStop(0, "rgba(0,0,0,0)")
+    blackGrad.addColorStop(1, "rgba(0,0,0,1)")
+    ctx.fillStyle = blackGrad
+    ctx.fillRect(0, 0, w, h)
+  }, [hue])
+
+  const handlePointer = useCallback(
+    (e: MouseEvent | React.MouseEvent) => {
+      const rect = containerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width))
+      const y = Math.max(0, Math.min(e.clientY - rect.top, rect.height))
+      onChange(x / rect.width, 1 - y / rect.height)
+    },
+    [onChange]
+  )
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (dragging.current) handlePointer(e)
+    }
+    function onUp() {
+      dragging.current = false
+    }
+    document.addEventListener("mousemove", onMove)
+    document.addEventListener("mouseup", onUp)
+    return () => {
+      document.removeEventListener("mousemove", onMove)
+      document.removeEventListener("mouseup", onUp)
+    }
+  }, [handlePointer])
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative cursor-crosshair rounded-md overflow-hidden"
+      style={{ height: 148 }}
+      onMouseDown={(e) => {
+        dragging.current = true
+        handlePointer(e)
+      }}>
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full block"
+      />
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          left: `${saturation * 100}%`,
+          top: `${(1 - value) * 100}%`,
+          width: 12,
+          height: 12,
+          marginLeft: -6,
+          marginTop: -6,
+          borderRadius: "50%",
+          border: "2px solid white",
+          boxShadow: "0 0 0 1px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(0,0,0,0.3)",
+        }}
+      />
+    </div>
+  )
+}
+
+function HueSlider({
+  hue,
+  onChange,
+}: {
+  hue: number
+  onChange: (h: number) => void
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const dragging = useRef(false)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+    const dpr = window.devicePixelRatio || 1
+    const w = canvas.clientWidth
+    const h = canvas.clientHeight
+    canvas.width = w * dpr
+    canvas.height = h * dpr
+    ctx.scale(dpr, dpr)
+
+    const grad = ctx.createLinearGradient(0, 0, w, 0)
+    grad.addColorStop(0, "hsl(0,100%,50%)")
+    grad.addColorStop(1 / 6, "hsl(60,100%,50%)")
+    grad.addColorStop(2 / 6, "hsl(120,100%,50%)")
+    grad.addColorStop(3 / 6, "hsl(180,100%,50%)")
+    grad.addColorStop(4 / 6, "hsl(240,100%,50%)")
+    grad.addColorStop(5 / 6, "hsl(300,100%,50%)")
+    grad.addColorStop(1, "hsl(360,100%,50%)")
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, w, h)
+  }, [])
+
+  const handlePointer = useCallback(
+    (e: MouseEvent | React.MouseEvent) => {
+      const rect = containerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width))
+      onChange((x / rect.width) * 360)
+    },
+    [onChange]
+  )
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (dragging.current) handlePointer(e)
+    }
+    function onUp() {
+      dragging.current = false
+    }
+    document.addEventListener("mousemove", onMove)
+    document.addEventListener("mouseup", onUp)
+    return () => {
+      document.removeEventListener("mousemove", onMove)
+      document.removeEventListener("mouseup", onUp)
+    }
+  }, [handlePointer])
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative cursor-pointer rounded-full overflow-hidden"
+      style={{ height: 14 }}
+      onMouseDown={(e) => {
+        dragging.current = true
+        handlePointer(e)
+      }}>
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full block"
+      />
+      <div
+        className="absolute pointer-events-none top-0"
+        style={{
+          left: `${(hue / 360) * 100}%`,
+          width: 6,
+          height: 14,
+          marginLeft: -3,
+          borderRadius: 3,
+          border: "2px solid white",
+          boxShadow: "0 0 0 1px rgba(0,0,0,0.3)",
+        }}
+      />
+    </div>
+  )
+}
+
 function CustomTab({
   value,
   pageColors,
@@ -90,17 +289,23 @@ function CustomTab({
 }) {
   const parsed = parseColor(value)
   const [colorFormat, setColorFormat] = useState<"hex" | "rgba">("hex")
-  const displayValue = parsed
-    ? formatColor(parsed, colorFormat)
-    : value
   const [inputValue, setInputValue] = useState(
     colorFormat === "hex" && parsed
-      ? formatColor(parsed, "hex").replace(/^#/, "")
-      : displayValue
+      ? rgbaToHex6(parsed).replace(/^#/, "")
+      : parsed
+        ? formatColor(parsed, colorFormat)
+        : value
   )
   const [opacityInput, setOpacityInput] = useState(
     String(parsed ? getOpacity(parsed) : 100)
   )
+
+  // HSV state for the visual picker
+  const initialHsv = parsed ? rgbaToHsv(parsed) : { h: 0, s: 1, v: 1 }
+  const [hsv, setHsv] = useState<HSV>(initialHsv)
+  const pickerChange = useRef(false)
+  // Remember hue when saturation/value are 0 (hue becomes ambiguous)
+  const lastHue = useRef(initialHsv.h)
 
   const currentHex = parsed ? normalizeToHex(value) : value
 
@@ -109,12 +314,51 @@ function CustomTab({
     if (p) {
       setInputValue(
         colorFormat === "hex"
-          ? formatColor(p, "hex").replace(/^#/, "")
+          ? rgbaToHex6(p).replace(/^#/, "")
           : formatColor(p, "rgba")
       )
       setOpacityInput(String(getOpacity(p)))
+
+      // Update HSV from external changes (not from picker drag)
+      if (!pickerChange.current) {
+        const newHsv = rgbaToHsv(p)
+        // Preserve last known hue for achromatic colors
+        if (newHsv.s === 0 || newHsv.v === 0) {
+          newHsv.h = lastHue.current
+        } else {
+          lastHue.current = newHsv.h
+        }
+        setHsv(newHsv)
+      }
+      pickerChange.current = false
     }
   }, [value, colorFormat])
+
+  function emitColor(rgba: { r: number; g: number; b: number; a: number }) {
+    // Always emit full-fidelity color (rgba string when alpha < 1, hex when opaque)
+    if (rgba.a < 1) {
+      onChange(rgbaToString(rgba))
+    } else {
+      onChange(rgbaToHex6(rgba))
+    }
+  }
+
+  function handleSVChange(s: number, v: number) {
+    const newHsv = { h: hsv.h, s, v }
+    setHsv(newHsv)
+    pickerChange.current = true
+    const rgba = hsvToRgba(newHsv, parsed?.a ?? 1)
+    emitColor(rgba)
+  }
+
+  function handleHueChange(h: number) {
+    const newHsv = { ...hsv, h }
+    setHsv(newHsv)
+    lastHue.current = h
+    pickerChange.current = true
+    const rgba = hsvToRgba(newHsv, parsed?.a ?? 1)
+    emitColor(rgba)
+  }
 
   function commitInput() {
     const raw =
@@ -122,14 +366,20 @@ function CustomTab({
         ? `#${inputValue}`
         : inputValue
     const p = parseColor(raw)
-    if (p) onChange(formatColor(p, colorFormat))
+    if (p) {
+      // Preserve current opacity when editing hex
+      if (colorFormat === "hex" && parsed) {
+        p.a = parsed.a
+      }
+      emitColor(p)
+    }
   }
 
   function commitOpacity() {
     const pct = parseInt(opacityInput)
     if (parsed && !isNaN(pct)) {
       const updated = withOpacity(parsed, pct)
-      onChange(formatColor(updated, colorFormat))
+      emitColor(updated)
     }
   }
 
@@ -151,7 +401,19 @@ function CustomTab({
   )
 
   return (
-    <div className="flex flex-col gap-3 p-3">
+    <div className="flex flex-col gap-2 p-3">
+      {/* Saturation/Value area */}
+      <SaturationValueArea
+        hue={hsv.h}
+        saturation={hsv.s}
+        value={hsv.v}
+        onChange={handleSVChange}
+      />
+
+      {/* Hue slider */}
+      <HueSlider hue={hsv.h} onChange={handleHueChange} />
+
+      {/* Format + hex/rgba input + opacity */}
       <div className="flex items-center gap-2">
         <div className="relative">
           <select
@@ -194,30 +456,26 @@ function CustomTab({
         </div>
       </div>
 
-      <hr className="-mx-3 border-slate-200 dark:border-slate-700" />
-
       {normalizedPageColors.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <div className="text-xs text-slate-500 dark:text-slate-400">
-            Other colors on this page
+        <>
+          <hr className="-mx-3 border-slate-200 dark:border-slate-700" />
+          <div className="flex flex-col gap-1.5">
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              Other colors on this page
+            </div>
+            <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+              {normalizedPageColors.map(({ raw, hex }) => (
+                <Swatch
+                  key={hex}
+                  color={raw}
+                  size={24}
+                  selected={hex.toLowerCase() === currentHex.toLowerCase()}
+                  onClick={() => onChange(hex)}
+                />
+              ))}
+            </div>
           </div>
-          <div className="flex flex-col gap-0.5 max-h-40 overflow-y-auto">
-            {normalizedPageColors.map(({ raw, hex }) => (
-              <button
-                key={hex}
-                onClick={() => onChange(hex)}
-                className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs w-full ${
-                  hex.toLowerCase() ===
-                  currentHex.toLowerCase()
-                    ? "bg-electricblue-100 text-electricblue-700 dark:bg-electricblue-900 dark:text-electricblue-300"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
-                }`}>
-                <Swatch color={raw} size={16} />
-                <span>{hex}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        </>
       )}
     </div>
   )
@@ -275,16 +533,19 @@ function TokensTab({
       <div className="overflow-y-auto p-1.5 max-h-60">
         {filtered.map((token) => {
           const displayName = token.name.replace(/^--/, "")
-          const hex = normalizeToHex(token.value)
+          const fullTokenHex = normalizeToHex(token.value)
+          const displayTokenHex = normalizeToHex6(token.value)
+          const tokenParsed = parseColor(token.value)
+          const tokenOpacity = tokenParsed ? getOpacity(tokenParsed) : 100
           return (
             <button
               key={token.name}
               onClick={() => {
-                onChange(hex, token.name)
+                onChange(displayTokenHex, token.name)
                 onClose()
               }}
               className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs w-full ${
-                hex.toLowerCase() ===
+                fullTokenHex.toLowerCase() ===
                 currentHex.toLowerCase()
                   ? "bg-electricblue-100 text-electricblue-700 dark:bg-electricblue-900 dark:text-electricblue-300"
                   : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -293,9 +554,10 @@ function TokensTab({
               <span className="truncate flex-1 text-left">
                 {highlightMatch(displayName, search)}
               </span>
-              {hex.startsWith("#") && (
+              {displayTokenHex.startsWith("#") && (
                 <span className="shrink-0 text-slate-400 dark:text-slate-500">
-                  {hex}
+                  {displayTokenHex}
+                  {tokenOpacity < 100 && ` ${tokenOpacity}%`}
                 </span>
               )}
             </button>
@@ -326,17 +588,21 @@ export default function ColorPicker({
   const buttonRef = useRef<HTMLButtonElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
 
-  const displayHex = normalizeToHex(value)
+  const parsedValue = parseColor(value)
+  const isTransparent = parsedValue != null && parsedValue.a === 0
+  const displayHex = isTransparent ? "transparent" : normalizeToHex6(value)
+  const displayOpacity = parsedValue ? getOpacity(parsedValue) : 100
+  const fullHex = normalizeToHex(value)
   const tokens = tokensProp ?? []
   const pageColors = pageColorsProp ?? []
 
   const matchingToken = useMemo(() => {
-    if (tokens.length === 0) return null
-    const hex = displayHex.toLowerCase()
+    if (tokens.length === 0 || isTransparent) return null
+    const hex = fullHex.toLowerCase()
     return tokens.find(
       (t) => normalizeToHex(t.value).toLowerCase() === hex
     ) ?? null
-  }, [tokens, displayHex])
+  }, [tokens, fullHex, isTransparent])
 
   const filteredPageColors = useMemo(() => {
     if (tokens.length === 0) return pageColors
@@ -354,8 +620,8 @@ export default function ColorPicker({
     const popupW = Math.max(rect.width, 280)
     const spaceBelow = window.innerHeight - rect.bottom - 12
     const spaceAbove = rect.top - 12
-    const showAbove = spaceBelow < 260 && spaceAbove > spaceBelow
-    const maxH = Math.min(400, showAbove ? spaceAbove : spaceBelow)
+    const showAbove = spaceBelow < 340 && spaceAbove > spaceBelow
+    const maxH = Math.min(520, showAbove ? spaceAbove : spaceBelow)
     setAbove(showAbove)
     const left = Math.max(
       0,
@@ -404,10 +670,16 @@ export default function ColorPicker({
             <span className="font-bold text-slate-800 dark:text-slate-200">{matchingToken.name.replace(/^--/, "")}</span>
             {" "}
             <span className="text-slate-500 dark:text-slate-300">{displayHex}</span>
+            {!isTransparent && displayOpacity < 100 && (
+              <span className="text-slate-400 dark:text-slate-500"> {displayOpacity}%</span>
+            )}
           </span>
         ) : (
           <span className="truncate text-slate-600 dark:text-slate-300">
             {displayHex}
+            {!isTransparent && displayOpacity < 100 && (
+              <span className="text-slate-400 dark:text-slate-500"> {displayOpacity}%</span>
+            )}
           </span>
         )}
       </button>

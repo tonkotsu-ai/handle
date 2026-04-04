@@ -37,12 +37,17 @@ export {
   parseColor,
   hexToRgba,
   rgbaToHex,
+  rgbaToHex6,
   rgbaToString,
   formatColor,
   normalizeToHex,
+  normalizeToHex6,
+  rgbaToHsv,
+  hsvToRgba,
   getOpacity,
   withOpacity,
 } from "./utils/color"
+export type { HSV } from "./utils/color"
 
 // Components
 export { default as ColorPicker } from "./components/ColorPicker"
