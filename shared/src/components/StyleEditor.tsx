@@ -181,6 +181,7 @@ function FlowControls({
                 if (flowMode === "grid") {
                   onStyleEdit(elementId, "gridTemplateColumns", styles.gridTemplateColumns || "", "")
                   onStyleEdit(elementId, "gridTemplateRows", styles.gridTemplateRows || "", "")
+                  onStyleEdit(elementId, "gridAutoFlow", styles.gridAutoFlow || "", "")
                   onStyleEdit(elementId, "columnGap", styles.columnGap || "", "")
                   onStyleEdit(elementId, "rowGap", styles.rowGap || "", "")
                 }
@@ -195,6 +196,7 @@ function FlowControls({
                 if (flowMode === "grid") {
                   onStyleEdit(elementId, "gridTemplateColumns", styles.gridTemplateColumns || "", "")
                   onStyleEdit(elementId, "gridTemplateRows", styles.gridTemplateRows || "", "")
+                  onStyleEdit(elementId, "gridAutoFlow", styles.gridAutoFlow || "", "")
                   onStyleEdit(elementId, "columnGap", styles.columnGap || "", "")
                   onStyleEdit(elementId, "rowGap", styles.rowGap || "", "")
                 }
@@ -349,9 +351,15 @@ function AlignmentGrid({
   )
 }
 
-function parseRepeatCount(val: string): number | null {
+function parseTrackCount(val: string): number | null {
+  // Match explicit repeat(N, 1fr) pattern
   const m = val.match(/^repeat\((\d+),\s*1fr\)$/)
-  return m ? parseInt(m[1]) : null
+  if (m) return parseInt(m[1])
+  // Fall back to counting space-separated computed track values (e.g. "192px 192px 192px")
+  if (!val || val === "none" || val === "") return null
+  const tracks = val.trim().split(/\s+/)
+  if (tracks.length > 1) return tracks.length
+  return null
 }
 
 function GridTemplateControls({
@@ -367,70 +375,73 @@ function GridTemplateControls({
   onStyleEdit: StyleEditorProps["onStyleEdit"]
   onUndo: (elementId: ElementId, props: string[]) => void
 }) {
-  const cols = effective(editedProps, "gridTemplateColumns", styles.gridTemplateColumns || "none")
-  const rows = effective(editedProps, "gridTemplateRows", styles.gridTemplateRows || "none")
-  // Computed grid-template values are always resolved to actual track sizes
-  // (e.g. "960px" or "100px 50px 50px ..."), so we can't use "none" checks.
-  // Instead, detect explicit user-authored templates by looking for repeat()/fr patterns.
-  const isExplicitTemplate = (val: string) => /repeat\(/.test(val) || /\dfr/.test(val)
-  const initialDir = isExplicitTemplate(cols) ? "columns" : isExplicitTemplate(rows) ? "rows" : "rows"
-  const [templateDir, setTemplateDir] = useState<"columns" | "rows">(initialDir)
+  const colsValue = effective(editedProps, "gridTemplateColumns", styles.gridTemplateColumns || "none")
+  const rowsValue = effective(editedProps, "gridTemplateRows", styles.gridTemplateRows || "none")
+  const colCount = parseTrackCount(colsValue)
+  const rowCount = parseTrackCount(rowsValue)
 
-  const activeProp = templateDir === "columns" ? "gridTemplateColumns" : "gridTemplateRows"
-  const inactiveProp = templateDir === "columns" ? "gridTemplateRows" : "gridTemplateColumns"
-  const activeValue = effective(editedProps, activeProp, styles[activeProp] || "none")
-  const count = parseRepeatCount(activeValue)
-
-  const edited = hasAny(editedProps, "gridTemplateColumns", "gridTemplateRows")
+  const autoFlow = effective(editedProps, "gridAutoFlow", styles.gridAutoFlow || "row")
+  const autoFlowEdited = editedProps.has("gridAutoFlow")
 
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+    <>
       <div className="flex flex-col gap-1">
-        <FieldLabel edited={edited} onUndo={() => onUndo(elementId, ["gridTemplateColumns", "gridTemplateRows"])}>Template</FieldLabel>
-        <div className={`flex w-full rounded-lg ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
-          {([{ dir: "columns" as const, icon: <Columns size={14} />, title: "Columns" }, { dir: "rows" as const, icon: <Rows size={14} />, title: "Rows" }]).map((t) => (
+        <FieldLabel edited={autoFlowEdited} onUndo={() => onUndo(elementId, ["gridAutoFlow"])}>Auto flow</FieldLabel>
+        <div className={`flex w-full rounded-lg ${autoFlowEdited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
+          {([
+            { value: "row", icon: <ArrowRightFromLine size={14} />, label: "Row" },
+            { value: "column", icon: <ArrowDownFromLine size={14} />, label: "Column" }
+          ]).map((t) => (
             <button
-              key={t.dir}
-              title={t.title}
+              key={t.value}
+              title={`Auto flow: ${t.label}`}
               className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
-                templateDir === t.dir
+                autoFlow === t.value
                   ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
                   : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
               }`}
               onClick={() => {
-                if (templateDir !== t.dir) {
-                  setTemplateDir(t.dir)
-                  const newActiveProp = t.dir === "columns" ? "gridTemplateColumns" : "gridTemplateRows"
-                  const oldActiveProp = t.dir === "columns" ? "gridTemplateRows" : "gridTemplateColumns"
-                  // Transfer any existing count from the old direction to the new one
-                  const oldValue = effective(editedProps, oldActiveProp, styles[oldActiveProp] || "")
-                  const oldCount = parseRepeatCount(oldValue)
-                  if (oldCount) {
-                    onStyleEdit(elementId, newActiveProp, styles[newActiveProp] || "", `repeat(${oldCount}, 1fr)`)
-                  }
-                  onStyleEdit(elementId, oldActiveProp, styles[oldActiveProp] || "", "")
-                }
+                onStyleEdit(elementId, "gridAutoFlow", styles.gridAutoFlow || "row", t.value)
               }}>
               {t.icon}
+              {t.label}
             </button>
           ))}
         </div>
       </div>
-      <div className="flex flex-col gap-1">
-        <FieldLabel edited={editedProps.has(activeProp)} onUndo={() => onUndo(elementId, [activeProp])}>{templateDir === "columns" ? "Columns" : "Rows"}</FieldLabel>
-        <NumericInput
-          key={activeValue}
-          edited={editedProps.has(activeProp)}
-          value={count ?? ""}
-          onChange={(val) => {
-            const n = parseInt(val)
-            if (n > 0) {
-              onStyleEdit(elementId, activeProp, styles[activeProp] || "", `repeat(${n}, 1fr)`)
-            }
-          }}
-        />
+      <div className="grid grid-cols-2 gap-x-4">
+        <div className="flex flex-col gap-1">
+          <FieldLabel edited={editedProps.has("gridTemplateColumns")} onUndo={() => onUndo(elementId, ["gridTemplateColumns"])}>Columns</FieldLabel>
+          <NumericInput
+            key={colsValue}
+            icon={<Columns size={14} />}
+            edited={editedProps.has("gridTemplateColumns")}
+            value={colCount ?? ""}
+            onChange={(val) => {
+              const n = parseInt(val)
+              if (n > 0) {
+                onStyleEdit(elementId, "gridTemplateColumns", styles.gridTemplateColumns || "", `repeat(${n}, 1fr)`)
+              }
+            }}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <FieldLabel edited={editedProps.has("gridTemplateRows")} onUndo={() => onUndo(elementId, ["gridTemplateRows"])}>Rows</FieldLabel>
+          <NumericInput
+            key={rowsValue}
+            icon={<Rows size={14} />}
+            edited={editedProps.has("gridTemplateRows")}
+            value={rowCount ?? ""}
+            onChange={(val) => {
+              const n = parseInt(val)
+              if (n > 0) {
+                onStyleEdit(elementId, "gridTemplateRows", styles.gridTemplateRows || "", `repeat(${n}, 1fr)`)
+              }
+            }}
+          />
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -586,7 +597,7 @@ export default function StyleEditor({
           onFlowChange={setFlowMode}
           onStyleEdit={onStyleEdit}
           onUndo={() => {
-            onUndo(elementId, ["display", "flexDirection", "gridTemplateColumns", "gridTemplateRows", "columnGap", "rowGap"])
+            onUndo(elementId, ["display", "flexDirection", "gridTemplateColumns", "gridTemplateRows", "gridAutoFlow", "columnGap", "rowGap"])
             setFlowMode(initialFlowMode)
           }}
         />

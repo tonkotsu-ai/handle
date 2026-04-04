@@ -35,6 +35,7 @@ export interface StyleData {
   rowGap?: string
   gridTemplateColumns?: string
   gridTemplateRows?: string
+  gridAutoFlow?: string
   flexWrap?: string
   borderRadius: string
   backgroundColor: string

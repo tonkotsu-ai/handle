@@ -269,6 +269,7 @@ export default defineContentScript({
         styles.gap = cs.gap
         styles.gridTemplateColumns = cs.gridTemplateColumns
         styles.gridTemplateRows = cs.gridTemplateRows
+        styles.gridAutoFlow = cs.gridAutoFlow
         styles.columnGap = cs.columnGap
         styles.rowGap = cs.rowGap
       }
