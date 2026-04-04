@@ -456,6 +456,12 @@ export default defineContentScript({
           const node = nodeMap.get(message.nodeId)
           if (node && node.nodeType === Node.ELEMENT_NODE) {
             ;(node as HTMLElement).style[message.prop as any] = message.value
+            if (node === highlightedEl) showOverlay(node as HTMLElement)
+            requestAnimationFrame(() => {
+              if (measuredEl) showMeasurementsForEl(measuredEl)
+              else if (selectedMeasuredEl)
+                showMeasurementsForEl(selectedMeasuredEl)
+            })
           }
         } else if (message.type === "set-icon") {
           const node = nodeMap.get(message.nodeId)
