@@ -2,9 +2,13 @@ import { describe, it, expect } from "vitest"
 import {
   hexToRgba,
   rgbaToHex,
+  rgbaToHex6,
   rgbaToString,
   formatColor,
   normalizeToHex,
+  normalizeToHex6,
+  rgbaToHsv,
+  hsvToRgba,
   getOpacity,
   withOpacity,
   parseColor,
@@ -190,5 +194,97 @@ describe("withOpacity", () => {
   it("does not mutate original", () => {
     withOpacity(red, 50)
     expect(red.a).toBe(1)
+  })
+})
+
+describe("rgbaToHex6", () => {
+  it("returns 6-digit hex for opaque color", () => {
+    expect(rgbaToHex6({ r: 255, g: 0, b: 0, a: 1 })).toBe("#ff0000")
+  })
+
+  it("returns 6-digit hex even when alpha < 1", () => {
+    expect(rgbaToHex6({ r: 255, g: 0, b: 0, a: 0.5 })).toBe("#ff0000")
+    expect(rgbaToHex6({ r: 0, g: 128, b: 255, a: 0.1 })).toBe("#0080ff")
+  })
+})
+
+describe("normalizeToHex6", () => {
+  it("strips alpha from 8-digit hex input", () => {
+    expect(normalizeToHex6("#ff000080")).toBe("#ff0000")
+  })
+
+  it("normalizes rgb to 6-digit hex", () => {
+    expect(normalizeToHex6("rgb(255, 0, 0)")).toBe("#ff0000")
+  })
+
+  it("normalizes rgba to 6-digit hex", () => {
+    expect(normalizeToHex6("rgba(255, 0, 0, 0.5)")).toBe("#ff0000")
+  })
+
+  it("returns input for unparseable string", () => {
+    expect(normalizeToHex6("inherit")).toBe("inherit")
+  })
+})
+
+describe("rgbaToHsv / hsvToRgba", () => {
+  it("round-trips pure red", () => {
+    const red = { r: 255, g: 0, b: 0, a: 1 }
+    const hsv = rgbaToHsv(red)
+    expect(hsv.h).toBeCloseTo(0)
+    expect(hsv.s).toBeCloseTo(1)
+    expect(hsv.v).toBeCloseTo(1)
+    const back = hsvToRgba(hsv)
+    expect(back.r).toBe(255)
+    expect(back.g).toBe(0)
+    expect(back.b).toBe(0)
+  })
+
+  it("round-trips pure green", () => {
+    const green = { r: 0, g: 255, b: 0, a: 1 }
+    const hsv = rgbaToHsv(green)
+    expect(hsv.h).toBeCloseTo(120)
+    expect(hsv.s).toBeCloseTo(1)
+    expect(hsv.v).toBeCloseTo(1)
+    const back = hsvToRgba(hsv)
+    expect(back.g).toBe(255)
+  })
+
+  it("round-trips pure blue", () => {
+    const blue = { r: 0, g: 0, b: 255, a: 1 }
+    const hsv = rgbaToHsv(blue)
+    expect(hsv.h).toBeCloseTo(240)
+    const back = hsvToRgba(hsv)
+    expect(back.b).toBe(255)
+  })
+
+  it("handles black (v=0)", () => {
+    const hsv = rgbaToHsv({ r: 0, g: 0, b: 0, a: 1 })
+    expect(hsv.v).toBe(0)
+  })
+
+  it("handles white", () => {
+    const hsv = rgbaToHsv({ r: 255, g: 255, b: 255, a: 1 })
+    expect(hsv.s).toBe(0)
+    expect(hsv.v).toBeCloseTo(1)
+  })
+
+  it("handles gray (s=0)", () => {
+    const hsv = rgbaToHsv({ r: 128, g: 128, b: 128, a: 1 })
+    expect(hsv.s).toBe(0)
+    expect(hsv.h).toBe(0)
+  })
+
+  it("preserves alpha", () => {
+    const rgba = hsvToRgba({ h: 0, s: 1, v: 1 }, 0.5)
+    expect(rgba.a).toBe(0.5)
+  })
+
+  it("round-trips an arbitrary color", () => {
+    const orig = { r: 100, g: 200, b: 150, a: 1 }
+    const hsv = rgbaToHsv(orig)
+    const back = hsvToRgba(hsv)
+    expect(back.r).toBe(orig.r)
+    expect(back.g).toBe(orig.g)
+    expect(back.b).toBe(orig.b)
   })
 })
