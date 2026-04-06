@@ -16,6 +16,7 @@ This detects your installed coding agents and configures them automatically. Sup
 - **Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`)
 - **Cursor** (`~/.cursor/mcp.json`)
 - **Windsurf** (`~/.codeium/windsurf/mcp_config.json`)
+- **Antigravity** (`~/.gemini/antigravity/mcp_config.json`)
 
 Restart your coding agent after setup to activate Handle.
 

@@ -106,7 +106,9 @@ async function mergeConfig(
 
   try {
     const raw = await readFile(configPath, "utf-8")
-    existing = JSON.parse(raw)
+    if (raw.trim()) {
+      existing = JSON.parse(raw)
+    }
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
       return {
@@ -155,7 +157,9 @@ async function mergeVscodeConfig(
 
   try {
     const raw = await readFile(configPath, "utf-8")
-    existing = JSON.parse(raw)
+    if (raw.trim()) {
+      existing = JSON.parse(raw)
+    }
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
       return {
@@ -207,7 +211,9 @@ async function mergeVscodeMcpJson(
 
   try {
     const raw = await readFile(configPath, "utf-8")
-    existing = JSON.parse(raw)
+    if (raw.trim()) {
+      existing = JSON.parse(raw)
+    }
   } catch (err: unknown) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
       return {
@@ -620,6 +626,24 @@ export function getAgents(): AgentConfig[] {
         await mkdir(dir, { recursive: true })
         await mergeRovoDevPrompts(join(dir, "prompts.yml"))
         await writeFile(join(dir, "handle_prompt.md"), HANDLE_COMMAND)
+        return result
+      },
+    },
+    {
+      id: "antigravity",
+      name: "Antigravity",
+      configPath: join(home, ".gemini", "antigravity", "mcp_config.json"),
+      detect: () => exists(join(home, ".gemini", "antigravity")),
+      configure: async () => {
+        const result = await mergeConfig(
+          join(home, ".gemini", "antigravity", "mcp_config.json"),
+          SERVER_NAME,
+          MCP_ENTRY
+        )
+        // Also install handle skill
+        const skillDir = join(home, ".gemini", "antigravity", "skills", "handle")
+        await mkdir(skillDir, { recursive: true })
+        await writeFile(join(skillDir, "SKILL.md"), HANDLE_CODEX_SKILL_MD)
         return result
       },
     },

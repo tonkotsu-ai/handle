@@ -26,7 +26,7 @@ Run the setup command to auto-configure your coding agent:
 npx handle-ext@latest init
 ```
 
-Supported agents: **Claude Code**, **Codex**, **Cursor**, **GitHub Copilot**, **Windsurf**, **Gemini CLI**, **Rovo Dev**
+Supported agents: **Claude Code**, **Codex**, **Cursor**, **GitHub Copilot**, **Windsurf**, **Gemini CLI**, **Rovo Dev**, **Antigravity**
 
 Restart your agent after setup to activate Handle.
 
@@ -36,7 +36,18 @@ Download the [Handle extension](https://chromewebstore.google.com/detail/pfcfpjo
 
 **3. Use it**
 
-Type `/handle` in your coding agent. Chrome will launch. Click on the Handle extension button to open the side panel. Click any element to inspect and annotate it, then send your feedback.
+Trigger Handle in your coding agent using the command for your agent:
+
+| Agent | Command |
+| --- | --- |
+| Claude Code | `/handle` |
+| Cursor | `/handle` |
+| Codex | `$handle` |
+| Gemini CLI | `/user.handle` or `ask handle for design feedback` |
+| Antigravity | `ask handle for design feedback` |
+| Rovo Dev | `/prompts handle` |
+
+Chrome will launch. Click on the Handle extension button to open the side panel. Click any element to inspect and annotate it, then send your feedback.
 
 ---
 
