@@ -134,6 +134,9 @@ function createExtensionSimulation() {
     }
   })
 
+  // SidePanel state: messages sent back to content script
+  const spSentMessages: Array<{ type: string; nodeId?: string }> = []
+
   // SidePanel message handler
   spListeners.push((message) => {
     if (message.type === "element-tree") {
@@ -150,6 +153,12 @@ function createExtensionSimulation() {
           for (const nid of message.selectedPath) expanded.add(nid)
         }
         spExpandedNodes = expanded
+      }
+      // When selection comes from a page click, send show-measurements
+      // (mirrors the real SidePanel behavior)
+      if (message.selectedNodeId) {
+        spSentMessages.push({ type: "highlight-element", nodeId: message.selectedNodeId })
+        spSentMessages.push({ type: "show-measurements", nodeId: message.selectedNodeId })
       }
     }
   })
@@ -172,6 +181,7 @@ function createExtensionSimulation() {
     get spSelectedPath() { return spSelectedPath },
     get spExpandedNodes() { return spExpandedNodes },
     get sentMessages() { return sentMessages },
+    get spSentMessages() { return spSentMessages },
     get active() { return active },
   }
 }
@@ -280,5 +290,30 @@ describe("extension message flow", () => {
       expect(msg.message.tree).not.toBeNull()
       expect(msg.message.tree.children[0].component).toBe("App")
     }
+  })
+
+  it("clicking element sends show-measurements to content script", () => {
+    document.body.innerHTML =
+      '<div id="app"><h1 class="title">Hello</h1></div>'
+    const ext = createExtensionSimulation()
+
+    ext.enableDesignMode()
+
+    // No measurements sent before click (initial tree has no selection)
+    const preMeasure = ext.spSentMessages.filter(
+      (m) => m.type === "show-measurements",
+    )
+    expect(preMeasure.length).toBe(0)
+
+    // Click h1
+    const h1 = document.querySelector("h1")!
+    ext.clickElement(h1 as HTMLElement)
+
+    // SidePanel should send show-measurements for the selected element
+    const postMeasure = ext.spSentMessages.filter(
+      (m) => m.type === "show-measurements",
+    )
+    expect(postMeasure.length).toBe(1)
+    expect(postMeasure[0].nodeId).toBe(ext.spSelectedNodeId)
   })
 })

@@ -797,6 +797,10 @@ function SidePanel({ demo = false }: SidePanelProps) {
             type: "highlight-element",
             nodeId: nid,
           })
+          chrome.tabs.sendMessage(tabId!, {
+            type: "show-measurements",
+            nodeId: nid,
+          })
           const reqId = ++styleRequestIdRef.current
           chrome.tabs
             .sendMessage(tabId!, { type: "get-styles", nodeId: nid })
