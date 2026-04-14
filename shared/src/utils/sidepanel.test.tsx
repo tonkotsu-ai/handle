@@ -146,6 +146,7 @@ describe("SidePanel element-tree message handling", () => {
 
     // Mock get-styles response for the selected element
     chromeMock.tabs.sendMessage.mockResolvedValueOnce(undefined) // highlight
+    chromeMock.tabs.sendMessage.mockResolvedValueOnce(undefined) // show-measurements
     chromeMock.tabs.sendMessage.mockResolvedValueOnce({
       styles: {
         display: "block",
@@ -180,11 +181,40 @@ describe("SidePanel element-tree message handling", () => {
     // h1 should be visible (ancestors expanded via selectedPath)
     expect(screen.getByText("h1")).toBeTruthy()
 
-    // Selected element should trigger highlight and get-styles messages
+    // Selected element should trigger highlight, show-measurements, and get-styles messages
     expect(chromeMock.tabs.sendMessage).toHaveBeenCalledWith(42, {
       type: "highlight-element",
       nodeId: "2",
     })
+    expect(chromeMock.tabs.sendMessage).toHaveBeenCalledWith(42, {
+      type: "show-measurements",
+      nodeId: "2",
+    })
+  })
+
+  it("sends show-measurements when element-tree arrives with selection", async () => {
+    render(<SidePanel />)
+
+    chromeMock.tabs.sendMessage.mockResolvedValue(undefined)
+
+    await act(async () => {
+      for (const listener of messageListeners) {
+        listener({
+          type: "element-tree",
+          tree: SAMPLE_TREE,
+          selectedNodeId: "1", // div#app
+          selectedPath: ["0", "1"],
+          tabId: 42,
+        })
+      }
+    })
+
+    const calls = chromeMock.tabs.sendMessage.mock.calls
+    const measureCalls = calls.filter(
+      ([, msg]: any) => msg.type === "show-measurements",
+    )
+    expect(measureCalls.length).toBe(1)
+    expect(measureCalls[0]).toEqual([42, { type: "show-measurements", nodeId: "1" }])
   })
 
   it("element-tree message without tabId is filtered out", async () => {

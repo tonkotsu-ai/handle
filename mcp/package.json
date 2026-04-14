@@ -1,6 +1,6 @@
 {
   "name": "handle-ext",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Design feedback bridge between Handle's Chrome extension and AI coding agents via MCP",
   "type": "module",
   "bin": {
