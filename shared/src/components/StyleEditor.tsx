@@ -475,6 +475,15 @@ function normalizeCssInput(val: string): string {
   return trimmed.match(/[a-z%]/) ? trimmed : trimmed + "px"
 }
 
+/** Computed width/height hint for placeholders; rounds px to the nearest integer. */
+function formatComputedDimensionHint(val: string): string {
+  const trimmed = val.trim()
+  if (!trimmed) return ""
+  const { num, unit } = parseCssLength(trimmed)
+  if (unit === "px") return `${Math.round(num)}px`
+  return trimmed
+}
+
 function sizeDisplayValue(authored: string): { display: string; isCustom: boolean } {
   if (!authored || authored === "auto") return { display: "", isCustom: false }
   if (CSS_LENGTH_RE.test(authored.trim())) {
@@ -512,6 +521,11 @@ function SizeDimensionControl({
     setCurrent(display)
   }
 
+  const computedCss = prop === "width" ? styles.widthComputed : styles.heightComputed
+  const computedDisplay = formatComputedDimensionHint(computedCss ?? "")
+  const autoPlaceholder =
+    computedDisplay !== "" ? `auto (${computedDisplay})` : "auto"
+
   const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"
 
   const commit = (val: string) => {
@@ -531,7 +545,7 @@ function SizeDimensionControl({
       <FieldLabel edited={edited} onUndo={onUndo}>{label}</FieldLabel>
       <input
         type="text"
-        placeholder="auto"
+        placeholder={display === "" && !isCustom ? autoPlaceholder : "auto"}
         className={`w-full rounded border-0 ${bg} px-2 py-1 text-xs outline-none focus:border-electricblue-500`}
         value={current}
         onChange={(e) => setCurrent(e.target.value)}
