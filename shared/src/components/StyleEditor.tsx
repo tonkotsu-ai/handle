@@ -972,7 +972,7 @@ export default function StyleEditor({
               edited={editedProps.has("fontSize")}
               value={effective(editedProps, "fontSize", styles.fontSize || "")}
               onChange={(newVal) =>
-                onStyleEdit(elementId, "fontSize", styles.fontSize || "", newVal)
+                onStyleEdit(elementId, "fontSize", styles.fontSize || "", normalizeCssInput(newVal))
               }
             />
           </div>
