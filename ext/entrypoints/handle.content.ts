@@ -326,7 +326,7 @@ export default defineContentScript({
 
     function onClick(e: MouseEvent) {
       e.preventDefault()
-      e.stopPropagation()
+      e.stopImmediatePropagation()
       if (hoveredEl) hoveredEl.style.outline = ""
       hoveredEl = null
       const target = visibleElementAtPoint(
@@ -400,7 +400,9 @@ export default defineContentScript({
       active = true
       document.addEventListener("mouseover", onMouseOver, true)
       document.addEventListener("mouseout", onMouseOut, true)
-      document.addEventListener("click", onClick, true)
+      // Listen on window capture so selection mode wins over page-level
+      // document capture handlers such as SPA routers.
+      window.addEventListener("click", onClick, true)
       // Build and send tree immediately (without component annotations).
       // Then request component annotation — when it completes, sendTree() will
       // be called again with component data via the component-tree-annotated handler.
@@ -415,7 +417,7 @@ export default defineContentScript({
       active = false
       document.removeEventListener("mouseover", onMouseOver, true)
       document.removeEventListener("mouseout", onMouseOut, true)
-      document.removeEventListener("click", onClick, true)
+      window.removeEventListener("click", onClick, true)
       if (hoveredEl) hoveredEl.style.outline = ""
       hideOverlay()
       hideMeasurements()
