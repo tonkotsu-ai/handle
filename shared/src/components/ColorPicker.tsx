@@ -1,4 +1,4 @@
-import { ChevronDown, Search } from "lucide-react"
+import { ChevronDown, Pipette, Search } from "lucide-react"
 import {
   useCallback,
   useEffect,
@@ -23,6 +23,24 @@ import {
   rgbaToString,
   withOpacity,
 } from "../utils/color"
+
+interface EyeDropperResult {
+  sRGBHex: string
+}
+
+interface EyeDropperInstance {
+  open: (opts?: { signal?: AbortSignal }) => Promise<EyeDropperResult>
+}
+
+interface EyeDropperConstructor {
+  new (): EyeDropperInstance
+}
+
+declare global {
+  interface Window {
+    EyeDropper?: EyeDropperConstructor
+  }
+}
 
 export interface ColorPickerProps {
   value: string
@@ -383,6 +401,24 @@ function CustomTab({
     }
   }
 
+  async function handleEyedropper() {
+    if (typeof window === "undefined" || !window.EyeDropper) return
+    try {
+      const result = await new window.EyeDropper().open()
+      const picked = parseColor(result.sRGBHex)
+      if (!picked) return
+      // Preserve current alpha; sampled colors are always opaque sRGB.
+      if (parsed) picked.a = parsed.a
+      emitColor(picked)
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return
+      console.error("EyeDropper failed:", err)
+    }
+  }
+
+  const eyeDropperSupported =
+    typeof window !== "undefined" && typeof window.EyeDropper === "function"
+
   function handleKeyDown(
     e: React.KeyboardEvent,
     _commit: () => void
@@ -430,6 +466,15 @@ function CustomTab({
             className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-slate-400"
           />
         </div>
+        {eyeDropperSupported && (
+          <button
+            type="button"
+            onClick={handleEyedropper}
+            title="Pick color from screen"
+            className="flex items-center justify-center rounded-md bg-slate-100 dark:bg-slate-600 px-2 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-500 outline-none">
+            <Pipette size={12} />
+          </button>
+        )}
         <div className="flex flex-1 min-w-0 gap-px rounded-md overflow-hidden">
           <div className="flex flex-1 min-w-0 items-center gap-2 px-2 py-1.5 bg-slate-100 dark:bg-slate-600">
             <Swatch color={value} size={16} />
