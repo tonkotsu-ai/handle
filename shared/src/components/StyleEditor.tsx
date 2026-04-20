@@ -980,7 +980,7 @@ export default function StyleEditor({
       </div>
       </>}
 
-      {(styles.textContent != null || lucideIconName) && (
+      {(styles.textContent != null || lucideIconName || styles.href != null) && (
         <>
           <hr className="border-slate-200 dark:border-slate-700 -mx-3" />
 
@@ -994,6 +994,17 @@ export default function StyleEditor({
                   edited={editedProps.has("textContent")}
                   value={effective(editedProps, "textContent", styles.textContent!)}
                   onChange={(val) => onTextEdit(elementId, styles.textContent!, val)}
+                />
+              </div>
+            )}
+            {styles.href != null && (
+              <div className="flex flex-col gap-1">
+                <FieldLabel edited={editedProps.has("href")} onUndo={() => onUndo(elementId, ["href"])}>Link</FieldLabel>
+                <FieldInput
+                  key={effective(editedProps, "href", styles.href!)}
+                  edited={editedProps.has("href")}
+                  value={effective(editedProps, "href", styles.href!)}
+                  onChange={(val) => onStyleEdit(elementId, "href", styles.href!, val)}
                 />
               </div>
             )}

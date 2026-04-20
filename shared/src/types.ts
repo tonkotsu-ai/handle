@@ -47,6 +47,7 @@ export interface StyleData {
   widthComputed?: string
   heightComputed?: string
   textContent?: string
+  href?: string
   [key: string]: string | undefined
 }
 
