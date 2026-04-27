@@ -500,7 +500,7 @@ export default defineContentScript({
           // Full-tree annotation done — build and send tree
           sendTree()
         } else if (message.type === "build-tree") {
-          sendTree()
+          sendTree(message.selectedNodeId, message.selectedPath)
         } else if (message.type === "show-measurements") {
           const mNode = nodeMap.get(message.nodeId)
           if (mNode) {

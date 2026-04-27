@@ -348,6 +348,8 @@ function SidePanel({ demo = false }: SidePanelProps) {
   const callbackRef = useRef<((response: { content: string }) => void) | null>(
     null,
   )
+  const tabIdRef = useRef<number | null>(null)
+  const selectedNodeIdRef = useRef<string | null>(null)
   const [agentName, setAgentName] = useState<string | null>(null)
 
   // Shared edit tracking hook
@@ -389,6 +391,15 @@ function SidePanel({ demo = false }: SidePanelProps) {
       return { selector, component, componentPath }
     },
   })
+
+  // Keep refs in sync so socket handlers (which capture once per session)
+  // can read the current tab + selection without re-subscribing on every change.
+  useEffect(() => {
+    tabIdRef.current = tabId
+  }, [tabId])
+  useEffect(() => {
+    selectedNodeIdRef.current = selectedNodeId
+  }, [selectedNodeId])
 
   // Initialize Statsig analytics
   useEffect(() => {
@@ -480,15 +491,14 @@ function SidePanel({ demo = false }: SidePanelProps) {
     })
   }, [changeCount, tabId])
 
-  const handleCancel = useCallback(() => {
-    const content = "No design feedback was given."
-
-    if (callbackRef.current) {
-      callbackRef.current({ content })
-      callbackRef.current = null
-    } else if (socketRef.current?.connected) {
-      socketRef.current.emit("design_feedback", { content })
+  const handleStop = useCallback(() => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("stop_session")
     }
+    callbackRef.current = null
+    setAgentName(null)
+    setSelectedSession(null)
+    resetEdits()
 
     logEvent(AnalyticEvent.ChangesCancelled)
   }, [])
@@ -749,6 +759,33 @@ function SidePanel({ demo = false }: SidePanelProps) {
     socket.on("collect_feedback", (data, callback) => {
       callbackRef.current = callback
       if (data?.agentName) setAgentName(data.agentName)
+      // Agent just finished a round (or is asking for first input). If we
+      // already have a tree, refresh it so any DOM changes the agent made
+      // are reflected, and re-fetch styles for the current selection.
+      const currentTabId = tabIdRef.current
+      if (currentTabId != null && treeRef.current) {
+        chrome.tabs
+          .sendMessage(currentTabId, {
+            type: "build-tree",
+            selectedNodeId: selectedNodeIdRef.current,
+          })
+          .catch(() => {})
+      }
+    })
+
+    socket.on("session_ended", (data: { reason?: string }) => {
+      callbackRef.current = null
+      setAgentName(null)
+      setSelectedSession(null)
+      const reason = data?.reason ?? "ended"
+      const human =
+        reason === "user_stopped"
+          ? "Live session stopped"
+          : reason === "interrupted"
+            ? "Coding agent interrupted the session"
+            : "Live session ended"
+      setToast(human)
+      setTimeout(() => setToast(null), 4000)
     })
 
     socket.on("disconnect", () => {
@@ -1249,7 +1286,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
           onSelectSession={setSelectedSession}
           changeCount={changeCount}
           onSend={handleSend}
-          onCancel={handleCancel}
+          onStop={handleStop}
           onCopy={handleCopy}
           agentName={agentName}
         />

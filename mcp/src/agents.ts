@@ -29,7 +29,15 @@ const MCP_ENTRY_COPILOT_CLI = {
   args: ["-y", "handle-ext@latest"],
 }
 
-const HANDLE_COMMAND = `Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes. While the tool is running, tell the user to go to Chrome, navigate to their project, and click on the Handle Extension in Chrome to give feedback.
+const HANDLE_COMMAND = `Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. While the tool is running, tell the user to go to Chrome, navigate to their project, and click on the Handle Extension in Chrome to give feedback.
+
+The tool runs as a persistent live session that spans many rounds. Each call returns one of two response shapes:
+
+1. \`<handle-feedback session_id="X"> ... </handle-feedback>\` — implement the feedback, then **immediately call get_design_feedback again with session_id="X"** (and the same agent_name and repo) to wait for the next round. Do not wait for further user input in chat — the user is driving the loop from the browser extension.
+
+2. \`<handle-exit reason="..."/>\` — the live session is over. Tell the user the session ended and stop calling the tool. Only call get_design_feedback again if the user explicitly asks to start a new session.
+
+Keep looping on shape 1 until you get shape 2.
 `
 
 const HANDLE_COPILOT_SKILL_MD = `---
@@ -50,7 +58,15 @@ const HANDLE_CODEX_OPENAI_YAML = `policy:
 `
 
 const HANDLE_GEMINI_COMMAND = `description = "Receive visual design feedback from the browser extension and implement the requested changes."
-prompt = "Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. After receiving the feedback, implement the requested changes. While the tool is running, tell the user to go to Chrome, navigate to their project, and click on the Handle Extension in Chrome to give feedback."
+prompt = """Call the handle MCP's get_design_feedback tool to receive visual design feedback from the browser extension. While the tool is running, tell the user to go to Chrome, navigate to their project, and click on the Handle Extension in Chrome to give feedback.
+
+The tool runs as a persistent live session that spans many rounds. Each call returns one of two response shapes:
+
+1. <handle-feedback session_id="X"> ... </handle-feedback> — implement the feedback, then immediately call get_design_feedback again with session_id="X" (and the same agent_name and repo) to wait for the next round. Do not wait for further user input in chat — the user is driving the loop from the browser extension.
+
+2. <handle-exit reason="..."/> — the live session is over. Tell the user the session ended and stop calling the tool. Only call get_design_feedback again if the user explicitly asks to start a new session.
+
+Keep looping on shape 1 until you get shape 2."""
 `
 
 const HANDLE_ROVODEV_PROMPT_ENTRY = `- name: handle

@@ -9,7 +9,7 @@ interface SendBarProps {
   onSelectSession: (session: SessionInfo | null) => void
   changeCount: number
   onSend: () => void
-  onCancel: () => void
+  onStop: () => void
   onCopy: () => void
   agentName: string | null
 }
@@ -66,7 +66,7 @@ export default function SendBar({
   onSelectSession,
   changeCount,
   onSend,
-  onCancel,
+  onStop,
   onCopy,
   agentName
 }: SendBarProps) {
@@ -153,9 +153,10 @@ export default function SendBar({
         </button>
         {selectedSession && (
           <button
-            onClick={onCancel}
+            onClick={onStop}
+            title="End the live session — your coding agent will stop waiting for feedback"
             className="flex shrink-0 items-center justify-center rounded-full px-3 py-1.5 text-sm font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600">
-            Cancel
+            Stop
           </button>
         )}
         <button
