@@ -18,7 +18,7 @@ import {
   Scan,
   Undo2
 } from "lucide-react"
-import { useMemo, useRef, useState } from "react"
+import { useLayoutEffect, useMemo, useRef, useState } from "react"
 
 import type { ElementId, StyleData, TokenEntry } from "../types"
 
@@ -62,23 +62,51 @@ function FieldLabel({ children, edited, onUndo }: { children: React.ReactNode; e
 function FieldInput({
   value,
   edited,
+  multiline,
   onChange
 }: {
   value: string
   edited?: boolean
+  multiline?: boolean
   onChange: (val: string) => void
 }) {
   const [current, setCurrent] = useState(value)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"
+  const className = `w-full rounded border-0 px-2 py-1 text-xs outline-none focus:border-electricblue-500 ${bg}`
+
+  useLayoutEffect(() => {
+    if (!multiline || !textareaRef.current) return
+    const textarea = textareaRef.current
+    textarea.style.height = "auto"
+    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 32), 64)}px`
+  }, [current, multiline])
+
+  const commit = () => {
+    if (current !== value) onChange(current)
+  }
+
+  if (multiline) {
+    return (
+      <textarea
+        ref={textareaRef}
+        rows={1}
+        className={`${className} min-h-8 resize-none overflow-y-auto leading-4`}
+        style={{ maxHeight: "4rem", overflowY: "auto" }}
+        value={current}
+        onChange={(e) => setCurrent(e.target.value)}
+        onBlur={commit}
+      />
+    )
+  }
 
   return (
     <input
       type="text"
-      className={`w-full rounded border-0 px-2 py-1 text-xs outline-none focus:border-electricblue-500 ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`}
+      className={className}
       value={current}
       onChange={(e) => setCurrent(e.target.value)}
-      onBlur={() => {
-        if (current !== value) onChange(current)
-      }}
+      onBlur={commit}
       onKeyDown={(e) => {
         if (e.key === "Enter") (e.target as HTMLInputElement).blur()
       }}
@@ -993,6 +1021,7 @@ export default function StyleEditor({
                   key={effective(editedProps, "textContent", styles.textContent!)}
                   edited={editedProps.has("textContent")}
                   value={effective(editedProps, "textContent", styles.textContent!)}
+                  multiline
                   onChange={(val) => onTextEdit(elementId, styles.textContent!, val)}
                 />
               </div>
