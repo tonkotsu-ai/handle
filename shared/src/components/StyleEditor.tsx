@@ -18,7 +18,7 @@ import {
   Scan,
   Undo2
 } from "lucide-react"
-import { useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 
 import type { ElementId, StyleData, TokenEntry } from "../types"
 
@@ -33,9 +33,12 @@ export interface StyleEditorProps {
   pageTokens?: TokenEntry[]
   pageColors?: string[]
   isTextNode?: boolean
+  note?: string
+  elementLabel?: string
   onStyleEdit: (elementId: ElementId, prop: string, original: string, value: string, tokenName?: string) => void
   onTextEdit: (elementId: ElementId, original: string, value: string) => void
   onUndo: (elementId: ElementId, props: string[]) => void
+  onNoteChange?: (elementId: ElementId, value: string) => void
 }
 
 function EditDot() {
@@ -109,6 +112,46 @@ function FieldInput({
       onBlur={commit}
       onKeyDown={(e) => {
         if (e.key === "Enter") (e.target as HTMLInputElement).blur()
+      }}
+    />
+  )
+}
+
+function NoteInput({
+  value,
+  edited,
+  onChange
+}: {
+  value: string
+  edited?: boolean
+  onChange: (val: string) => void
+}) {
+  const [current, setCurrent] = useState(value)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"
+
+  useEffect(() => {
+    setCurrent(value)
+  }, [value])
+
+  useLayoutEffect(() => {
+    if (!textareaRef.current) return
+    const textarea = textareaRef.current
+    textarea.style.height = "auto"
+    textarea.style.height = `${Math.min(Math.max(textarea.scrollHeight, 48), 96)}px`
+  }, [current])
+
+  return (
+    <textarea
+      ref={textareaRef}
+      rows={3}
+      placeholder="Describe what you want to change…"
+      className={`w-full rounded border-0 px-2 py-1 text-xs outline-none focus:border-electricblue-500 resize-none overflow-y-auto leading-4 ${bg}`}
+      style={{ maxHeight: "6rem" }}
+      value={current}
+      onChange={(e) => setCurrent(e.target.value)}
+      onBlur={() => {
+        if (current !== value) onChange(current)
       }}
     />
   )
@@ -592,9 +635,12 @@ export default function StyleEditor({
   pageTokens,
   pageColors,
   isTextNode,
+  note,
+  elementLabel,
   onStyleEdit,
   onTextEdit,
   onUndo,
+  onNoteChange,
 }: StyleEditorProps) {
   const display = styles.display || "block"
   const isFlex = display === "flex" || display === "inline-flex"
@@ -625,8 +671,30 @@ export default function StyleEditor({
   const marginBottomRaw = marginParts[2] ?? marginParts[0]
   const marginLeftRaw = marginParts[3] ?? marginParts[1] ?? marginParts[0]
 
+  const hasNote = !!(note && note.length > 0)
+
   return (
     <div className="flex flex-col gap-4 py-3">
+      {onNoteChange && (
+        <div className="flex flex-col">
+          {elementLabel && (
+            <div
+              className="font-bold dark:text-white truncate"
+              style={{ fontSize: "13px" }}
+              title={elementLabel}>
+              {elementLabel}
+            </div>
+          )}
+          <hr className="border-slate-200 dark:border-slate-700 -mx-3 my-2" />
+          <NoteInput
+            key={String(elementId)}
+            value={note || ""}
+            edited={hasNote}
+            onChange={(val) => onNoteChange(elementId, val)}
+          />
+          <hr className="border-slate-200 dark:border-slate-700 -mx-3 mt-2" />
+        </div>
+      )}
       {!isTextNode && <>
       {/* Layout */}
       <div className="flex flex-col gap-2">

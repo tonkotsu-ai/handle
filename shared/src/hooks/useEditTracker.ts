@@ -20,9 +20,11 @@ export interface EditTracker {
   changeCount: number
   editRevision: number
   recordEdit: (elementId: ElementId, prop: string, original: string, value: string, tokenName?: string) => void
+  recordNote: (elementId: ElementId, note: string) => void
   recomputeChangeCount: () => void
   hasEditsForElement: (elementId: ElementId) => boolean
   getEditedPropsForElement: (elementId: ElementId) => Map<string, { original: string; current: string; tokenName?: string }>
+  getNoteForElement: (elementId: ElementId) => string
   generateFeedbackDescription: () => string
   resetEdits: () => void
 }
@@ -40,6 +42,7 @@ export function useEditTracker(options: UseEditTrackerOptions): EditTracker {
       for (const [, { original, current }] of entry.props) {
         if (original !== current) count++
       }
+      if (entry.note && entry.note.length > 0) count++
     }
     setChangeCount(count)
     setEditRevision((r) => r + 1)
@@ -53,6 +56,7 @@ export function useEditTracker(options: UseEditTrackerOptions): EditTracker {
     for (const [, { original, current }] of entry.props) {
       if (original !== current) return true
     }
+    if (entry.note && entry.note.length > 0) return true
     return false
   }
 
@@ -98,12 +102,40 @@ export function useEditTracker(options: UseEditTrackerOptions): EditTracker {
     }
   }
 
+  function recordNote(elementId: ElementId, note: string) {
+    const selectorPath = resolvePath(elementId)
+    const path = selectorPath || `element[${elementId}]`
+    if (!editsRef.current.has(path)) {
+      const meta = resolveElementMeta(elementId)
+      editsRef.current.set(path, {
+        selector: meta.selector,
+        component: meta.component,
+        componentPath: meta.componentPath,
+        props: new Map()
+      })
+    }
+    const entry = editsRef.current.get(path)!
+    if (note.length === 0) {
+      entry.note = undefined
+    } else {
+      entry.note = note
+    }
+  }
+
+  function getNoteForElement(elementId: ElementId): string {
+    const path = resolvePath(elementId)
+    if (!path) return ""
+    const entry = editsRef.current.get(path)
+    return entry?.note ?? ""
+  }
+
   function generateFeedbackDescription(): string {
     const byComponent = new Map<
       string,
       {
         selectorPath: string
         changes: { prop: string; from: string; to: string }[]
+        note?: string
       }[]
     >()
     for (const [selectorPath, entry] of editsRef.current) {
@@ -116,10 +148,11 @@ export function useEditTracker(options: UseEditTrackerOptions): EditTracker {
           changedProps.push({ prop, from: original, to: displayValue })
         }
       }
-      if (changedProps.length === 0) continue
+      const note = entry.note && entry.note.length > 0 ? entry.note : undefined
+      if (changedProps.length === 0 && !note) continue
       const key = entry.component || "(no component)"
       if (!byComponent.has(key)) byComponent.set(key, [])
-      byComponent.get(key)!.push({ selectorPath, changes: changedProps })
+      byComponent.get(key)!.push({ selectorPath, changes: changedProps, note })
     }
 
     if (byComponent.size === 0) return "No feedback given"
@@ -129,11 +162,14 @@ export function useEditTracker(options: UseEditTrackerOptions): EditTracker {
       lines.push(
         `In ${component === "(no component)" ? "unowned elements" : component}:`
       )
-      for (const { selectorPath, changes } of elements) {
+      for (const { selectorPath, changes, note } of elements) {
         for (const { prop, from, to } of changes) {
           lines.push(
             `  - On ${selectorPath}: change ${prop} from "${from}" to "${to}"`
           )
+        }
+        if (note) {
+          lines.push(`  - On ${selectorPath}: note "${note}"`)
         }
       }
     }
@@ -151,9 +187,11 @@ export function useEditTracker(options: UseEditTrackerOptions): EditTracker {
     changeCount,
     editRevision,
     recordEdit,
+    recordNote,
     recomputeChangeCount,
     hasEditsForElement,
     getEditedPropsForElement,
+    getNoteForElement,
     generateFeedbackDescription,
     resetEdits,
   }

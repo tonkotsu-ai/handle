@@ -357,9 +357,11 @@ function SidePanel({ demo = false }: SidePanelProps) {
     editsRef,
     changeCount,
     recordEdit,
+    recordNote,
     recomputeChangeCount,
     hasEditsForElement,
     getEditedPropsForElement,
+    getNoteForElement,
     generateFeedbackDescription,
     resetEdits,
   } = useEditTracker({
@@ -609,12 +611,31 @@ function SidePanel({ demo = false }: SidePanelProps) {
         }
         entry.props.delete(prop)
       }
-      if (entry.props.size === 0) {
+      if (entry.props.size === 0 && (!entry.note || entry.note.length === 0)) {
         editsRef.current.delete(path)
       }
       recomputeChangeCount()
     },
     [demo, tabId],
+  )
+
+  const handleNoteChange = useCallback(
+    (elementId: ElementId, value: string) => {
+      recordNote(elementId, value)
+      if (value.length === 0) {
+        const t = treeRef.current
+        const node = t ? findNode(t, elementId as string) : null
+        const path = node?.selectorPath
+        if (path) {
+          const entry = editsRef.current.get(path)
+          if (entry && entry.props.size === 0) {
+            editsRef.current.delete(path)
+          }
+        }
+      }
+      recomputeChangeCount()
+    },
+    [],
   )
 
   // Select an element and fetch its styles
@@ -980,6 +1001,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
           selector: string
           selectorPath: string
           changes: { prop: string; from: string; to: string }[]
+          note?: string
         }[]
       }
     >()
@@ -993,7 +1015,8 @@ function SidePanel({ demo = false }: SidePanelProps) {
           changedProps.push({ prop, from: original, to: displayValue })
         }
       }
-      if (changedProps.length === 0) continue
+      const note = entry.note && entry.note.length > 0 ? entry.note : undefined
+      if (changedProps.length === 0 && !note) continue
       const key = entry.component || "(no component)"
       if (!groups.has(key))
         groups.set(key, {
@@ -1007,6 +1030,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
           selector: lastSegment,
           selectorPath,
           changes: changedProps,
+          note,
         })
     }
     return groups
@@ -1159,9 +1183,16 @@ function SidePanel({ demo = false }: SidePanelProps) {
                   isTextNode={selectedItem?.tag === "#text"}
                   pageTokens={pageTokens}
                   pageColors={pageColors}
+                  note={getNoteForElement(selectedNodeId)}
+                  elementLabel={
+                    selectedItem
+                      ? `${selectedItem.tag}${selectedItem.id}${selectedItem.classes}`
+                      : undefined
+                  }
                   onStyleEdit={handleStyleEdit}
                   onTextEdit={handleTextEdit}
                   onUndo={handleUndo}
+                  onNoteChange={handleNoteChange}
                 />
               </div>
             ) : (
@@ -1268,6 +1299,17 @@ function SidePanel({ demo = false }: SidePanelProps) {
                             </span>
                           </div>
                         ))}
+                        {el.note && (
+                          <div className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            <span className="inline-block h-2 w-2 mt-1 rounded-full bg-juicyorange-500 shrink-0" />
+                            <span className="font-medium text-slate-700 dark:text-slate-200">
+                              note
+                            </span>
+                            <span className="text-slate-700 dark:text-slate-200 italic break-words">
+                              "{el.note}"
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

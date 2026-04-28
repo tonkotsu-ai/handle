@@ -56,6 +56,7 @@ export interface EditEntry {
   component: string | null
   componentPath: string | null
   props: Map<string, { original: string; current: string; tokenName?: string }>
+  note?: string
 }
 
 export interface ElementItem {

@@ -185,4 +185,118 @@ describe("useEditTracker", () => {
     })
     expect(result.current.editsRef.current.has("element[999]")).toBe(true)
   })
+
+  it("recordNote and getNoteForElement round-trip", () => {
+    const { result } = renderHook(() => useEditTracker(createOptions()))
+    act(() => {
+      result.current.recordNote("1", "make this softer")
+    })
+    expect(result.current.getNoteForElement("1")).toBe("make this softer")
+    const entry = result.current.editsRef.current.get("body > div#app > h1")!
+    expect(entry.note).toBe("make this softer")
+    expect(entry.selector).toBe("h1")
+    expect(entry.component).toBe("Header")
+  })
+
+  it("recordNote with empty string clears the note", () => {
+    const { result } = renderHook(() => useEditTracker(createOptions()))
+    act(() => {
+      result.current.recordNote("1", "first take")
+      result.current.recordNote("1", "")
+    })
+    expect(result.current.getNoteForElement("1")).toBe("")
+    const entry = result.current.editsRef.current.get("body > div#app > h1")!
+    expect(entry.note).toBeUndefined()
+  })
+
+  it("hasEditsForElement returns true for element with only a note", () => {
+    const { result } = renderHook(() => useEditTracker(createOptions()))
+    act(() => {
+      result.current.recordNote("1", "make it bolder")
+    })
+    expect(result.current.hasEditsForElement("1")).toBe(true)
+  })
+
+  it("hasEditsForElement returns false after note is cleared with no other edits", () => {
+    const { result } = renderHook(() => useEditTracker(createOptions()))
+    act(() => {
+      result.current.recordNote("1", "draft")
+      result.current.recordNote("1", "")
+    })
+    expect(result.current.hasEditsForElement("1")).toBe(false)
+  })
+
+  it("recomputeChangeCount counts notes alongside props", () => {
+    const { result } = renderHook(() => useEditTracker(createOptions()))
+    act(() => {
+      result.current.recordEdit("1", "fontSize", "16px", "20px")
+      result.current.recordNote("1", "also more padding")
+      result.current.recordNote("2", "needs spacing")
+      result.current.recomputeChangeCount()
+    })
+    // 1 prop + 1 note on element 1 + 1 note on element 2 = 3
+    expect(result.current.changeCount).toBe(3)
+  })
+
+  it("recomputeChangeCount excludes empty notes", () => {
+    const { result } = renderHook(() => useEditTracker(createOptions()))
+    act(() => {
+      result.current.recordNote("1", "draft")
+      result.current.recordNote("1", "")
+      result.current.recomputeChangeCount()
+    })
+    expect(result.current.changeCount).toBe(0)
+  })
+
+  it("generateFeedbackDescription emits a note bullet for elements with only a note", () => {
+    const { result } = renderHook(() => useEditTracker(createOptions()))
+    act(() => {
+      result.current.recordNote("1", "make this softer")
+    })
+    const desc = result.current.generateFeedbackDescription()
+    expect(desc).toContain("In Header:")
+    expect(desc).toContain('On body > div#app > h1: note "make this softer"')
+  })
+
+  it("generateFeedbackDescription emits both props and note for the same element", () => {
+    const { result } = renderHook(() => useEditTracker(createOptions()))
+    act(() => {
+      result.current.recordEdit("1", "fontSize", "16px", "20px")
+      result.current.recordNote("1", "also softer")
+    })
+    const desc = result.current.generateFeedbackDescription()
+    expect(desc).toContain('change fontSize from "16px" to "20px"')
+    expect(desc).toContain('note "also softer"')
+  })
+
+  it("generateFeedbackDescription groups notes from multiple components", () => {
+    const { result } = renderHook(() => useEditTracker(createOptions()))
+    act(() => {
+      result.current.recordNote("1", "softer")
+      result.current.recordNote("2", "more padding")
+      result.current.recordNote("3", "centered")
+    })
+    const desc = result.current.generateFeedbackDescription()
+    expect(desc).toContain("In Header:")
+    expect(desc).toContain("In Content:")
+    expect(desc).toContain("In unowned elements:")
+    expect(desc).toContain('note "softer"')
+    expect(desc).toContain('note "more padding"')
+    expect(desc).toContain('note "centered"')
+  })
+
+  it("resetEdits clears notes", () => {
+    const { result } = renderHook(() => useEditTracker(createOptions()))
+    act(() => {
+      result.current.recordNote("1", "something")
+      result.current.recomputeChangeCount()
+    })
+    expect(result.current.changeCount).toBe(1)
+    act(() => {
+      result.current.resetEdits()
+    })
+    expect(result.current.changeCount).toBe(0)
+    expect(result.current.editsRef.current.size).toBe(0)
+    expect(result.current.getNoteForElement("1")).toBe("")
+  })
 })
