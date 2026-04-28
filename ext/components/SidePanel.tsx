@@ -1322,7 +1322,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
                           <div className="flex items-start gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                             <span className="inline-block h-2 w-2 mt-1 rounded-full bg-juicyorange-500 shrink-0" />
                             <span className="font-medium text-slate-700 dark:text-slate-200">
-                              note
+                              Instructions
                             </span>
                             <span className="text-slate-700 dark:text-slate-200 italic break-words">
                               "{el.note}"

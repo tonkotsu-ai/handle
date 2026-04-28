@@ -145,7 +145,7 @@ function NoteInput({
     <textarea
       ref={textareaRef}
       rows={3}
-      placeholder="Describe what you want to change…"
+      placeholder="Tell the coding agent what to change about this element..."
       className={`w-full rounded border-0 px-2 py-1 text-xs outline-none focus:border-electricblue-500 resize-none overflow-y-auto leading-4 ${bg}`}
       style={{ maxHeight: "6rem" }}
       value={current}
@@ -686,6 +686,19 @@ export default function StyleEditor({
             </div>
           )}
           <hr className="border-slate-200 dark:border-slate-700 -mx-3 my-2" />
+          <div className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-900 dark:text-slate-400">
+            {hasNote && <EditDot />}
+            <span>Instructions</span>
+            {hasNote && (
+              <button
+                className="pl-0.5 text-slate-400 hover:text-juicyorange-500 dark:text-slate-500 dark:hover:text-juicyorange-400"
+                title="Revert instructions"
+                aria-label="Revert instructions"
+                onClick={() => onNoteChange(elementId, "")}>
+                <Undo2 size={11} />
+              </button>
+            )}
+          </div>
           <NoteInput
             key={String(elementId)}
             value={note || ""}

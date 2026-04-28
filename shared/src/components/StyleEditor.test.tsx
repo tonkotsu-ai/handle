@@ -69,3 +69,49 @@ describe("StyleEditor content controls", () => {
     expect(onTextEdit).toHaveBeenCalledWith("hero-text", "Hero headline", "Hero headline\nSecond line")
   })
 })
+
+describe("StyleEditor instructions", () => {
+  it("labels the free-form input as Instructions", () => {
+    render(
+      <StyleEditor
+        styles={createStyles()}
+        elementId="heading"
+        editedProps={new Map()}
+        note=""
+        elementLabel="h1.hero"
+        onStyleEdit={vi.fn()}
+        onTextEdit={vi.fn()}
+        onUndo={vi.fn()}
+        onNoteChange={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText("Instructions")).toBeTruthy()
+    expect(
+      screen.getByPlaceholderText(
+        "Tell the coding agent what to change about this element...",
+      ),
+    ).toBeTruthy()
+  })
+
+  it("clears instructions when reverting free-form text", () => {
+    const onNoteChange = vi.fn()
+    render(
+      <StyleEditor
+        styles={createStyles()}
+        elementId="heading"
+        editedProps={new Map()}
+        note="Make the headline friendlier"
+        elementLabel="h1.hero"
+        onStyleEdit={vi.fn()}
+        onTextEdit={vi.fn()}
+        onUndo={vi.fn()}
+        onNoteChange={onNoteChange}
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Revert instructions" }))
+
+    expect(onNoteChange).toHaveBeenCalledWith("heading", "")
+  })
+})
