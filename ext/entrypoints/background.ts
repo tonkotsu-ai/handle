@@ -36,7 +36,13 @@ export default defineBackground(() => {
     openSidePanel(tab.id)
   })
 
-  chrome.runtime.onInstalled.addListener(async () => {
+  chrome.runtime.onInstalled.addListener(async (details) => {
+    if (details.reason === "install" || details.reason === "update") {
+      chrome.tabs.create({
+        url: "https://gethandle.ai/extension#revision",
+      })
+    }
+
     chrome.contextMenus.create({
       id: "open-handle",
       title: "Design with Handle",
