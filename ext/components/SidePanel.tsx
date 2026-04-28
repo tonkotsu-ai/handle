@@ -876,6 +876,25 @@ function SidePanel({ demo = false }: SidePanelProps) {
           setSelectedNodeId(null)
           setSelectedStyles(null)
         }
+      } else if (message.type === "inline-edit-commit") {
+        if (tabId != null && message.tabId !== tabId) return
+        if (
+          typeof message.nodeId !== "string" ||
+          typeof message.selectorPath !== "string" ||
+          typeof message.original !== "string" ||
+          typeof message.value !== "string" ||
+          message.original === message.value
+        ) {
+          return
+        }
+        selectorPathCacheRef.current.set(message.nodeId, message.selectorPath)
+        recordEdit(
+          message.nodeId as ElementId,
+          "textContent",
+          message.original,
+          message.value,
+        )
+        recomputeChangeCount()
       } else if (message.type === "tab-refreshed") {
         if (tabId != null && message.tabId !== tabId) return
         // Copy queued changes to clipboard before clearing

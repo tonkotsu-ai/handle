@@ -23,9 +23,28 @@ export default defineContentScript({
     let measureContainer: HTMLDivElement | null = null
     let measuredEl: HTMLElement | null = null
     let selectedMeasuredEl: HTMLElement | null = null
+    let inlineEdit: {
+      el: HTMLElement
+      nodeId: string | null
+      selectorPath: string
+      originalText: string
+      hadContentEditable: boolean
+      previousContentEditable: string | null
+      previousSpellcheck: string | null
+      previousOutline: string
+      previousOutlineOffset: string
+      previousCursor: string
+      onKeyDown: (event: KeyboardEvent) => void
+      onBlur: () => void
+      onPaste: (event: ClipboardEvent) => void
+      finishing: boolean
+    } | null = null
+    let pendingSingleClickTimer: ReturnType<typeof setTimeout> | null = null
+    let pendingSingleClickTarget: HTMLElement | null = null
     // Cache every element we've seen, keyed by selectorPath, so we can
     // re-select elements from the Changes tab even after the tree changes.
     const elementCache = new Map<string, HTMLElement>()
+    const DBLCLICK_WINDOW_MS = 250
 
     function getSpecifiedStyle(el: HTMLElement, prop: string): string {
       if ((el.style as any)[prop]) return (el.style as any)[prop]
@@ -302,6 +321,7 @@ export default defineContentScript({
     }
 
     function onMouseOver(e: MouseEvent) {
+      if (inlineEdit) return
       if (hoveredEl) hoveredEl.style.outline = ""
       hoveredEl = visibleElementAtPoint(
         e.clientX,
@@ -315,6 +335,7 @@ export default defineContentScript({
     }
 
     function onMouseOut(e: MouseEvent) {
+      if (inlineEdit) return
       ;(e.target as HTMLElement).style.outline = ""
       // Restore selection measurements if we have a selected element, otherwise hide
       if (selectedMeasuredEl) {
@@ -324,20 +345,280 @@ export default defineContentScript({
       }
     }
 
-    function onClick(e: MouseEvent) {
-      e.preventDefault()
-      e.stopImmediatePropagation()
+    function isTextOnlyLeaf(el: HTMLElement | null): boolean {
+      if (!el || el.nodeType !== Node.ELEMENT_NODE) return false
+      if (el.getAttribute("contenteditable") === "true") return false
+      if (
+        el.tagName === "INPUT" ||
+        el.tagName === "TEXTAREA" ||
+        el.tagName === "SELECT" ||
+        el.tagName === "SCRIPT" ||
+        el.tagName === "STYLE"
+      ) {
+        return false
+      }
+      if (el.childNodes.length !== 1) return false
+      const child = el.childNodes[0]
+      return (
+        child.nodeType === Node.TEXT_NODE &&
+        Boolean(child.nodeValue && child.nodeValue.trim())
+      )
+    }
+
+    function doSelectClick(target: HTMLElement) {
       if (hoveredEl) hoveredEl.style.outline = ""
       hoveredEl = null
+      target.setAttribute("data-handle-target", "")
+      chrome.runtime.sendMessage({ type: "annotate-components" })
+      pendingTarget = target
+    }
+
+    function clearPendingSingleClick() {
+      if (pendingSingleClickTimer) {
+        clearTimeout(pendingSingleClickTimer)
+        pendingSingleClickTimer = null
+      }
+      pendingSingleClickTarget = null
+    }
+
+    function onClick(e: MouseEvent) {
+      if (
+        inlineEdit &&
+        inlineEdit.el &&
+        (inlineEdit.el === e.target || inlineEdit.el.contains(e.target as Node))
+      ) {
+        return
+      }
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      if (inlineEdit) return
       const target = visibleElementAtPoint(
         e.clientX,
         e.clientY,
         e.target as HTMLElement,
         overlay,
       )
-      target.setAttribute("data-handle-target", "")
-      chrome.runtime.sendMessage({ type: "annotate-components" })
-      pendingTarget = target
+      if (isTextOnlyLeaf(target)) {
+        if (pendingSingleClickTimer && pendingSingleClickTarget === target) {
+          return
+        }
+        clearPendingSingleClick()
+        pendingSingleClickTarget = target
+        pendingSingleClickTimer = setTimeout(() => {
+          pendingSingleClickTimer = null
+          pendingSingleClickTarget = null
+          doSelectClick(target)
+        }, DBLCLICK_WINDOW_MS)
+        return
+      }
+      doSelectClick(target)
+    }
+
+    function onDblClick(e: MouseEvent) {
+      if (!active) return
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      clearPendingSingleClick()
+      if (inlineEdit) return
+      const target = visibleElementAtPoint(
+        e.clientX,
+        e.clientY,
+        e.target as HTMLElement,
+        overlay,
+      )
+      if (!isTextOnlyLeaf(target)) {
+        doSelectClick(target)
+        return
+      }
+      startInlineEdit(target)
+    }
+
+    function startInlineEdit(el: HTMLElement) {
+      if (inlineEdit) return
+      if (hoveredEl) hoveredEl.style.outline = ""
+      hoveredEl = null
+      hideOverlay()
+      hideMeasurements()
+      selectedMeasuredEl = null
+
+      let nodeId = findNodeIdForElement(el)
+      if (!nodeId) {
+        try {
+          rebuildTree()
+        } catch {}
+        nodeId = findNodeIdForElement(el)
+      }
+
+      let selectorPath = ""
+      try {
+        selectorPath = buildSelectorPath(el)
+      } catch {}
+
+      const hadContentEditable = el.hasAttribute("contenteditable")
+      const previousContentEditable = hadContentEditable
+        ? el.getAttribute("contenteditable")
+        : null
+      const previousSpellcheck = el.getAttribute("spellcheck")
+      const previousOutline = el.style.outline
+      const previousOutlineOffset = el.style.outlineOffset
+      const previousCursor = el.style.cursor
+      const originalText = el.textContent || ""
+
+      el.setAttribute("contenteditable", "true")
+      el.setAttribute("spellcheck", "false")
+      el.style.outline = "2px solid #4A90D9"
+      el.style.outlineOffset = "2px"
+      el.style.cursor = "text"
+
+      function onKeyDown(event: KeyboardEvent) {
+        if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+          event.preventDefault()
+          event.stopPropagation()
+          commitInlineEdit()
+        } else if (event.key === "Escape") {
+          event.preventDefault()
+          event.stopPropagation()
+          cancelInlineEdit()
+        } else {
+          event.stopPropagation()
+        }
+      }
+
+      function onBlur() {
+        setTimeout(() => {
+          if (inlineEdit && inlineEdit.el === el) commitInlineEdit()
+        }, 0)
+      }
+
+      function onPaste(event: ClipboardEvent) {
+        event.preventDefault()
+        const text = event.clipboardData?.getData("text/plain") || ""
+        try {
+          document.execCommand("insertText", false, text)
+        } catch {
+          const selection = window.getSelection()
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0)
+            range.deleteContents()
+            range.insertNode(document.createTextNode(text))
+            range.collapse(false)
+          }
+        }
+      }
+
+      el.addEventListener("keydown", onKeyDown, true)
+      el.addEventListener("blur", onBlur, true)
+      el.addEventListener("paste", onPaste, true)
+
+      inlineEdit = {
+        el,
+        nodeId,
+        selectorPath,
+        originalText,
+        hadContentEditable,
+        previousContentEditable,
+        previousSpellcheck,
+        previousOutline,
+        previousOutlineOffset,
+        previousCursor,
+        onKeyDown,
+        onBlur,
+        onPaste,
+        finishing: false,
+      }
+
+      try {
+        el.focus({ preventScroll: false })
+      } catch {
+        el.focus()
+      }
+      try {
+        const range = document.createRange()
+        range.selectNodeContents(el)
+        const selection = window.getSelection()
+        if (selection) {
+          selection.removeAllRanges()
+          selection.addRange(range)
+        }
+      } catch {}
+    }
+
+    function teardownInlineEdit() {
+      if (!inlineEdit) return
+      const info = inlineEdit
+      const el = info.el
+      el.removeEventListener("keydown", info.onKeyDown, true)
+      el.removeEventListener("blur", info.onBlur, true)
+      el.removeEventListener("paste", info.onPaste, true)
+      if (info.hadContentEditable) {
+        el.setAttribute(
+          "contenteditable",
+          info.previousContentEditable == null
+            ? ""
+            : info.previousContentEditable,
+        )
+      } else {
+        el.removeAttribute("contenteditable")
+      }
+      if (info.previousSpellcheck == null) {
+        el.removeAttribute("spellcheck")
+      } else {
+        el.setAttribute("spellcheck", info.previousSpellcheck)
+      }
+      el.style.outline = info.previousOutline || ""
+      el.style.outlineOffset = info.previousOutlineOffset || ""
+      el.style.cursor = info.previousCursor || ""
+      inlineEdit = null
+      try {
+        window.getSelection()?.removeAllRanges()
+      } catch {}
+      try {
+        el.blur()
+      } catch {}
+    }
+
+    function readEditableText(el: HTMLElement) {
+      let text = ""
+      for (const node of el.childNodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          text += node.nodeValue || ""
+        } else if (
+          node.nodeType === Node.ELEMENT_NODE &&
+          (node as HTMLElement).tagName === "BR"
+        ) {
+          text += "\n"
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          text += node.textContent || ""
+        }
+      }
+      return text
+    }
+
+    function commitInlineEdit() {
+      if (!inlineEdit || inlineEdit.finishing) return
+      inlineEdit.finishing = true
+      const info = inlineEdit
+      const newText = readEditableText(info.el)
+      teardownInlineEdit()
+      if (newText !== info.originalText && info.nodeId) {
+        chrome.runtime
+          .sendMessage({
+            type: "inline-edit-commit",
+            nodeId: info.nodeId,
+            selectorPath: info.selectorPath,
+            original: info.originalText,
+            value: newText,
+          })
+          .catch(() => {})
+      }
+    }
+
+    function cancelInlineEdit() {
+      if (!inlineEdit || inlineEdit.finishing) return
+      inlineEdit.finishing = true
+      const info = inlineEdit
+      info.el.textContent = info.originalText
+      teardownInlineEdit()
     }
 
     function handlePendingTarget() {
@@ -358,6 +639,8 @@ export default defineContentScript({
     }
 
     function clearElementState() {
+      cancelInlineEdit()
+      clearPendingSingleClick()
       if (hoveredEl) hoveredEl.style.outline = ""
       hideOverlay()
       pendingTarget = null
@@ -403,6 +686,7 @@ export default defineContentScript({
       // Listen on window capture so selection mode wins over page-level
       // document capture handlers such as SPA routers.
       window.addEventListener("click", onClick, true)
+      window.addEventListener("dblclick", onDblClick, true)
       // Build and send tree immediately (without component annotations).
       // Then request component annotation — when it completes, sendTree() will
       // be called again with component data via the component-tree-annotated handler.
@@ -414,10 +698,13 @@ export default defineContentScript({
 
     function disable() {
       if (!active) return
+      cancelInlineEdit()
+      clearPendingSingleClick()
       active = false
       document.removeEventListener("mouseover", onMouseOver, true)
       document.removeEventListener("mouseout", onMouseOut, true)
       window.removeEventListener("click", onClick, true)
+      window.removeEventListener("dblclick", onDblClick, true)
       if (hoveredEl) hoveredEl.style.outline = ""
       hideOverlay()
       hideMeasurements()

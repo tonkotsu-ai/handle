@@ -303,7 +303,10 @@ export default defineBackground(() => {
       return true
     }
 
-    if (message.type === "element-tree") {
+    if (
+      message.type === "element-tree" ||
+      message.type === "inline-edit-commit"
+    ) {
       chrome.runtime.sendMessage({
         ...message,
         tabId: sender.tab?.id ?? null
