@@ -94,6 +94,26 @@ describe("StyleEditor instructions", () => {
     ).toBeTruthy()
   })
 
+  it("uses the same label styling as other fields", () => {
+    render(
+      <StyleEditor
+        styles={createStyles()}
+        elementId="heading"
+        editedProps={new Map()}
+        note=""
+        elementLabel="h1.hero"
+        onStyleEdit={vi.fn()}
+        onTextEdit={vi.fn()}
+        onUndo={vi.fn()}
+        onNoteChange={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText("Instructions").className).toBe(
+      "flex items-center gap-1 text-xs text-slate-900 dark:text-slate-400",
+    )
+  })
+
   it("clears instructions when reverting free-form text", () => {
     const onNoteChange = vi.fn()
     render(

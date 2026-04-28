@@ -45,7 +45,17 @@ function EditDot() {
   return <span className="inline-block h-2 w-2 rounded-full bg-juicyorange-500 shrink-0" />
 }
 
-function FieldLabel({ children, edited, onUndo }: { children: React.ReactNode; edited?: boolean; onUndo?: () => void }) {
+function FieldLabel({
+  children,
+  edited,
+  onUndo,
+  undoLabel = "Undo",
+}: {
+  children: React.ReactNode
+  edited?: boolean
+  onUndo?: () => void
+  undoLabel?: string
+}) {
   return (
     <div className="flex items-center gap-1 text-xs text-slate-900 dark:text-slate-400">
       {edited && <EditDot />}
@@ -53,7 +63,8 @@ function FieldLabel({ children, edited, onUndo }: { children: React.ReactNode; e
       {edited && onUndo && (
         <button
           className="pl-0.5 text-slate-400 hover:text-juicyorange-500 dark:text-slate-500 dark:hover:text-juicyorange-400"
-          title="Undo"
+          title={undoLabel}
+          aria-label={undoLabel}
           onClick={onUndo}>
           <Undo2 size={11} />
         </button>
@@ -686,18 +697,13 @@ export default function StyleEditor({
             </div>
           )}
           <hr className="border-slate-200 dark:border-slate-700 -mx-3 my-2" />
-          <div className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-900 dark:text-slate-400">
-            {hasNote && <EditDot />}
-            <span>Instructions</span>
-            {hasNote && (
-              <button
-                className="pl-0.5 text-slate-400 hover:text-juicyorange-500 dark:text-slate-500 dark:hover:text-juicyorange-400"
-                title="Revert instructions"
-                aria-label="Revert instructions"
-                onClick={() => onNoteChange(elementId, "")}>
-                <Undo2 size={11} />
-              </button>
-            )}
+          <div className="mb-1">
+            <FieldLabel
+              edited={hasNote}
+              onUndo={() => onNoteChange(elementId, "")}
+              undoLabel="Revert instructions">
+              Instructions
+            </FieldLabel>
           </div>
           <NoteInput
             key={String(elementId)}
