@@ -15,7 +15,13 @@ import type { ElementId, ElementMeta, TreeNode } from "@handle-ai/handle-shared"
 import type { SessionInfo, StyleData } from "~types"
 
 import { AnalyticEvent, initStatsig, logEvent } from "~lib/statsig"
+import {
+  loadState as loadReviewPromptState,
+  recordSuccessfulSend,
+  shouldShow as shouldShowReviewPrompt,
+} from "~lib/reviewPrompt"
 
+import ReviewPromptBanner from "./ReviewPromptBanner"
 import SendBar from "./SendBar"
 
 const DISCOVERY_URL = "http://localhost:58932/api/sessions"
@@ -339,6 +345,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
   >([])
   const [pageColors, setPageColors] = useState<string[]>([])
   const [toast, setToast] = useState<string | null>(null)
+  const [showReviewPrompt, setShowReviewPrompt] = useState(false)
 
   const treeRef = useRef<TreeNode | null>(demo ? DEMO_TREE : null)
   const parentMapRef = useRef<Map<string, string>>(new Map())
@@ -443,6 +450,14 @@ function SidePanel({ demo = false }: SidePanelProps) {
     return () => logEvent(AnalyticEvent.SidepanelClosed)
   }, [demo, tabId])
 
+  // Evaluate review prompt visibility on mount.
+  useEffect(() => {
+    if (demo) return
+    void loadReviewPromptState().then((state) => {
+      if (shouldShowReviewPrompt(state, Date.now())) setShowReviewPrompt(true)
+    })
+  }, [demo])
+
   // Fetch page tokens and colors once for color picker display
   useEffect(() => {
     if (demo || tabId == null) return
@@ -530,8 +545,14 @@ function SidePanel({ demo = false }: SidePanelProps) {
       changeCount: String(changeCount),
     })
 
+    void recordSuccessfulSend().then(async () => {
+      if (showReviewPrompt) return
+      const state = await loadReviewPromptState()
+      if (shouldShowReviewPrompt(state, Date.now())) setShowReviewPrompt(true)
+    })
+
     resetEdits()
-  }, [changeCount, selectedSession])
+  }, [changeCount, selectedSession, showReviewPrompt])
 
   const handleStyleEdit = useCallback(
     (elementId: ElementId, prop: string, original: string, value: string, tokenName?: string) => {
@@ -1129,6 +1150,10 @@ function SidePanel({ demo = false }: SidePanelProps) {
           </a>
         </div>
       </div>
+
+      {showReviewPrompt && !demo && (
+        <ReviewPromptBanner onClose={() => setShowReviewPrompt(false)} />
+      )}
 
       {activeTab === "design" ? (
         <>

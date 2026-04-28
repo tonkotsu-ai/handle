@@ -6,7 +6,7 @@ export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   manifest: {
     host_permissions: ["https://*/*", "http://localhost/*"],
-    permissions: ["sidePanel", "scripting", "contextMenus"],
+    permissions: ["sidePanel", "scripting", "contextMenus", "storage"],
     icons: { "128": "icon.png" },
     action: { default_title: "Open Side Panel" },
     side_panel: { default_path: "sidepanel.html" }

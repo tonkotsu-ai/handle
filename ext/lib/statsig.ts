@@ -10,6 +10,10 @@ export enum AnalyticEvent {
   TabSwitched = "handle_tab_switched",
   SelectionModeToggled = "handle_selection_mode_toggled",
   ChangesCancelled = "handle_changes_cancelled",
+  ReviewPromptShown = "handle_review_prompt_shown",
+  ReviewPromptRated = "handle_review_prompt_rated",
+  ReviewPromptSnoozed = "handle_review_prompt_snoozed",
+  ReviewPromptDismissed = "handle_review_prompt_dismissed",
 }
 
 let client: StatsigClient | null = null
