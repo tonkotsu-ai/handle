@@ -38,6 +38,8 @@ export function buildSelectorSegment(el: HTMLElement): string {
 
 /** Build a full CSS selector path from root to element */
 export function buildSelectorPath(el: HTMLElement): string {
+  const ghostId = (el as HTMLElement).dataset?.handleGhostId
+  if (ghostId) return `[data-handle-ghost-id="${ghostId}"]`
   const segments: string[] = []
   let current: HTMLElement | null = el
   while (current && current !== document.documentElement) {
@@ -72,7 +74,8 @@ export function buildDomTree(
     if (FILTERED_TAGS.has(tag)) return null
     if (isOverlay(el)) return null
 
-    const nodeId = String(nodeCounter++)
+    const ghostId = (el as HTMLElement).dataset?.handleGhostId
+    const nodeId = ghostId ?? String(nodeCounter++)
     nodeMap.set(nodeId, el)
 
     const selectorPath = buildSelectorPath(el)
@@ -431,6 +434,8 @@ export const buildSelectorSegmentSnippet = `
 
 export const buildSelectorPathSnippet = `
   function buildSelectorPath(el) {
+    var ghostId = el.dataset && el.dataset.handleGhostId;
+    if (ghostId) return '[data-handle-ghost-id="' + ghostId + '"]';
     var segments = [];
     var current = el;
     while (current && current !== document.documentElement) {
@@ -456,7 +461,8 @@ export const buildDomTreeSnippet = `
     if (FILTERED_TAGS.has(tag)) return null;
     if (isOverlayFn && isOverlayFn(el)) return null;
 
-    var nodeId = String(_nodeCounter++);
+    var ghostId = el.dataset && el.dataset.handleGhostId;
+    var nodeId = ghostId ? ghostId : String(_nodeCounter++);
     nodeMap.set(nodeId, el);
 
     var selectorPath = buildSelectorPath(el);
