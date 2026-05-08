@@ -2,6 +2,7 @@ import {
   AlignCenter,
   AlignHorizontalSpaceAround,
   AlignHorizontalSpaceBetween,
+  AlignJustify,
   AlignLeft,
   AlignRight,
   AlignVerticalSpaceAround,
@@ -571,6 +572,18 @@ function normalizeCssInput(val: string): string {
   const trimmed = val.trim()
   if (!trimmed) return "0px"
   return trimmed.match(/[a-z%]/) ? trimmed : trimmed + "px"
+}
+
+/**
+ * Normalize user input for line-height.
+ * line-height accepts unitless numbers (preferred), %, lengths, or "normal".
+ * A bare number is kept unitless (does NOT default to px) since that's the
+ * canonical shorthand for line-height ratios.
+ */
+function normalizeLineHeightInput(val: string): string {
+  const trimmed = val.trim()
+  if (!trimmed || trimmed === "normal") return "normal"
+  return trimmed
 }
 
 /** Computed width/height hint for placeholders; rounds px to the nearest integer. */
@@ -1608,23 +1621,6 @@ export default function StyleEditor({
             }
           />
         </div>
-        <div className="flex flex-col gap-1">
-          <FieldLabel
-            edited={editedProps.has("color")}
-            onUndo={() => onUndo(elementId, ["color"])}
-          >
-            Color
-          </FieldLabel>
-          <ColorPicker
-            value={effective(editedProps, "color", styles.color || "transparent")}
-            tokens={pageTokens}
-            pageColors={pageColors}
-            edited={editedProps.has("color")}
-            onChange={(val, tokenName) =>
-              onStyleEdit(elementId, "color", styles.color || "transparent", val, tokenName)
-            }
-          />
-        </div>
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
             <FieldLabel edited={editedProps.has("fontWeight")} onUndo={() => onUndo(elementId, ["fontWeight"])}>Weight</FieldLabel>
@@ -1648,6 +1644,86 @@ export default function StyleEditor({
               }
             />
           </div>
+        </div>
+        <div className="grid grid-cols-2 gap-x-4">
+          <div className="flex flex-col gap-1">
+            <FieldLabel edited={editedProps.has("lineHeight")} onUndo={() => onUndo(elementId, ["lineHeight"])}>Line height</FieldLabel>
+            <FieldInput
+              key={effective(editedProps, "lineHeight", styles.lineHeight || "")}
+              edited={editedProps.has("lineHeight")}
+              value={(() => {
+                const v = effective(editedProps, "lineHeight", styles.lineHeight || "")
+                return !v || v === "normal" ? "" : v
+              })()}
+              onChange={(newVal) =>
+                onStyleEdit(elementId, "lineHeight", styles.lineHeight || "", normalizeLineHeightInput(newVal))
+              }
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <FieldLabel edited={editedProps.has("letterSpacing")} onUndo={() => onUndo(elementId, ["letterSpacing"])}>Letter spacing</FieldLabel>
+            <FieldInput
+              key={effective(editedProps, "letterSpacing", styles.letterSpacing || "")}
+              edited={editedProps.has("letterSpacing")}
+              value={(() => {
+                const v = effective(editedProps, "letterSpacing", styles.letterSpacing || "")
+                return !v || v === "normal" ? "" : v
+              })()}
+              onChange={(newVal) => {
+                const trimmed = newVal.trim()
+                const next = trimmed === "" || trimmed === "normal" ? "normal" : normalizeCssInput(trimmed)
+                onStyleEdit(elementId, "letterSpacing", styles.letterSpacing || "", next)
+              }}
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <FieldLabel edited={editedProps.has("textAlign")} onUndo={() => onUndo(elementId, ["textAlign"])}>Alignment</FieldLabel>
+          <div className={`grid grid-cols-4 gap-px rounded overflow-hidden w-full p-0.5 ${editedProps.has("textAlign") ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`}>
+            {[
+              { value: "left", icon: <AlignLeft size={14} />, label: "Left" },
+              { value: "center", icon: <AlignCenter size={14} />, label: "Center" },
+              { value: "right", icon: <AlignRight size={14} />, label: "Right" },
+              { value: "justify", icon: <AlignJustify size={14} />, label: "Justify" }
+            ].map((opt) => {
+              const current = effective(editedProps, "textAlign", styles.textAlign || "")
+              const normalized = current === "start" ? "left" : current === "end" ? "right" : current
+              const isActive = normalized === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`h-7 flex items-center justify-center rounded transition-colors ${
+                    isActive
+                      ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
+                  }`}
+                  title={opt.label}
+                  aria-label={opt.label}
+                  aria-pressed={isActive}
+                  onClick={() => onStyleEdit(elementId, "textAlign", styles.textAlign || "", opt.value)}>
+                  {opt.icon}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <FieldLabel
+            edited={editedProps.has("color")}
+            onUndo={() => onUndo(elementId, ["color"])}
+          >
+            Color
+          </FieldLabel>
+          <ColorPicker
+            value={effective(editedProps, "color", styles.color || "transparent")}
+            tokens={pageTokens}
+            pageColors={pageColors}
+            edited={editedProps.has("color")}
+            onChange={(val, tokenName) =>
+              onStyleEdit(elementId, "color", styles.color || "transparent", val, tokenName)
+            }
+          />
         </div>
       </div>
       </>}

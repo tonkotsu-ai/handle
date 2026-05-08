@@ -320,6 +320,9 @@ export default defineContentScript({
       styles.borderBottomLeftRadius = cs.borderBottomLeftRadius
       styles.borderBottomRightRadius = cs.borderBottomRightRadius
       styles.boxShadow = cs.boxShadow
+      styles.lineHeight = cs.lineHeight
+      styles.letterSpacing = cs.letterSpacing
+      styles.textAlign = cs.textAlign
       const isTextOnly =
         el.childNodes.length > 0 &&
         [...el.childNodes].every((n) => n.nodeType === Node.TEXT_NODE)
