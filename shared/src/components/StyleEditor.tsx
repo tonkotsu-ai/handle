@@ -7,9 +7,13 @@ import {
   AlignVerticalSpaceAround,
   AlignVerticalSpaceBetween,
   ArrowDownFromLine,
+  ArrowDownToLine,
   ArrowLeftFromLine,
+  ArrowLeftToLine,
   ArrowRightFromLine,
+  ArrowRightToLine,
   ArrowUpFromLine,
+  ArrowUpToLine,
   Blend,
   Columns,
   Dot,
@@ -827,7 +831,7 @@ export default function StyleEditor({
           <div className="grid grid-cols-4 gap-x-2">
             <NumericInput
               key={`${elementId}-pt-${effective(editedProps, "paddingTop", padTopRaw)}`}
-              icon={<ArrowUpFromLine size={14} />}
+              icon={<ArrowUpToLine size={14} />}
               edited={editedProps.has("paddingTop")}
               value={displayCssLength(effective(editedProps, "paddingTop", padTopRaw))}
               onChange={(val) => {
@@ -836,7 +840,7 @@ export default function StyleEditor({
             />
             <NumericInput
               key={`${elementId}-pb-${effective(editedProps, "paddingBottom", padBottomRaw)}`}
-              icon={<ArrowDownFromLine size={14} />}
+              icon={<ArrowDownToLine size={14} />}
               edited={editedProps.has("paddingBottom")}
               value={displayCssLength(effective(editedProps, "paddingBottom", padBottomRaw))}
               onChange={(val) => {
@@ -845,7 +849,7 @@ export default function StyleEditor({
             />
             <NumericInput
               key={`${elementId}-pl-${effective(editedProps, "paddingLeft", padLeftRaw)}`}
-              icon={<ArrowLeftFromLine size={14} />}
+              icon={<ArrowLeftToLine size={14} />}
               edited={editedProps.has("paddingLeft")}
               value={displayCssLength(effective(editedProps, "paddingLeft", padLeftRaw))}
               onChange={(val) => {
@@ -854,7 +858,7 @@ export default function StyleEditor({
             />
             <NumericInput
               key={`${elementId}-pr-${effective(editedProps, "paddingRight", padRightRaw)}`}
-              icon={<ArrowRightFromLine size={14} />}
+              icon={<ArrowRightToLine size={14} />}
               edited={editedProps.has("paddingRight")}
               value={displayCssLength(effective(editedProps, "paddingRight", padRightRaw))}
               onChange={(val) => {
