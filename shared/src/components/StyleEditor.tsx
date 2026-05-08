@@ -22,6 +22,8 @@ import {
   Columns,
   Dot,
   LayoutGrid,
+  Minus,
+  Plus,
   Rows,
   Scan,
   SlidersHorizontal,
@@ -652,6 +654,63 @@ function SizeDimensionControl({
   )
 }
 
+interface ParsedDropShadow {
+  x: string
+  y: string
+  blur: string
+  spread: string
+  color: string
+}
+
+function tokenizeShadow(s: string): string[] {
+  const tokens: string[] = []
+  let depth = 0
+  let cur = ""
+  for (const ch of s) {
+    if (ch === "(") { depth++; cur += ch }
+    else if (ch === ")") { depth--; cur += ch }
+    else if ((ch === " " || ch === "\t") && depth === 0) {
+      if (cur) { tokens.push(cur); cur = "" }
+    } else {
+      cur += ch
+    }
+  }
+  if (cur) tokens.push(cur)
+  return tokens
+}
+
+function parseBoxShadow(val: string): ParsedDropShadow | null {
+  if (!val) return null
+  const trimmed = val.trim()
+  if (!trimmed || trimmed === "none") return null
+  if (/\binset\b/.test(trimmed)) return null
+  let depth = 0
+  for (const ch of trimmed) {
+    if (ch === "(") depth++
+    else if (ch === ")") depth--
+    else if (ch === "," && depth === 0) return null
+  }
+  const tokens = tokenizeShadow(trimmed)
+  const lengths: string[] = []
+  const colorParts: string[] = []
+  for (const t of tokens) {
+    if (/^-?\d/.test(t) || /^-?\.\d/.test(t)) lengths.push(t)
+    else colorParts.push(t)
+  }
+  if (lengths.length < 2 || colorParts.length === 0) return null
+  return {
+    x: lengths[0],
+    y: lengths[1],
+    blur: lengths[2] || "0px",
+    spread: lengths[3] || "0px",
+    color: colorParts.join(" ")
+  }
+}
+
+function formatBoxShadow(s: ParsedDropShadow): string {
+  return `${s.x} ${s.y} ${s.blur} ${s.spread} ${s.color}`
+}
+
 function BorderSideIcon({ side }: { side: "top" | "right" | "bottom" | "left" }) {
   const rotation = side === "top" ? 0 : side === "right" ? 90 : side === "bottom" ? 180 : 270
   return (
@@ -700,6 +759,135 @@ function BorderWidthControl({
       value={displayCssLength(eff)}
       onChange={(val) => onStyleEdit(elementId, prop, raw, normalizeCssInput(val))}
     />
+  )
+}
+
+const DEFAULT_DROP_SHADOW = "0px 4px 8px 0px rgba(0, 0, 0, 0.2)"
+
+function EffectsSection({
+  styles,
+  elementId,
+  editedProps,
+  pageTokens,
+  pageColors,
+  onStyleEdit,
+  onUndo
+}: {
+  styles: StyleData
+  elementId: ElementId
+  editedProps: Map<string, { original: string; current: string; tokenName?: string }>
+  pageTokens?: TokenEntry[]
+  pageColors?: string[]
+  onStyleEdit: StyleEditorProps["onStyleEdit"]
+  onUndo: StyleEditorProps["onUndo"]
+}) {
+  const shadowRaw = styles.boxShadow || ""
+  const effectiveShadow = effective(editedProps, "boxShadow", shadowRaw)
+  const parsed = parseBoxShadow(effectiveShadow)
+  const edited = editedProps.has("boxShadow")
+  const isUnsupported = effectiveShadow && effectiveShadow !== "none" && !parsed
+
+  const updateShadow = (next: ParsedDropShadow) => {
+    onStyleEdit(elementId, "boxShadow", shadowRaw, formatBoxShadow(next))
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <SectionLabel>Effects</SectionLabel>
+        {!parsed && !isUnsupported && (
+          <button
+            type="button"
+            className="p-1 rounded text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            title="Add drop shadow"
+            aria-label="Add drop shadow"
+            onClick={() => onStyleEdit(elementId, "boxShadow", shadowRaw, DEFAULT_DROP_SHADOW)}>
+            <Plus size={14} />
+          </button>
+        )}
+      </div>
+      {isUnsupported && (
+        <div className="text-xs text-slate-500 dark:text-slate-400">
+          This element has a complex shadow (multiple layers or inset). Editing it here is not yet supported.
+          {edited && (
+            <button
+              className="ml-1 text-slate-400 hover:text-juicyorange-500 dark:text-slate-500 dark:hover:text-juicyorange-400"
+              onClick={() => onUndo(elementId, ["boxShadow"])}>
+              Revert
+            </button>
+          )}
+        </div>
+      )}
+      {parsed && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start gap-2">
+            <div className="flex-1 flex flex-col gap-1">
+              <FieldLabel edited={edited} onUndo={() => onUndo(elementId, ["boxShadow"])}>Effect</FieldLabel>
+              <div className={`w-full rounded border-0 px-2 py-1 text-xs ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`}>
+                Drop shadow
+              </div>
+            </div>
+            <button
+              type="button"
+              className="mt-[18px] shrink-0 rounded bg-slate-100 dark:bg-slate-700 p-1.5 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              title="Remove effect"
+              aria-label="Remove effect"
+              onClick={() => onStyleEdit(elementId, "boxShadow", shadowRaw, "none")}>
+              <Minus size={14} />
+            </button>
+          </div>
+          <div className="flex flex-col gap-1">
+            <FieldLabel edited={edited}>Drop shadow offset</FieldLabel>
+            <div className="grid grid-cols-2 gap-x-4">
+              <NumericInput
+                key={`${elementId}-shadow-x-${parsed.x}`}
+                icon={<span className="text-slate-500 text-[11px]">X</span>}
+                edited={edited}
+                value={displayCssLength(parsed.x)}
+                onChange={(val) => updateShadow({ ...parsed, x: normalizeCssInput(val) })}
+              />
+              <NumericInput
+                key={`${elementId}-shadow-y-${parsed.y}`}
+                icon={<span className="text-slate-500 text-[11px]">Y</span>}
+                edited={edited}
+                value={displayCssLength(parsed.y)}
+                onChange={(val) => updateShadow({ ...parsed, y: normalizeCssInput(val) })}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-x-4">
+            <div className="flex flex-col gap-1">
+              <FieldLabel edited={edited}>Drop shadow blur radius</FieldLabel>
+              <NumericInput
+                key={`${elementId}-shadow-blur-${parsed.blur}`}
+                edited={edited}
+                value={displayCssLength(parsed.blur)}
+                onChange={(val) => updateShadow({ ...parsed, blur: normalizeCssInput(val) })}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <FieldLabel edited={edited}>Spread</FieldLabel>
+              <NumericInput
+                key={`${elementId}-shadow-spread-${parsed.spread}`}
+                edited={edited}
+                value={displayCssLength(parsed.spread)}
+                onChange={(val) => updateShadow({ ...parsed, spread: normalizeCssInput(val) })}
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <FieldLabel edited={edited}>Drop shadow color</FieldLabel>
+            <ColorPicker
+              value={parsed.color}
+              tokens={pageTokens}
+              pageColors={pageColors}
+              edited={edited}
+              onChange={(val) => updateShadow({ ...parsed, color: val })}
+            />
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -1390,6 +1578,19 @@ export default function StyleEditor({
           />
         </div>
       </div>
+
+      <hr className="border-slate-200 dark:border-slate-700 -mx-3" />
+
+      {/* Effects */}
+      <EffectsSection
+        styles={styles}
+        elementId={elementId}
+        editedProps={editedProps}
+        pageTokens={pageTokens}
+        pageColors={pageColors}
+        onStyleEdit={onStyleEdit}
+        onUndo={onUndo}
+      />
 
       <hr className="border-slate-200 dark:border-slate-700 -mx-3" />
 

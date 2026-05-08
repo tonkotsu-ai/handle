@@ -319,6 +319,7 @@ export default defineContentScript({
       styles.borderTopRightRadius = cs.borderTopRightRadius
       styles.borderBottomLeftRadius = cs.borderBottomLeftRadius
       styles.borderBottomRightRadius = cs.borderBottomRightRadius
+      styles.boxShadow = cs.boxShadow
       const isTextOnly =
         el.childNodes.length > 0 &&
         [...el.childNodes].every((n) => n.nodeType === Node.TEXT_NODE)
