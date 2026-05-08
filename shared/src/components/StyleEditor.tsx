@@ -652,6 +652,57 @@ function SizeDimensionControl({
   )
 }
 
+function BorderSideIcon({ side }: { side: "top" | "right" | "bottom" | "left" }) {
+  const rotation = side === "top" ? 0 : side === "right" ? 90 : side === "bottom" ? 180 : 270
+  return (
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ transform: `rotate(${rotation}deg)` }}>
+      <path d="M3 3 L11 3" strokeWidth={2} />
+      <path d="M3 11 L11 11" strokeWidth={1} strokeDasharray="1 1.5" />
+      <path d="M3 3 L3 11" strokeWidth={1} strokeDasharray="1 1.5" />
+      <path d="M11 3 L11 11" strokeWidth={1} strokeDasharray="1 1.5" />
+    </svg>
+  )
+}
+
+function BorderWidthControl({
+  side,
+  raw,
+  elementId,
+  editedProps,
+  onStyleEdit,
+  onUndo
+}: {
+  side: "top" | "right" | "bottom" | "left"
+  raw: string
+  elementId: ElementId
+  editedProps: Map<string, { original: string; current: string; tokenName?: string }>
+  onStyleEdit: StyleEditorProps["onStyleEdit"]
+  onUndo: () => void
+}) {
+  const prop = side === "top" ? "borderTopWidth"
+    : side === "right" ? "borderRightWidth"
+    : side === "bottom" ? "borderBottomWidth"
+    : "borderLeftWidth"
+  const eff = effective(editedProps, prop, raw)
+  return (
+    <NumericInput
+      key={`${elementId}-${prop}-${eff}`}
+      icon={<BorderSideIcon side={side} />}
+      edited={editedProps.has(prop)}
+      value={displayCssLength(eff)}
+      onChange={(val) => onStyleEdit(elementId, prop, raw, normalizeCssInput(val))}
+    />
+  )
+}
+
 function CornerRadiusIcon({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
   const rotation = corner === "tl" ? 0 : corner === "tr" ? 90 : corner === "br" ? 180 : 270
   return (
@@ -816,6 +867,19 @@ export default function StyleEditor({
     hasAny(editedProps, "borderTopLeftRadius", "borderTopRightRadius", "borderBottomLeftRadius", "borderBottomRightRadius")
   const [appearanceAdvancedOverride, setAppearanceAdvancedOverride] = useState<boolean | null>(null)
   const showAppearanceAdvanced = appearanceAdvancedOverride ?? !!hasCornerRadiusAuthored
+
+  const borderTopWidthRaw = styles.borderTopWidth || ""
+  const borderRightWidthRaw = styles.borderRightWidth || ""
+  const borderBottomWidthRaw = styles.borderBottomWidth || ""
+  const borderLeftWidthRaw = styles.borderLeftWidth || ""
+  const borderSidesDiffer =
+    !!(borderTopWidthRaw && borderRightWidthRaw && borderBottomWidthRaw && borderLeftWidthRaw) &&
+    !(borderTopWidthRaw === borderRightWidthRaw && borderRightWidthRaw === borderBottomWidthRaw && borderBottomWidthRaw === borderLeftWidthRaw)
+  const hasBorderSidesAuthored =
+    borderSidesDiffer ||
+    hasAny(editedProps, "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth")
+  const [strokeAdvancedOverride, setStrokeAdvancedOverride] = useState<boolean | null>(null)
+  const showStrokeAdvanced = strokeAdvancedOverride ?? !!hasBorderSidesAuthored
 
   const hasNote = !!(note && note.length > 0)
 
@@ -1230,9 +1294,85 @@ export default function StyleEditor({
 
       {/* Stroke */}
       <div className="flex flex-col gap-2">
-        <SectionLabel>Stroke</SectionLabel>
+        <div className="flex items-center justify-between">
+          <SectionLabel>Stroke</SectionLabel>
+          <button
+            type="button"
+            className={`p-1 rounded ${showStrokeAdvanced
+              ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
+              : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+            title="Toggle individual border widths"
+            aria-label="Toggle individual border widths"
+            aria-pressed={showStrokeAdvanced}
+            onClick={() => setStrokeAdvancedOverride(!showStrokeAdvanced)}>
+            <SlidersHorizontal size={14} />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-x-4">
+          <div className="flex flex-col gap-1">
+            <FieldLabel edited={editedProps.has("borderStyle")} onUndo={() => onUndo(elementId, ["borderStyle"])}>Border style</FieldLabel>
+            <select
+              className={`w-full rounded border-0 px-2 py-1 text-xs outline-none focus:border-electricblue-500 ${editedProps.has("borderStyle") ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`}
+              value={effective(editedProps, "borderStyle", styles.borderStyle || "none")}
+              onChange={(e) => onStyleEdit(elementId, "borderStyle", styles.borderStyle || "none", e.target.value)}>
+              <option value="none">None</option>
+              <option value="solid">Solid</option>
+              <option value="dashed">Dashed</option>
+              <option value="dotted">Dotted</option>
+              <option value="double">Double</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <FieldLabel edited={editedProps.has("borderWidth")} onUndo={() => onUndo(elementId, ["borderWidth"])}>Weight</FieldLabel>
+            <NumericInput
+              key={effective(editedProps, "borderWidth", styles.borderWidth || "0px")}
+              edited={editedProps.has("borderWidth")}
+              value={parseInt(effective(editedProps, "borderWidth", styles.borderWidth || "0px")) || 0}
+              onChange={(val) => {
+                const v = val.match(/[a-z%]/) ? val : val + "px"
+                onStyleEdit(elementId, "borderWidth", styles.borderWidth || "0px", v)
+              }}
+            />
+          </div>
+        </div>
+        {showStrokeAdvanced && (
+          <div className="grid grid-cols-4 gap-x-2">
+            <BorderWidthControl
+              side="top"
+              raw={borderTopWidthRaw}
+              elementId={elementId}
+              editedProps={editedProps}
+              onStyleEdit={onStyleEdit}
+              onUndo={() => onUndo(elementId, ["borderTopWidth"])}
+            />
+            <BorderWidthControl
+              side="right"
+              raw={borderRightWidthRaw}
+              elementId={elementId}
+              editedProps={editedProps}
+              onStyleEdit={onStyleEdit}
+              onUndo={() => onUndo(elementId, ["borderRightWidth"])}
+            />
+            <BorderWidthControl
+              side="bottom"
+              raw={borderBottomWidthRaw}
+              elementId={elementId}
+              editedProps={editedProps}
+              onStyleEdit={onStyleEdit}
+              onUndo={() => onUndo(elementId, ["borderBottomWidth"])}
+            />
+            <BorderWidthControl
+              side="left"
+              raw={borderLeftWidthRaw}
+              elementId={elementId}
+              editedProps={editedProps}
+              onStyleEdit={onStyleEdit}
+              onUndo={() => onUndo(elementId, ["borderLeftWidth"])}
+            />
+          </div>
+        )}
         <div className="flex flex-col gap-1">
-          <FieldLabel edited={editedProps.has("borderColor")} onUndo={() => onUndo(elementId, ["borderColor"])}>Color</FieldLabel>
+          <FieldLabel edited={editedProps.has("borderColor")} onUndo={() => onUndo(elementId, ["borderColor"])}>Border color</FieldLabel>
           <ColorPicker
             value={effective(editedProps, "borderColor", styles.borderColor || "none")}
             tokens={pageTokens}
@@ -1248,51 +1388,6 @@ export default function StyleEditor({
               )
             }
           />
-        </div>
-        <div className="grid grid-cols-2 gap-x-4">
-          <div className="flex flex-col gap-1">
-            <FieldLabel edited={editedProps.has("borderStyle")} onUndo={() => onUndo(elementId, ["borderStyle"])}>Position</FieldLabel>
-            <div className={`flex w-full rounded-lg ${editedProps.has("borderStyle") ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
-              {[
-                { value: "inside", label: "Inside" },
-                { value: "outside", label: "Outside" }
-              ].map((opt) => {
-                const currentOutline = effective(editedProps, "borderStyle", styles.borderStyle || "none")
-                const isOutside = currentOutline === "outline"
-                const isActive = opt.value === "outside" ? isOutside : !isOutside && currentOutline !== "none"
-                return (
-                  <button
-                    key={opt.value}
-                    className={`flex-1 rounded-md py-1 text-xs transition-colors ${
-                      isActive
-                        ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
-                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-                    }`}
-                    onClick={() => {
-                      if (opt.value === "outside") {
-                        onStyleEdit(elementId, "borderStyle", styles.borderStyle || "none", "outline")
-                      } else {
-                        onStyleEdit(elementId, "borderStyle", styles.borderStyle || "none", "solid")
-                      }
-                    }}>
-                    {opt.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-          <div className="flex flex-col gap-1">
-            <FieldLabel edited={editedProps.has("borderWidth")} onUndo={() => onUndo(elementId, ["borderWidth"])}>Weight</FieldLabel>
-            <NumericInput
-              key={effective(editedProps, "borderWidth", styles.borderWidth || "0px")}
-              edited={editedProps.has("borderWidth")}
-              value={parseInt(effective(editedProps, "borderWidth", styles.borderWidth || "0px")) || 0}
-              onChange={(val) => {
-                const v = val.match(/[a-z%]/) ? val : val + "px"
-                onStyleEdit(elementId, "borderWidth", styles.borderWidth || "0px", v)
-              }}
-            />
-          </div>
         </div>
       </div>
 
