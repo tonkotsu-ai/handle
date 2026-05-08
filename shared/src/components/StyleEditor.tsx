@@ -15,11 +15,16 @@ import {
   ArrowUpFromLine,
   ArrowUpToLine,
   Blend,
+  ChevronsDownUp,
+  ChevronsLeftRight,
+  ChevronsRightLeft,
+  ChevronsUpDown,
   Columns,
   Dot,
   LayoutGrid,
   Rows,
   Scan,
+  SlidersHorizontal,
   Square,
   SquareCheck,
   Undo2
@@ -178,11 +183,13 @@ function NumericInput({
   value,
   icon,
   edited,
+  placeholder,
   onChange
 }: {
   value: string | number
   icon?: React.ReactNode
   edited?: boolean
+  placeholder?: string
   onChange: (val: string) => void
 }) {
   const strVal = String(value)
@@ -193,6 +200,7 @@ function NumericInput({
   const input = (
     <input
       type="text"
+      placeholder={placeholder}
       className={`${icon ? "w-full bg-transparent outline-none text-xs" : `w-full rounded border-0 ${bg} px-2 py-1 text-xs outline-none focus:border-electricblue-500`}`}
       value={current}
       onChange={(e) => setCurrent(e.target.value)}
@@ -644,6 +652,48 @@ function SizeDimensionControl({
   )
 }
 
+function SizeConstraintControl({
+  label,
+  prop,
+  defaultKeyword,
+  icon,
+  raw,
+  elementId,
+  editedProps,
+  onStyleEdit,
+  onUndo
+}: {
+  label: string
+  prop: "minWidth" | "maxWidth" | "minHeight" | "maxHeight"
+  defaultKeyword: "auto" | "none"
+  icon: React.ReactNode
+  raw: string
+  elementId: ElementId
+  editedProps: Map<string, { original: string; current: string; tokenName?: string }>
+  onStyleEdit: StyleEditorProps["onStyleEdit"]
+  onUndo: () => void
+}) {
+  const eff = effective(editedProps, prop, raw)
+  const isUnset = !eff || eff === defaultKeyword
+  return (
+    <div className="flex flex-col gap-1">
+      <FieldLabel edited={editedProps.has(prop)} onUndo={onUndo}>{label}</FieldLabel>
+      <NumericInput
+        key={`${elementId}-${prop}-${eff}`}
+        icon={icon}
+        edited={editedProps.has(prop)}
+        placeholder={defaultKeyword}
+        value={isUnset ? "" : displayCssLength(eff)}
+        onChange={(val) => {
+          const trimmed = val.trim()
+          const next = trimmed === "" || trimmed === defaultKeyword ? defaultKeyword : normalizeCssInput(trimmed)
+          onStyleEdit(elementId, prop, raw, next)
+        }}
+      />
+    </div>
+  )
+}
+
 export default function StyleEditor({
   styles,
   elementId,
@@ -692,6 +742,19 @@ export default function StyleEditor({
   const overflowEffective = effective(editedProps, "overflow", overflowRaw)
   const clipChecked = overflowEffective === "hidden"
 
+  const minWidthRaw = styles.minWidth || ""
+  const maxWidthRaw = styles.maxWidth || ""
+  const minHeightRaw = styles.minHeight || ""
+  const maxHeightRaw = styles.maxHeight || ""
+  const hasMinMaxAuthored =
+    (minWidthRaw && minWidthRaw !== "auto" && minWidthRaw !== "0px") ||
+    (maxWidthRaw && maxWidthRaw !== "none") ||
+    (minHeightRaw && minHeightRaw !== "auto" && minHeightRaw !== "0px") ||
+    (maxHeightRaw && maxHeightRaw !== "none") ||
+    hasAny(editedProps, "minWidth", "maxWidth", "minHeight", "maxHeight")
+  const [sizeConstraintsOverride, setSizeConstraintsOverride] = useState<boolean | null>(null)
+  const showSizeConstraints = sizeConstraintsOverride ?? !!hasMinMaxAuthored
+
   const hasNote = !!(note && note.length > 0)
 
   return (
@@ -727,7 +790,20 @@ export default function StyleEditor({
       {!isTextNode && <>
       {/* Layout */}
       <div className="flex flex-col gap-2">
-        <SectionLabel>Layout</SectionLabel>
+        <div className="flex items-center justify-between">
+          <SectionLabel>Layout</SectionLabel>
+          <button
+            type="button"
+            className={`p-1 rounded ${showSizeConstraints
+              ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
+              : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+            title="Toggle size constraints"
+            aria-label="Toggle size constraints"
+            aria-pressed={showSizeConstraints}
+            onClick={() => setSizeConstraintsOverride(!showSizeConstraints)}>
+            <SlidersHorizontal size={14} />
+          </button>
+        </div>
         <FlowControls
           styles={styles}
           elementId={elementId}
@@ -760,6 +836,52 @@ export default function StyleEditor({
               onStyleEdit={onStyleEdit}
               onUndo={() => onUndo(elementId, ["height"])}
             />
+            {showSizeConstraints && <>
+              <SizeConstraintControl
+                label="Min width"
+                prop="minWidth"
+                defaultKeyword="auto"
+                icon={<ChevronsRightLeft size={14} />}
+                raw={minWidthRaw}
+                elementId={elementId}
+                editedProps={editedProps}
+                onStyleEdit={onStyleEdit}
+                onUndo={() => onUndo(elementId, ["minWidth"])}
+              />
+              <SizeConstraintControl
+                label="Min height"
+                prop="minHeight"
+                defaultKeyword="auto"
+                icon={<ChevronsDownUp size={14} />}
+                raw={minHeightRaw}
+                elementId={elementId}
+                editedProps={editedProps}
+                onStyleEdit={onStyleEdit}
+                onUndo={() => onUndo(elementId, ["minHeight"])}
+              />
+              <SizeConstraintControl
+                label="Max width"
+                prop="maxWidth"
+                defaultKeyword="none"
+                icon={<ChevronsLeftRight size={14} />}
+                raw={maxWidthRaw}
+                elementId={elementId}
+                editedProps={editedProps}
+                onStyleEdit={onStyleEdit}
+                onUndo={() => onUndo(elementId, ["maxWidth"])}
+              />
+              <SizeConstraintControl
+                label="Max height"
+                prop="maxHeight"
+                defaultKeyword="none"
+                icon={<ChevronsUpDown size={14} />}
+                raw={maxHeightRaw}
+                elementId={elementId}
+                editedProps={editedProps}
+                onStyleEdit={onStyleEdit}
+                onUndo={() => onUndo(elementId, ["maxHeight"])}
+              />
+            </>}
           </div>
         )}
         {flowMode === "grid" && (
