@@ -310,6 +310,7 @@ export default defineContentScript({
       styles.borderRightWidth = cs.borderRightWidth
       styles.borderBottomWidth = cs.borderBottomWidth
       styles.borderLeftWidth = cs.borderLeftWidth
+      styles.overflow = cs.overflow
       const isTextOnly =
         el.childNodes.length > 0 &&
         [...el.childNodes].every((n) => n.nodeType === Node.TEXT_NODE)

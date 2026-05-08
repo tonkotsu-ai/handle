@@ -20,6 +20,8 @@ import {
   LayoutGrid,
   Rows,
   Scan,
+  Square,
+  SquareCheck,
   Undo2
 } from "lucide-react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
@@ -686,6 +688,10 @@ export default function StyleEditor({
   const marginBottomRaw = marginParts[2] ?? marginParts[0]
   const marginLeftRaw = marginParts[3] ?? marginParts[1] ?? marginParts[0]
 
+  const overflowRaw = styles.overflow || ""
+  const overflowEffective = effective(editedProps, "overflow", overflowRaw)
+  const clipChecked = overflowEffective === "hidden"
+
   const hasNote = !!(note && note.length > 0)
 
   return (
@@ -907,6 +913,24 @@ export default function StyleEditor({
               }}
             />
           </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            className="flex items-center gap-1.5 text-xs text-slate-900 dark:text-slate-300"
+            onClick={() => onStyleEdit(elementId, "overflow", overflowRaw, clipChecked ? "visible" : "hidden")}>
+            {clipChecked ? <SquareCheck size={14} /> : <Square size={14} />}
+            <span className="font-bold">Clip content</span>
+          </button>
+          {editedProps.has("overflow") && (
+            <button
+              className="text-slate-400 hover:text-juicyorange-500 dark:text-slate-500 dark:hover:text-juicyorange-400"
+              title="Undo"
+              aria-label="Undo"
+              onClick={() => onUndo(elementId, ["overflow"])}>
+              <Undo2 size={11} />
+            </button>
+          )}
         </div>
       </div>
 
