@@ -652,6 +652,55 @@ function SizeDimensionControl({
   )
 }
 
+function CornerRadiusIcon({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
+  const rotation = corner === "tl" ? 0 : corner === "tr" ? 90 : corner === "br" ? 180 : 270
+  return (
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ transform: `rotate(${rotation}deg)` }}>
+      <path d="M3 11 L3 7 Q3 3 7 3 L11 3 L11 11 L3 11 Z" />
+    </svg>
+  )
+}
+
+function CornerRadiusControl({
+  corner,
+  raw,
+  elementId,
+  editedProps,
+  onStyleEdit,
+  onUndo
+}: {
+  corner: "tl" | "tr" | "bl" | "br"
+  raw: string
+  elementId: ElementId
+  editedProps: Map<string, { original: string; current: string; tokenName?: string }>
+  onStyleEdit: StyleEditorProps["onStyleEdit"]
+  onUndo: () => void
+}) {
+  const prop = corner === "tl" ? "borderTopLeftRadius"
+    : corner === "tr" ? "borderTopRightRadius"
+    : corner === "bl" ? "borderBottomLeftRadius"
+    : "borderBottomRightRadius"
+  const eff = effective(editedProps, prop, raw)
+  return (
+    <NumericInput
+      key={`${elementId}-${prop}-${eff}`}
+      icon={<CornerRadiusIcon corner={corner} />}
+      edited={editedProps.has(prop)}
+      value={displayCssLength(eff)}
+      onChange={(val) => onStyleEdit(elementId, prop, raw, normalizeCssInput(val))}
+    />
+  )
+}
+
 function SizeConstraintControl({
   label,
   prop,
@@ -754,6 +803,19 @@ export default function StyleEditor({
     hasAny(editedProps, "minWidth", "maxWidth", "minHeight", "maxHeight")
   const [sizeConstraintsOverride, setSizeConstraintsOverride] = useState<boolean | null>(null)
   const showSizeConstraints = sizeConstraintsOverride ?? !!hasMinMaxAuthored
+
+  const radiusTLRaw = styles.borderTopLeftRadius || ""
+  const radiusTRRaw = styles.borderTopRightRadius || ""
+  const radiusBLRaw = styles.borderBottomLeftRadius || ""
+  const radiusBRRaw = styles.borderBottomRightRadius || ""
+  const cornersDiffer =
+    !!(radiusTLRaw && radiusTRRaw && radiusBLRaw && radiusBRRaw) &&
+    !(radiusTLRaw === radiusTRRaw && radiusTRRaw === radiusBLRaw && radiusBLRaw === radiusBRRaw)
+  const hasCornerRadiusAuthored =
+    cornersDiffer ||
+    hasAny(editedProps, "borderTopLeftRadius", "borderTopRightRadius", "borderBottomLeftRadius", "borderBottomRightRadius")
+  const [appearanceAdvancedOverride, setAppearanceAdvancedOverride] = useState<boolean | null>(null)
+  const showAppearanceAdvanced = appearanceAdvancedOverride ?? !!hasCornerRadiusAuthored
 
   const hasNote = !!(note && note.length > 0)
 
@@ -1060,7 +1122,20 @@ export default function StyleEditor({
 
       {/* Appearance */}
       <div className="flex flex-col gap-2">
-        <SectionLabel>Appearance</SectionLabel>
+        <div className="flex items-center justify-between">
+          <SectionLabel>Appearance</SectionLabel>
+          <button
+            type="button"
+            className={`p-1 rounded ${showAppearanceAdvanced
+              ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
+              : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+            title="Toggle individual corner radii"
+            aria-label="Toggle individual corner radii"
+            aria-pressed={showAppearanceAdvanced}
+            onClick={() => setAppearanceAdvancedOverride(!showAppearanceAdvanced)}>
+            <SlidersHorizontal size={14} />
+          </button>
+        </div>
         <div className="grid grid-cols-2 gap-x-4">
           <div className="flex flex-col gap-1">
             <FieldLabel edited={editedProps.has("opacity")} onUndo={() => onUndo(elementId, ["opacity"])}>Opacity</FieldLabel>
@@ -1088,6 +1163,42 @@ export default function StyleEditor({
             />
           </div>
         </div>
+        {showAppearanceAdvanced && (
+          <div className="grid grid-cols-4 gap-x-2">
+            <CornerRadiusControl
+              corner="tl"
+              raw={radiusTLRaw}
+              elementId={elementId}
+              editedProps={editedProps}
+              onStyleEdit={onStyleEdit}
+              onUndo={() => onUndo(elementId, ["borderTopLeftRadius"])}
+            />
+            <CornerRadiusControl
+              corner="tr"
+              raw={radiusTRRaw}
+              elementId={elementId}
+              editedProps={editedProps}
+              onStyleEdit={onStyleEdit}
+              onUndo={() => onUndo(elementId, ["borderTopRightRadius"])}
+            />
+            <CornerRadiusControl
+              corner="bl"
+              raw={radiusBLRaw}
+              elementId={elementId}
+              editedProps={editedProps}
+              onStyleEdit={onStyleEdit}
+              onUndo={() => onUndo(elementId, ["borderBottomLeftRadius"])}
+            />
+            <CornerRadiusControl
+              corner="br"
+              raw={radiusBRRaw}
+              elementId={elementId}
+              editedProps={editedProps}
+              onStyleEdit={onStyleEdit}
+              onUndo={() => onUndo(elementId, ["borderBottomRightRadius"])}
+            />
+          </div>
+        )}
       </div>
 
       <hr className="border-slate-200 dark:border-slate-700 -mx-3" />
