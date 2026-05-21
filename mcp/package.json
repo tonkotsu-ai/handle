@@ -33,7 +33,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@clack/prompts": "^1.1.0",
+    "@clack/prompts": "^1.3.0",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "nanoid": "^5.1.7",
     "smol-toml": "^1.6.0",
