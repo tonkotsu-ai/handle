@@ -600,7 +600,7 @@ function TokensTab({
                 {highlightMatch(displayName, search)}
               </span>
               {displayTokenHex.startsWith("#") && (
-                <span className="shrink-0 text-slate-400 dark:text-slate-500">
+                <span className="shrink-0 text-slate-400">
                   {displayTokenHex}
                   {tokenOpacity < 100 && ` ${tokenOpacity}%`}
                 </span>
@@ -708,22 +708,22 @@ export default function ColorPicker({
           if (!open) setActiveTab(matchingToken ? "tokens" : "custom")
           setOpen(!open)
         }}
-        className={`flex items-center gap-2 rounded border-0 px-2 py-1.5 text-xs w-full ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800 hover:bg-mintfresh-200 dark:hover:bg-mintfresh-700" : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
+        className={`flex items-center gap-2 rounded border-0 px-2 py-1.5 text-xs w-full ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-900 hover:bg-mintfresh-200 dark:hover:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
         <Swatch color={value} size={16} />
         {matchingToken ? (
           <span className="truncate">
             <span className="font-bold text-slate-800 dark:text-slate-200">{matchingToken.name.replace(/^--/, "")}</span>
             {" "}
-            <span className="text-slate-500 dark:text-slate-300">{displayHex}</span>
+            <span className="text-slate-500 dark:text-slate-200">{displayHex}</span>
             {!isTransparent && displayOpacity < 100 && (
-              <span className="text-slate-400 dark:text-slate-500"> {displayOpacity}%</span>
+              <span className="text-slate-400"> {displayOpacity}%</span>
             )}
           </span>
         ) : (
-          <span className="truncate text-slate-600 dark:text-slate-300">
+          <span className="truncate text-slate-600 dark:text-slate-200">
             {displayHex}
             {!isTransparent && displayOpacity < 100 && (
-              <span className="text-slate-400 dark:text-slate-500"> {displayOpacity}%</span>
+              <span className="text-slate-400"> {displayOpacity}%</span>
             )}
           </span>
         )}

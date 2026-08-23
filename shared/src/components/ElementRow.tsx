@@ -103,7 +103,7 @@ export default function ElementRow({
           </>
         )}
         {!isLeaf && !isExpanded && item.childCount != null && item.childCount > 0 && (
-          <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-0.5">
+          <span className="text-slate-400 text-[10px] ml-0.5">
             ({item.childCount})
           </span>
         )}
