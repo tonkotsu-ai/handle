@@ -100,7 +100,7 @@ function FieldInput({
 }) {
   const [current, setCurrent] = useState(value)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"
+  const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-900" : "bg-slate-100 dark:bg-slate-700"
   const className = `w-full rounded border-0 px-2 py-1 text-xs outline-none focus:border-electricblue-500 ${bg}`
 
   useLayoutEffect(() => {
@@ -153,7 +153,7 @@ function NoteInput({
 }) {
   const [current, setCurrent] = useState(value)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"
+  const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-900" : "bg-slate-100 dark:bg-slate-700"
 
   useEffect(() => {
     setCurrent(value)
@@ -198,7 +198,7 @@ function NumericInput({
   const strVal = String(value)
   const [current, setCurrent] = useState(strVal)
 
-  const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"
+  const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-900" : "bg-slate-100 dark:bg-slate-700"
 
   const input = (
     <input
@@ -262,14 +262,14 @@ function FlowControls({
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>Flow</FieldLabel>
-      <div className={`flex w-full rounded-lg ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
+      <div className={`flex w-full rounded-lg ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-900" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
         {flows.map((f) => (
           <button
             key={f.mode}
             title={f.title}
             className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
               flowMode === f.mode
-                ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
+                ? "bg-electricblue-200 text-electricblue-800 dark:bg-electricblue-900 dark:text-electricblue-300"
                 : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
             }`}
             onClick={() => {
@@ -379,7 +379,7 @@ function AlignmentGrid({
   return (
     <div className="flex flex-col gap-1">
       <FieldLabel edited={edited} onUndo={onUndo}>Alignment</FieldLabel>
-      <div className={`grid grid-cols-3 gap-px rounded overflow-hidden w-full p-0.5 ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`}>
+      <div className={`grid grid-cols-3 gap-px rounded overflow-hidden w-full p-0.5 ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-900" : "bg-slate-100 dark:bg-slate-700"}`}>
         {Array.from({ length: 9 }).map((_, i) => {
           const r = Math.floor(i / 3)
           const c = i % 3
@@ -397,7 +397,7 @@ function AlignmentGrid({
               key={i}
               className={`h-6 w-6 flex items-center justify-center w-full ${
                 isActive
-                  ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300 rounded"
+                  ? "bg-electricblue-200 text-electricblue-800 dark:bg-electricblue-900 dark:text-electricblue-300 rounded"
                   : "rounded dark:text-white hover:bg-slate-200 dark:hover:bg-slate-600"
               }`}
               onMouseEnter={() => setHoveredCell({ row: r, col: c })}
@@ -486,7 +486,7 @@ function GridTemplateControls({
     <>
       <div className="flex flex-col gap-1">
         <FieldLabel edited={autoFlowEdited} onUndo={() => onUndo(elementId, ["gridAutoFlow"])}>Auto flow</FieldLabel>
-        <div className={`flex w-full rounded-lg ${autoFlowEdited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
+        <div className={`flex w-full rounded-lg ${autoFlowEdited ? "bg-mintfresh-100 dark:bg-mintfresh-900" : "bg-slate-100 dark:bg-slate-700"}`} style={{ padding: "2px" }}>
           {([
             { value: "row", icon: <ArrowRightFromLine size={14} />, label: "Row" },
             { value: "column", icon: <ArrowDownFromLine size={14} />, label: "Column" }
@@ -496,7 +496,7 @@ function GridTemplateControls({
               title={`Auto flow: ${t.label}`}
               className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 text-xs font-medium transition-colors ${
                 autoFlow === t.value
-                  ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
+                  ? "bg-electricblue-200 text-electricblue-800 dark:bg-electricblue-900 dark:text-electricblue-300"
                   : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
               }`}
               onClick={() => {
@@ -637,7 +637,7 @@ function SizeDimensionControl({
   const autoPlaceholder =
     computedDisplay !== "" ? `auto (${computedDisplay})` : "auto"
 
-  const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"
+  const bg = edited ? "bg-mintfresh-100 dark:bg-mintfresh-900" : "bg-slate-100 dark:bg-slate-700"
 
   const commit = (val: string) => {
     const trimmed = val.trim()
@@ -836,7 +836,7 @@ function EffectsSection({
           <div className="flex items-start gap-2">
             <div className="flex-1 flex flex-col gap-1">
               <FieldLabel edited={edited} onUndo={() => onUndo(elementId, ["boxShadow"])}>Effect</FieldLabel>
-              <div className={`w-full rounded border-0 px-2 py-1 text-xs ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`}>
+              <div className={`w-full rounded border-0 px-2 py-1 text-xs ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-900" : "bg-slate-100 dark:bg-slate-700"}`}>
                 Drop shadow
               </div>
             </div>
@@ -1122,7 +1122,7 @@ export default function StyleEditor({
           <button
             type="button"
             className={`p-1 rounded ${showSizeConstraints
-              ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
+              ? "bg-electricblue-200 text-electricblue-800 dark:bg-electricblue-900 dark:text-electricblue-300"
               : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
             title="Toggle size constraints"
             aria-label="Toggle size constraints"
@@ -1392,7 +1392,7 @@ export default function StyleEditor({
           <button
             type="button"
             className={`p-1 rounded ${showAppearanceAdvanced
-              ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
+              ? "bg-electricblue-200 text-electricblue-800 dark:bg-electricblue-900 dark:text-electricblue-300"
               : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
             title="Toggle individual corner radii"
             aria-label="Toggle individual corner radii"
@@ -1500,7 +1500,7 @@ export default function StyleEditor({
           <button
             type="button"
             className={`p-1 rounded ${showStrokeAdvanced
-              ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
+              ? "bg-electricblue-200 text-electricblue-800 dark:bg-electricblue-900 dark:text-electricblue-300"
               : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
             title="Toggle individual border widths"
             aria-label="Toggle individual border widths"
@@ -1513,7 +1513,7 @@ export default function StyleEditor({
           <div className="flex flex-col gap-1">
             <FieldLabel edited={editedProps.has("borderStyle")} onUndo={() => onUndo(elementId, ["borderStyle"])}>Border style</FieldLabel>
             <select
-              className={`w-full rounded border-0 px-2 py-1 text-xs outline-none focus:border-electricblue-500 ${editedProps.has("borderStyle") ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`}
+              className={`w-full rounded border-0 px-2 py-1 text-xs outline-none focus:border-electricblue-500 ${editedProps.has("borderStyle") ? "bg-mintfresh-100 dark:bg-mintfresh-900" : "bg-slate-100 dark:bg-slate-700"}`}
               value={effective(editedProps, "borderStyle", styles.borderStyle || "none")}
               onChange={(e) => onStyleEdit(elementId, "borderStyle", styles.borderStyle || "none", e.target.value)}>
               <option value="none">None</option>
@@ -1679,7 +1679,7 @@ export default function StyleEditor({
         </div>
         <div className="flex flex-col gap-1">
           <FieldLabel edited={editedProps.has("textAlign")} onUndo={() => onUndo(elementId, ["textAlign"])}>Alignment</FieldLabel>
-          <div className={`grid grid-cols-4 gap-px rounded overflow-hidden w-full p-0.5 ${editedProps.has("textAlign") ? "bg-mintfresh-100 dark:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-700"}`}>
+          <div className={`grid grid-cols-4 gap-px rounded overflow-hidden w-full p-0.5 ${editedProps.has("textAlign") ? "bg-mintfresh-100 dark:bg-mintfresh-900" : "bg-slate-100 dark:bg-slate-700"}`}>
             {[
               { value: "left", icon: <AlignLeft size={14} />, label: "Left" },
               { value: "center", icon: <AlignCenter size={14} />, label: "Center" },
@@ -1695,7 +1695,7 @@ export default function StyleEditor({
                   type="button"
                   className={`h-7 flex items-center justify-center rounded transition-colors ${
                     isActive
-                      ? "bg-electricblue-200 text-electricblue-700 dark:bg-electricblue-800 dark:text-electricblue-300"
+                      ? "bg-electricblue-200 text-electricblue-800 dark:bg-electricblue-900 dark:text-electricblue-300"
                       : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
                   }`}
                   title={opt.label}

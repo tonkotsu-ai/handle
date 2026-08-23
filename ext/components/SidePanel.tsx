@@ -1134,7 +1134,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
               <Diff size={12} />
               Changes
               {changeCount > 0 && (
-                <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-juicyorange-500 text-white text-[9px] font-bold leading-none min-w-[14px] h-[14px] px-0.5">
+                <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-juicyorange-500 text-deepnavy text-[9px] font-bold leading-none min-w-[14px] h-[14px] px-0.5">
                   {changeCount}
                 </span>
               )}
@@ -1163,7 +1163,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
             style={{ height: treeHeight }}>
             <div className="flex flex-col p-1.5">
               {!tree && (
-                <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
+                <div className="px-4 py-8 text-center text-sm text-slate-400">
                   Select an element on the page
                 </div>
               )}
@@ -1240,7 +1240,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
                 />
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-sm text-slate-400 dark:text-slate-500">
+              <div className="flex items-center justify-center h-full text-sm text-slate-400">
                 {tree ? "Select an element to edit styles" : ""}
               </div>
             )}
@@ -1253,7 +1253,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
             const groups = getChangesByComponent()
             if (groups.size === 0) {
               return (
-                <div className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">
+                <div className="px-4 py-8 text-center text-sm text-slate-400">
                   No changes yet
                 </div>
               )
@@ -1334,7 +1334,7 @@ function SidePanel({ demo = false }: SidePanelProps) {
                             <span className="font-medium text-slate-700 dark:text-slate-200">
                               {ch.prop}
                             </span>
-                            <span className="text-slate-400 dark:text-slate-500 line-through">
+                            <span className="text-slate-400 line-through">
                               {ch.from}
                             </span>
                             <span>&rarr;</span>
