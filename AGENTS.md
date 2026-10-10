@@ -74,3 +74,12 @@ node test-e2e.mjs    # End-to-end test (spawns server, validates Socket.IO + MCP
 - Strict mode in both packages
 - `ext/` uses `~` path alias mapping to project root
 - `mcp/` targets ES2022 with NodeNext module resolution
+
+## Cursor Cloud specific instructions
+
+- Handle is checked out at `/agent/repos/handle`. The sibling Tonkotsu repo (`miso`) is at `/agent/repos/miso`.
+- Install from the Handle root with `npm ci`. The root lockfile covers `ext/`, `shared/`, and `mcp/`.
+- `npx vitest run` runs the unit tests. Assertions pass on the default image. The process can still exit non-zero because jsdom has no `chrome.storage` and SidePanel's review-prompt effect rejects.
+- Side panel demo, without loading the Chrome extension: from `ext/`, run `npm run dev:demo -- --host 0.0.0.0 --port 5173` and open `http://localhost:5173/`. The cloud environment `start` script launches this server.
+- MCP end-to-end check: from `mcp/`, run `npm run build` and then `node test-e2e.mjs`.
+- Extension bundle: from `ext/`, run `npm run build`. Unpacked output is `ext/.output/chrome-mv3`.
