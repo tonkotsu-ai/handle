@@ -79,6 +79,10 @@
 }
 
 @layer base {
+  html {
+    color-scheme: light dark;
+  }
+
   html,
   body,
   #app {

@@ -82,7 +82,7 @@ export default function SendBar({
   return (
     <div className="shrink-0 border-t border-slate-200 dark:border-slate-700 p-2 flex flex-col gap-2 bg-softgray dark:bg-softgray-dark">
       {sessions.length === 0 && (
-        <div className="px-2 py-1 text-xs text-slate-400 dark:text-slate-500 text-center">
+        <div className="px-2 py-1 text-xs text-slate-400 text-center">
           No active MCP connections found. Use the <span className="font-mono font-medium text-slate-500 dark:text-slate-400">/handle</span> command{" "}
           <InstallHint>in your coding agent</InstallHint> to connect.
         </div>
@@ -97,7 +97,7 @@ export default function SendBar({
             </span>
           </div>
           {selectedSession.context && (
-            <div className="truncate pl-5 text-xs text-slate-400 dark:text-slate-500" title={selectedSession.context}>
+            <div className="truncate pl-5 text-xs text-slate-400" title={selectedSession.context}>
               {selectedSession.context}
             </div>
           )}
@@ -146,7 +146,7 @@ export default function SendBar({
           <ArrowUp size={14} />
           {selectedSession && agentName ? `Send to ${agentName}` : "Send to Coding Agent"}
           {changeCount > 0 && (
-            <span className="ml-1 inline-flex items-center justify-center rounded-full bg-juicyorange-500 px-1.5 text-xs text-white">
+            <span className="ml-1 inline-flex items-center justify-center rounded-full bg-juicyorange-500 px-1.5 text-xs text-deepnavy">
               {changeCount}
             </span>
           )}
