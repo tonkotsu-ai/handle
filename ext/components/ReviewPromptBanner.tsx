@@ -41,7 +41,7 @@ export default function ReviewPromptBanner({ onClose }: ReviewPromptBannerProps)
       <button
         onClick={handleSnooze}
         title="Remind me later"
-        className="absolute top-1.5 right-1.5 p-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors">
+        className="absolute top-1.5 right-1.5 p-1 text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300 transition-colors">
         <X size={12} />
       </button>
       <div className="flex items-start gap-2 pr-5">

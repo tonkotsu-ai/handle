@@ -76,7 +76,7 @@ function FieldLabel({
       {children}
       {edited && onUndo && (
         <button
-          className="pl-0.5 text-slate-400 hover:text-juicyorange-500 dark:text-slate-500 dark:hover:text-juicyorange-400"
+          className="pl-0.5 text-slate-400 hover:text-juicyorange-500 dark:text-slate-400 dark:hover:text-juicyorange-400"
           title={undoLabel}
           aria-label={undoLabel}
           onClick={onUndo}>
@@ -824,7 +824,7 @@ function EffectsSection({
           This element has a complex shadow (multiple layers or inset). Editing it here is not yet supported.
           {edited && (
             <button
-              className="ml-1 text-slate-400 hover:text-juicyorange-500 dark:text-slate-500 dark:hover:text-juicyorange-400"
+              className="ml-1 text-slate-400 hover:text-juicyorange-500 dark:text-slate-400 dark:hover:text-juicyorange-400"
               onClick={() => onUndo(elementId, ["boxShadow"])}>
               Revert
             </button>
@@ -1373,7 +1373,7 @@ export default function StyleEditor({
           </button>
           {editedProps.has("overflow") && (
             <button
-              className="text-slate-400 hover:text-juicyorange-500 dark:text-slate-500 dark:hover:text-juicyorange-400"
+              className="text-slate-400 hover:text-juicyorange-500 dark:text-slate-400 dark:hover:text-juicyorange-400"
               title="Undo"
               aria-label="Undo"
               onClick={() => onUndo(elementId, ["overflow"])}>

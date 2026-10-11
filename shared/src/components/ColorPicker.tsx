@@ -496,7 +496,7 @@ function CustomTab({
               onBlur={commitOpacity}
               onKeyDown={(e) => handleKeyDown(e, commitOpacity)}
             />
-            <span className="text-xs text-slate-400 pr-0.5">%</span>
+            <span className="text-xs text-slate-600 dark:text-slate-200 pr-0.5">%</span>
           </div>
         </div>
       </div>
@@ -593,14 +593,14 @@ function TokensTab({
                 fullTokenHex.toLowerCase() ===
                 currentHex.toLowerCase()
                   ? "bg-electricblue-100 text-electricblue-700 dark:bg-electricblue-900 dark:text-electricblue-300"
-                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 dark:hover:text-slate-200"
               }`}>
               <Swatch color={token.value} size={16} />
               <span className="truncate flex-1 text-left">
                 {highlightMatch(displayName, search)}
               </span>
               {displayTokenHex.startsWith("#") && (
-                <span className="shrink-0 text-slate-400">
+                <span className="shrink-0 text-slate-600 dark:text-slate-200">
                   {displayTokenHex}
                   {tokenOpacity < 100 && ` ${tokenOpacity}%`}
                 </span>
@@ -708,7 +708,7 @@ export default function ColorPicker({
           if (!open) setActiveTab(matchingToken ? "tokens" : "custom")
           setOpen(!open)
         }}
-        className={`flex items-center gap-2 rounded border-0 px-2 py-1.5 text-xs w-full ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-900 hover:bg-mintfresh-200 dark:hover:bg-mintfresh-800" : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
+        className={`flex items-center gap-2 rounded border-0 px-2 py-1.5 text-xs w-full ${edited ? "bg-mintfresh-100 dark:bg-mintfresh-900 hover:bg-mintfresh-200 dark:hover:bg-mintfresh-950" : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"}`}>
         <Swatch color={value} size={16} />
         {matchingToken ? (
           <span className="truncate">
@@ -716,14 +716,14 @@ export default function ColorPicker({
             {" "}
             <span className="text-slate-500 dark:text-slate-200">{displayHex}</span>
             {!isTransparent && displayOpacity < 100 && (
-              <span className="text-slate-400"> {displayOpacity}%</span>
+              <span className="text-slate-600 dark:text-slate-200"> {displayOpacity}%</span>
             )}
           </span>
         ) : (
           <span className="truncate text-slate-600 dark:text-slate-200">
             {displayHex}
             {!isTransparent && displayOpacity < 100 && (
-              <span className="text-slate-400"> {displayOpacity}%</span>
+              <span className="text-slate-600 dark:text-slate-200"> {displayOpacity}%</span>
             )}
           </span>
         )}

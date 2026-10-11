@@ -56,7 +56,7 @@ export default function ElementRow({
         <span className="w-3 shrink-0" />
       ) : (
         <button
-          className="shrink-0 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+          className="shrink-0 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           onClick={(e) => {
             e.stopPropagation()
             onToggleExpand(elementId)
